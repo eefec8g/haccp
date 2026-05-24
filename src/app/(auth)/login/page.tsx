@@ -1,9 +1,21 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { LoginForm } from '@/components/features/auth/LoginForm';
 
 export const metadata: Metadata = {
   title: 'Connexion - HACCP Maison Givre',
 };
+
+function LoginFormFallback() {
+  return (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      className="h-64 animate-pulse rounded-md bg-slate-100"
+      data-testid="login-form-loading"
+    />
+  );
+}
 
 export default function LoginPage() {
   return (
@@ -15,7 +27,9 @@ export default function LoginPage() {
             Releves de temperature - boutiques
           </p>
         </div>
-        <LoginForm />
+        <Suspense fallback={<LoginFormFallback />}>
+          <LoginForm />
+        </Suspense>
       </div>
     </main>
   );

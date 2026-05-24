@@ -1,19 +1,43 @@
 import { NextResponse } from 'next/server';
+import type { UserRole } from '@prisma/client';
 import { auth } from '@/lib/auth';
+import { POST_LOGIN_REDIRECT } from '@/lib/constants/auth';
 
-const PUBLIC_PATHS = ['/login', '/forgot-password'];
+const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password'];
 const ADMIN_PATHS = ['/admin'];
+
+const FALLBACK_REDIRECT = POST_LOGIN_REDIRECT.SALARIE;
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+function isAdminPath(pathname: string): boolean {
+  return ADMIN_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+function redirectTargetFor(role: UserRole | undefined): string {
+  if (!role) {
+    return FALLBACK_REDIRECT;
+  }
+  return POST_LOGIN_REDIRECT[role];
+}
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const isAuthenticated = !!req.auth;
-  const role = req.auth?.user?.role;
 
+  // Laisser passer les routes NextAuth internes.
   if (pathname.startsWith('/api/auth')) {
     return NextResponse.next();
   }
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isAuthenticated = !!req.auth;
+  const role = req.auth?.user?.role as UserRole | undefined;
+  const isPublic = isPublicPath(pathname);
 
   if (!isAuthenticated && !isPublic) {
     const loginUrl = new URL('/login', req.nextUrl.origin);
@@ -22,12 +46,14 @@ export default auth((req) => {
   }
 
   if (isAuthenticated && isPublic) {
-    return NextResponse.redirect(new URL('/releves', req.nextUrl.origin));
+    const target = new URL(redirectTargetFor(role), req.nextUrl.origin);
+    return NextResponse.redirect(target);
   }
 
-  const isAdminPath = ADMIN_PATHS.some((p) => pathname.startsWith(p));
-  if (isAdminPath && role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/releves', req.nextUrl.origin));
+  if (isAdminPath(pathname) && role !== 'ADMIN') {
+    return NextResponse.redirect(
+      new URL(redirectTargetFor(role), req.nextUrl.origin)
+    );
   }
 
   return NextResponse.next();

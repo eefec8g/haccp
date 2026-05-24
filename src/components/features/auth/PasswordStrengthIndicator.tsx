@@ -36,26 +36,44 @@ export function PasswordStrengthIndicator({
   const rules = evaluateRules(password);
 
   return (
-    <ul
+    <div
       id={id}
       aria-live="polite"
       aria-atomic="false"
-      className="space-y-1 text-sm text-slate-600"
+      className="rounded-[7px] border border-[#DFE5EF] bg-[#ECF2FF]/40 p-4"
       data-testid="password-strength"
     >
-      {rules.map((rule) => (
-        <li
-          key={rule.label}
-          className={rule.satisfied ? 'text-green-700' : 'text-slate-500'}
-          data-testid={`password-rule-${rule.satisfied ? 'ok' : 'ko'}`}
-        >
-          <span aria-hidden="true">{rule.satisfied ? 'OK ' : '... '}</span>
-          <span className="sr-only">
-            {rule.satisfied ? 'Critere rempli :' : 'Critere manquant :'}{' '}
-          </span>
-          {rule.label}
-        </li>
-      ))}
-    </ul>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#2A3547]/70">
+        Exigences du mot de passe
+      </p>
+      <ul className="space-y-1.5 text-sm">
+        {rules.map((rule) => (
+          <li
+            key={rule.label}
+            className={
+              rule.satisfied
+                ? 'flex items-center gap-2 text-[#0a9d83]'
+                : 'flex items-center gap-2 text-[#2A3547]/60'
+            }
+            data-testid={`password-rule-${rule.satisfied ? 'ok' : 'ko'}`}
+          >
+            <span
+              aria-hidden="true"
+              className={
+                rule.satisfied
+                  ? 'inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#13DEB9]/20 text-xs font-bold text-[#0a9d83]'
+                  : 'inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#DFE5EF] text-xs text-gray-400'
+              }
+            >
+              {rule.satisfied ? 'v' : ''}
+            </span>
+            <span className="sr-only">
+              {rule.satisfied ? 'Critere rempli :' : 'Critere manquant :'}{' '}
+            </span>
+            {rule.label}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -23,34 +23,34 @@ interface ResetPasswordPageProps {
 
 function MalformedTokenScreen() {
   return (
-    <main
-      className="min-h-screen flex items-center justify-center p-6"
-      data-testid="reset-malformed"
-    >
-      <div className="w-full max-w-md space-y-6 text-center">
-        <h1 className="text-2xl font-semibold">Lien invalide ou expire</h1>
-        <p className="text-sm text-slate-500">
+    <section data-testid="reset-malformed">
+      <header className="mb-6 text-center">
+        <h2 className="text-2xl font-bold text-[#2A3547]">
+          Lien invalide ou expire
+        </h2>
+        <p className="mt-2 text-sm text-gray-500">
           Le lien de reinitialisation est invalide ou a expire. Demandez un
           nouveau lien pour continuer.
         </p>
-        <div className="flex flex-col gap-2">
-          <Link
-            href={FORGOT_PASSWORD_HREF}
-            className="text-sm text-blue-600 hover:underline"
-            data-testid="reset-request-new-link"
-          >
-            Demander un nouveau lien
-          </Link>
-          <Link
-            href={LOGIN_HREF}
-            className="text-sm text-slate-500 hover:underline"
-            data-testid="reset-back-to-login"
-          >
-            Retour a la connexion
-          </Link>
-        </div>
+      </header>
+
+      <div className="flex flex-col gap-3">
+        <Link
+          href={FORGOT_PASSWORD_HREF}
+          className="inline-flex items-center justify-center rounded-[7px] bg-[#5D87FF] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2"
+          data-testid="reset-request-new-link"
+        >
+          Demander un nouveau lien
+        </Link>
+        <Link
+          href={LOGIN_HREF}
+          className="inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-sm font-semibold text-[#2A3547] transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2"
+          data-testid="reset-back-to-login"
+        >
+          Retour a la connexion
+        </Link>
       </div>
-    </main>
+    </section>
   );
 }
 
@@ -64,16 +64,17 @@ export default async function ResetPasswordPage({
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold">Nouveau mot de passe</h1>
-          <p className="text-sm text-slate-500 mt-2">
-            Choisissez un mot de passe robuste pour proteger votre compte.
-          </p>
-        </div>
-        <ResetPasswordForm token={token} />
-      </div>
-    </main>
+    <section>
+      <header className="mb-6">
+        <h2 className="text-2xl font-bold text-[#2A3547]">
+          Nouveau mot de passe
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Choisissez un mot de passe robuste pour proteger votre compte.
+        </p>
+      </header>
+
+      <ResetPasswordForm token={token} />
+    </section>
   );
 }

@@ -19,18 +19,17 @@ function LoginFormFallback() {
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold">HACCP Maison Givre</h1>
-          <p className="text-sm text-slate-500 mt-2">
-            Releves de temperature - boutiques
-          </p>
-        </div>
-        <Suspense fallback={<LoginFormFallback />}>
-          <LoginForm />
-        </Suspense>
-      </div>
-    </main>
+    <section>
+      <header className="mb-6">
+        <h2 className="text-2xl font-bold text-[#2A3547]">Bon retour</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Connectez-vous pour saisir les releves de temperature du jour.
+        </p>
+      </header>
+
+      <Suspense fallback={<LoginFormFallback />}>
+        <LoginForm />
+      </Suspense>
+    </section>
   );
 }

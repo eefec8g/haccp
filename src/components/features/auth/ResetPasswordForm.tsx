@@ -15,6 +15,12 @@ const VALIDATION_ERROR_MESSAGE =
 const INTERNAL_ERROR_MESSAGE =
   'Une erreur est survenue. Merci de reessayer dans quelques instants.';
 
+const INPUT_BASE_CLASSES =
+  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
+const LABEL_CLASSES = 'mb-1 block text-sm font-medium text-[#2A3547]';
+const SUBMIT_CLASSES =
+  'inline-flex w-full items-center justify-center rounded-[7px] bg-[#5D87FF] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+
 function deriveErrorMessage(state: ResetPasswordActionState): string | null {
   if (state.status !== 'error') {
     return null;
@@ -56,17 +62,14 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     <form
       action={formAction}
       aria-label="Formulaire de reinitialisation du mot de passe"
-      className="space-y-4"
+      className="space-y-5"
       data-testid="reset-form"
       noValidate
     >
       <input type="hidden" name="token" value={token} />
 
       <div>
-        <label
-          htmlFor="reset-password"
-          className="block text-sm font-medium mb-1"
-        >
+        <label htmlFor="reset-password" className={LABEL_CLASSES}>
           Nouveau mot de passe
         </label>
         <div className="relative">
@@ -76,11 +79,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             type={showPassword ? 'text' : 'password'}
             required
             autoComplete="new-password"
+            placeholder="............"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             aria-invalid={!!errorMessage}
             aria-describedby={`${rulesId}${errorMessage ? ` ${errorId}` : ''}`}
-            className="w-full px-4 py-3 pr-20 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={INPUT_BASE_CLASSES + ' pr-20'}
             data-testid="reset-password"
           />
           <button
@@ -92,7 +96,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                 ? 'Masquer le mot de passe'
                 : 'Afficher le mot de passe'
             }
-            className="absolute inset-y-0 right-0 px-3 text-sm text-slate-600 hover:text-slate-900"
+            className="absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-[#5D87FF] hover:text-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2"
             data-testid="reset-toggle-visibility"
           >
             {showPassword ? 'Masquer' : 'Afficher'}
@@ -103,10 +107,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       <PasswordStrengthIndicator password={password} id={rulesId} />
 
       <div>
-        <label
-          htmlFor="reset-confirm-password"
-          className="block text-sm font-medium mb-1"
-        >
+        <label htmlFor="reset-confirm-password" className={LABEL_CLASSES}>
           Confirmer le mot de passe
         </label>
         <input
@@ -115,9 +116,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           type={showPassword ? 'text' : 'password'}
           required
           autoComplete="new-password"
+          placeholder="............"
           aria-invalid={!!errorMessage}
           aria-describedby={errorMessage ? errorId : undefined}
-          className="w-full px-4 py-3 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={INPUT_BASE_CLASSES}
           data-testid="reset-confirm-password"
         />
       </div>
@@ -127,7 +129,11 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         role="alert"
         aria-live="polite"
         aria-atomic="true"
-        className={errorMessage ? 'text-sm text-red-600' : 'sr-only'}
+        className={
+          errorMessage
+            ? 'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]'
+            : 'sr-only'
+        }
         data-testid="reset-error"
       >
         {errorMessage}
@@ -137,7 +143,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         type="submit"
         disabled={isPending}
         aria-busy={isPending}
-        className="w-full py-3 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className={SUBMIT_CLASSES}
         data-testid="reset-submit"
       >
         {isPending

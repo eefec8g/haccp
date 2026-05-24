@@ -18,6 +18,12 @@ const GENERIC_ERROR = 'Email ou mot de passe incorrect';
 const INTERNAL_ERROR =
   'Une erreur est survenue. Merci de reessayer dans quelques instants.';
 
+const INPUT_BASE_CLASSES =
+  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
+const LABEL_CLASSES = 'mb-1 block text-sm font-medium text-[#2A3547]';
+const SUBMIT_CLASSES =
+  'inline-flex w-full items-center justify-center rounded-[7px] bg-[#5D87FF] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+
 function getErrorMessage(state: LoginActionState): string | null {
   if (state.status !== 'error') {
     return null;
@@ -56,12 +62,12 @@ export function LoginForm() {
     <form
       action={formAction}
       aria-label="Formulaire de connexion"
-      className="space-y-4"
+      className="space-y-5"
       data-testid="login-form"
       noValidate
     >
       <div>
-        <label htmlFor="email" className="block text-sm font-medium mb-1">
+        <label htmlFor="email" className={LABEL_CLASSES}>
           Email
         </label>
         <input
@@ -72,26 +78,37 @@ export function LoginForm() {
           autoComplete="email"
           autoCapitalize="none"
           inputMode="email"
+          placeholder="prenom@maison-givre.fr"
           aria-invalid={!!errorMessage}
           aria-describedby={errorMessage ? errorId : undefined}
-          className="w-full px-4 py-3 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={INPUT_BASE_CLASSES}
           data-testid="login-email"
         />
       </div>
 
       <div>
-        <label htmlFor="password" className="block text-sm font-medium mb-1">
-          Mot de passe
-        </label>
+        <div className="mb-1 flex items-center justify-between">
+          <label htmlFor="password" className={LABEL_CLASSES + ' mb-0'}>
+            Mot de passe
+          </label>
+          <Link
+            href={FORGOT_PASSWORD_HREF}
+            className="text-sm font-medium text-[#5D87FF] hover:text-[#4570e6]"
+            data-testid="login-forgot-password"
+          >
+            Mot de passe oublie ?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"
           type="password"
           required
           autoComplete="current-password"
+          placeholder="............"
           aria-invalid={!!errorMessage}
           aria-describedby={errorMessage ? errorId : undefined}
-          className="w-full px-4 py-3 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={INPUT_BASE_CLASSES}
           data-testid="login-password"
         />
       </div>
@@ -101,7 +118,11 @@ export function LoginForm() {
         role="alert"
         aria-live="polite"
         aria-atomic="true"
-        className={errorMessage ? 'text-sm text-red-600' : 'sr-only'}
+        className={
+          errorMessage
+            ? 'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]'
+            : 'sr-only'
+        }
         data-testid="login-error"
       >
         {errorMessage}
@@ -111,21 +132,11 @@ export function LoginForm() {
         type="submit"
         disabled={isPending}
         aria-busy={isPending}
-        className="w-full py-3 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className={SUBMIT_CLASSES}
         data-testid="login-submit"
       >
         {isPending ? 'Connexion en cours...' : 'Se connecter'}
       </button>
-
-      <div className="text-center">
-        <Link
-          href={FORGOT_PASSWORD_HREF}
-          className="text-sm text-blue-600 hover:underline"
-          data-testid="login-forgot-password"
-        >
-          Mot de passe oublie ?
-        </Link>
-      </div>
     </form>
   );
 }

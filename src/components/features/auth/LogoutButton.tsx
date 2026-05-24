@@ -7,6 +7,9 @@ interface LogoutButtonProps {
 
 const DEFAULT_LABEL = 'Se deconnecter';
 
+const DEFAULT_CLASSNAME =
+  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-2 text-sm font-semibold text-[#2A3547] transition-colors hover:bg-[#ECF2FF] hover:text-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
+
 /**
  * Bouton de deconnexion (Server Component).
  *
@@ -24,9 +27,7 @@ export function LogoutButton({
   label = DEFAULT_LABEL,
   className,
 }: LogoutButtonProps) {
-  const buttonClassName =
-    className ??
-    'text-sm px-3 py-2 rounded-md border border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500';
+  const buttonClassName = className ?? DEFAULT_CLASSNAME;
 
   return (
     <form action={logoutAction}>

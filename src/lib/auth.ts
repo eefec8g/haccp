@@ -1,40 +1,20 @@
-import NextAuth, { type DefaultSession } from 'next-auth';
+import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import bcrypt from 'bcryptjs';
-import { z } from 'zod';
-import { db } from '@/lib/prisma';
+import { authenticateUser } from '@/lib/services/auth.service';
+import { loginSchema } from '@/lib/validations/auth';
+import { JWT_MAX_AGE_SECONDS } from '@/lib/constants/auth';
 
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id: string;
-      role: 'SALARIE' | 'RESPONSABLE' | 'ADMIN';
-    } & DefaultSession['user'];
-  }
-  interface User {
-    role: 'SALARIE' | 'RESPONSABLE' | 'ADMIN';
-  }
-}
-
-declare module '@auth/core/jwt' {
-  interface JWT {
-    id: string;
-    role: 'SALARIE' | 'RESPONSABLE' | 'ADMIN';
-  }
-}
-
-const credentialsSchema = z.object({
-  email: z.string().email().toLowerCase(),
-  password: z.string().min(1),
-});
+// Les declarations module 'next-auth' / '@auth/core/jwt' sont
+// centralisees dans src/types/next-auth.d.ts.
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 60, // 30 minutes
+    maxAge: JWT_MAX_AGE_SECONDS,
   },
   pages: {
     signIn: '/login',
+    error: '/login',
   },
   providers: [
     Credentials({
@@ -43,31 +23,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: {},
       },
       async authorize(credentials) {
-        const parsed = credentialsSchema.safeParse(credentials);
+        const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) {
           return null;
         }
 
-        const user = await db.user.findUnique({
-          where: { email: parsed.data.email, actif: true },
-        });
-        if (!user) {
-          return null;
-        }
-
-        const passwordValid = await bcrypt.compare(
-          parsed.data.password,
-          user.password
+        const result = await authenticateUser(
+          parsed.data.email,
+          parsed.data.password
         );
-        if (!passwordValid) {
+        if (!result.success) {
           return null;
         }
 
+        const { user } = result.data;
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
           role: user.role,
+          boutiqueIds: user.boutiqueIds,
         };
       },
     }),
@@ -77,6 +51,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user?.id) {
         token.id = user.id;
         token.role = user.role;
+        token.boutiqueIds = user.boutiqueIds ?? [];
       }
       return token;
     },
@@ -84,6 +59,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token && session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.boutiqueIds = token.boutiqueIds;
       }
       return session;
     },

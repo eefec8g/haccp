@@ -1,8 +1,33 @@
 @import 'tailwindcss';
 
+@theme {
+  /* Modernize palette - aligne sur Maison Givre */
+  --color-givre-ink: #2a3547;
+  --color-givre-primary: #5d87ff;
+  --color-givre-primary-hover: #4570e6;
+  --color-givre-success: #13deb9;
+  --color-givre-warning: #ffae1f;
+  --color-givre-danger: #fa896b;
+  --color-givre-border: #dfe5ef;
+  --color-givre-surface: #ecf2ff;
+
+  /* Animations Modernize */
+  --animate-float: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+}
+
 :root {
   --background: #ffffff;
-  --foreground: #0f172a;
+  --foreground: #2a3547;
 }
 
 @media (prefers-color-scheme: dark) {

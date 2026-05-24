@@ -1,87 +1,141 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { useActionState, useEffect, useId } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import type { Route } from 'next';
+import {
+  INITIAL_LOGIN_STATE,
+  loginAction,
+  type LoginActionState,
+} from '@/app/actions/auth';
+import { buildRateLimitMessage } from '@/lib/utils/rate-limit-message';
+import { sanitizeCallbackUrl } from '@/lib/utils/sanitize-callback-url';
+
+const FORGOT_PASSWORD_HREF = '/forgot-password' as Route;
+
+const GENERIC_ERROR = 'Email ou mot de passe incorrect';
+const INTERNAL_ERROR =
+  'Une erreur est survenue. Merci de reessayer dans quelques instants.';
+
+const INPUT_BASE_CLASSES =
+  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
+const LABEL_CLASSES = 'mb-1 block text-sm font-medium text-[#2A3547]';
+const SUBMIT_CLASSES =
+  'inline-flex w-full items-center justify-center rounded-[7px] bg-[#5D87FF] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+
+function getErrorMessage(state: LoginActionState): string | null {
+  if (state.status !== 'error') {
+    return null;
+  }
+  if (state.code === 'RATE_LIMITED') {
+    return buildRateLimitMessage(state.retryAfterSeconds ?? 0);
+  }
+  if (state.code === 'INTERNAL') {
+    return INTERNAL_ERROR;
+  }
+  return GENERIC_ERROR;
+}
 
 export function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [state, formAction, isPending] = useActionState(
+    loginAction,
+    INITIAL_LOGIN_STATE
+  );
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    startTransition(async () => {
-      const res = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
-      if (res?.error) {
-        setError('Email ou mot de passe incorrect');
-        return;
-      }
-      router.push('/releves');
-      router.refresh();
-    });
-  }
+  const errorId = useId();
+  const errorMessage = getErrorMessage(state);
+
+  useEffect(() => {
+    if (state.status !== 'success') {
+      return;
+    }
+    const callback = sanitizeCallbackUrl(searchParams.get('callbackUrl'));
+    const destination = callback ?? state.redirectTo;
+    // Hard navigation : force le rejeu du middleware avec la nouvelle session JWT
+    // (router.push() conserve le cache RSC pre-auth).
+    window.location.assign(destination);
+  }, [state, searchParams]);
 
   return (
     <form
-      onSubmit={handleSubmit}
-      className="space-y-4"
+      action={formAction}
+      aria-label="Formulaire de connexion"
+      className="space-y-5"
       data-testid="login-form"
+      noValidate
     >
       <div>
-        <label htmlFor="email" className="block text-sm font-medium mb-1">
+        <label htmlFor="email" className={LABEL_CLASSES}>
           Email
         </label>
         <input
           id="email"
+          name="email"
           type="email"
           required
           autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-3 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          data-testid="email-input"
+          autoCapitalize="none"
+          inputMode="email"
+          placeholder="prenom@maison-givre.fr"
+          aria-invalid={!!errorMessage}
+          aria-describedby={errorMessage ? errorId : undefined}
+          className={INPUT_BASE_CLASSES}
+          data-testid="login-email"
         />
       </div>
+
       <div>
-        <label htmlFor="password" className="block text-sm font-medium mb-1">
-          Mot de passe
-        </label>
+        <div className="mb-1 flex items-center justify-between">
+          <label htmlFor="password" className={LABEL_CLASSES + ' mb-0'}>
+            Mot de passe
+          </label>
+          <Link
+            href={FORGOT_PASSWORD_HREF}
+            className="text-sm font-medium text-[#5D87FF] hover:text-[#4570e6]"
+            data-testid="login-forgot-password"
+          >
+            Mot de passe oublie ?
+          </Link>
+        </div>
         <input
           id="password"
+          name="password"
           type="password"
           required
           autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-3 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          data-testid="password-input"
+          placeholder="............"
+          aria-invalid={!!errorMessage}
+          aria-describedby={errorMessage ? errorId : undefined}
+          className={INPUT_BASE_CLASSES}
+          data-testid="login-password"
         />
       </div>
-      {error && (
-        <div
-          role="alert"
-          aria-live="polite"
-          className="text-sm text-red-600"
-          data-testid="login-error"
-        >
-          {error}
-        </div>
-      )}
+
+      <div
+        id={errorId}
+        role="alert"
+        aria-live="polite"
+        aria-atomic="true"
+        className={
+          errorMessage
+            ? 'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]'
+            : 'sr-only'
+        }
+        data-testid="login-error"
+      >
+        {errorMessage}
+      </div>
+
       <button
         type="submit"
         disabled={isPending}
-        className="w-full py-3 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        data-testid="login-button"
+        aria-busy={isPending}
+        className={SUBMIT_CLASSES}
+        data-testid="login-submit"
       >
-        {isPending ? 'Connexion...' : 'Se connecter'}
+        {isPending ? 'Connexion en cours...' : 'Se connecter'}
       </button>
     </form>
   );

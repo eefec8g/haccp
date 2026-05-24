@@ -161,3 +161,16 @@ model Alerte {
 
   @@index([status, createdAt])
 }
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  email     String
+  token     String    @unique // hash SHA256 du token (jamais en clair)
+  expiresAt DateTime
+  usedAt    DateTime? // anti-replay : null = non utilise
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+}

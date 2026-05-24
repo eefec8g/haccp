@@ -1,0 +1,163 @@
+// HACCP Maison Givre - Schema Prisma
+// Source de verite metier : docs/CCF.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== ENUMS =====
+
+enum UserRole {
+  SALARIE
+  RESPONSABLE
+  ADMIN
+}
+
+enum Creneau {
+  MATIN
+  MIDI
+  SOIR
+}
+
+enum TypeEquipement {
+  CONGELATEUR
+  VITRINE
+  CHAMBRE_FROIDE
+  AUTRE
+}
+
+enum AlerteStatus {
+  OUVERTE
+  RESOLUE
+  IGNOREE
+}
+
+// ===== MODELS =====
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  name              String
+  role              UserRole
+  actif             Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  boutiqueSalarieId String?
+  boutiqueSalarie   Boutique? @relation("SalarieBoutique", fields: [boutiqueSalarieId], references: [id])
+
+  boutiquesResponsable BoutiqueUser[]
+  releves              Releve[]
+  alertesResolues      Alerte[]       @relation("ResoluPar")
+
+  @@index([email])
+  @@index([role])
+  @@index([boutiqueSalarieId])
+}
+
+model Boutique {
+  id        String   @id @default(uuid())
+  nom       String
+  adresse   String?
+  ville     String?
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  equipements  Equipement[]
+  salaries     User[]         @relation("SalarieBoutique")
+  responsables BoutiqueUser[]
+  releves      Releve[]
+
+  @@index([actif])
+}
+
+model BoutiqueUser {
+  boutiqueId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  boutique Boutique @relation(fields: [boutiqueId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boutiqueId, userId])
+  @@index([userId])
+}
+
+model Equipement {
+  id        String         @id @default(uuid())
+  nom       String
+  type      TypeEquipement
+  seuilMin  Decimal        @db.Decimal(4, 1)
+  seuilMax  Decimal        @db.Decimal(4, 1)
+  actif     Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  boutiqueId String
+  boutique   Boutique @relation(fields: [boutiqueId], references: [id])
+
+  releves Releve[]
+
+  @@index([boutiqueId, actif])
+}
+
+model Releve {
+  id               String   @id @default(uuid())
+  date             DateTime @db.Date
+  creneau          Creneau
+  temperature      Decimal  @db.Decimal(4, 1)
+  commentaire      String?
+  alerteHorsSeuils Boolean  @default(false)
+  signature        String
+  ip               String?
+  annuleParId      String?  @unique
+  motifAnnulation  String?
+  createdAt        DateTime @default(now())
+
+  equipementId String
+  equipement   Equipement @relation(fields: [equipementId], references: [id])
+
+  boutiqueId String
+  boutique   Boutique @relation(fields: [boutiqueId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  annulePar Releve? @relation("ReleveAnnulation", fields: [annuleParId], references: [id])
+  annule    Releve? @relation("ReleveAnnulation")
+
+  alertes Alerte[]
+
+  // NOTE : la contrainte "1 releve actif par (equipement, date, creneau)" est implementee
+  // via un partial unique index ajoute par migration SQL :
+  //   CREATE UNIQUE INDEX releve_actif_unique ON "Releve" ("equipementId", "date", "creneau")
+  //   WHERE "annuleParId" IS NULL;
+  // (Prisma ne supporte pas les partial unique indexes en schema.prisma natif)
+
+  @@index([date, equipementId])
+  @@index([boutiqueId, date])
+  @@index([userId, createdAt])
+}
+
+model Alerte {
+  id                    String       @id @default(uuid())
+  status                AlerteStatus @default(OUVERTE)
+  commentaireResolution String?
+  resoluAt              DateTime?
+  createdAt             DateTime     @default(now())
+
+  releveId String @unique
+  releve   Releve @relation(fields: [releveId], references: [id])
+
+  resoluParId String?
+  resoluPar   User?   @relation("ResoluPar", fields: [resoluParId], references: [id])
+
+  @@index([status, createdAt])
+}

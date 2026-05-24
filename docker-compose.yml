@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: haccp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: haccp
+      POSTGRES_PASSWORD: haccp
+      POSTGRES_DB: haccp
+    ports:
+      - '5433:5432'
+    volumes:
+      - haccp_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U haccp -d haccp']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  haccp_pg_data:

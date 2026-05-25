@@ -3,10 +3,15 @@ import type { UserRole } from '@prisma/client';
 import { auth } from '@/lib/auth';
 import { POST_LOGIN_REDIRECT } from '@/lib/constants/auth';
 
-const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+  '/accept-invitation',
+];
 const ADMIN_PATHS = ['/admin'];
 
-const FALLBACK_REDIRECT = POST_LOGIN_REDIRECT.SALARIE;
+const FALLBACK_REDIRECT = '/login';
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -21,7 +26,12 @@ function isAdminPath(pathname: string): boolean {
 }
 
 function redirectTargetFor(role: UserRole | undefined): string {
-  if (!role) {
+  if (!role || !(role in POST_LOGIN_REDIRECT)) {
+    // Defense en profondeur : un JWT avec role inattendu ne doit jamais
+    // etre traite comme un role valide. On loggue et on renvoie vers /login.
+    if (role) {
+      console.warn(`[middleware] role inattendu dans JWT : ${role}`);
+    }
     return FALLBACK_REDIRECT;
   }
   return POST_LOGIN_REDIRECT[role];

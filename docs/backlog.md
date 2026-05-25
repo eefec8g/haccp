@@ -64,13 +64,22 @@ Scenario: Rate limit
 **En tant qu'** Admin, **je veux** ajouter un equipement a une boutique (nom, type, seuils min/max), **afin de** qu'il apparaisse dans les tournees des salaries de la boutique.
 
 ```gherkin
-Scenario: Ajout congelateur
+Scenario: Ajout congelateur sans seuils
   Given je suis Admin
   And la boutique "MG Paris 11" existe
-  When je cree un equipement "CGL-01" type CONGELATEUR sans seuils specifies
-  Then les seuils par defaut [-25, -18] sont appliques
+  When je tente de creer un equipement "CGL-01" type CONGELATEUR sans saisir seuilMin/seuilMax
+  Then la validation Zod refuse avec message "Les seuils min et max sont obligatoires"
+  And aucun equipement n'est cree
+
+Scenario: Ajout congelateur avec seuils
+  Given je suis Admin
+  And la boutique "MG Paris 11" existe
+  When je cree un equipement "CGL-01" type CONGELATEUR avec seuilMin=-25 et seuilMax=-18
+  Then l'equipement est cree avec ces seuils
   And l'equipement est visible dans la tournee des salaries de MG Paris 11
 ```
+
+_Note historique : la version initiale du backlog prevoyait des seuils par defaut par type (CONGELATEUR -25/-18, VITRINE -18/-10...). Decision technique du 2026-05-24 (voir `.claude/epic-state.md` #4) : seuils min/max OBLIGATOIRES a chaque creation, pas de valeurs par defaut appliquees._
 
 #### US-ADM-003 - Admin cree un utilisateur
 

@@ -54,12 +54,12 @@
 
 ### 3.3 Module Equipement (Admin)
 
-| Ref        | Exigence                                                                                                           |
-| ---------- | ------------------------------------------------------------------------------------------------------------------ |
-| EX-EQP-001 | Un equipement = (nom, type, boutique, seuil_min, seuil_max, actif)                                                 |
-| EX-EQP-002 | Types : CONGELATEUR (default seuils -25 / -18), VITRINE (default -18 / -10), CHAMBRE_FROIDE (default 0 / 4), AUTRE |
-| EX-EQP-003 | Seuils modifiables par equipement (override des defaults)                                                          |
-| EX-EQP-004 | Un equipement desactive disparait des tournees mais conserve son historique                                        |
+| Ref        | Exigence                                                                                                                                                                                                                                                                                 |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EX-EQP-001 | Un equipement = (nom, type, boutique, seuil_min, seuil_max, actif)                                                                                                                                                                                                                       |
+| EX-EQP-002 | Types : `CONGELATEUR`, `VITRINE`, `CHAMBRE_FROIDE`, `AUTRE`. Les seuils min/max sont **OBLIGATOIRES** a la saisie ; aucune valeur par defaut n'est appliquee automatiquement. (Decision technique 2026-05-24, voir `.claude/epic-state.md` #4. Anciennement : defaults seuils par type.) |
+| EX-EQP-003 | Seuils modifiables par equipement (a la creation et via update)                                                                                                                                                                                                                          |
+| EX-EQP-004 | Un equipement desactive disparait des tournees mais conserve son historique                                                                                                                                                                                                              |
 
 ### 3.4 Module Releve (coeur metier)
 

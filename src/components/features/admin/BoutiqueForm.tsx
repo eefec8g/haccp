@@ -5,10 +5,12 @@ import type { Boutique } from '@prisma/client';
 import {
   createBoutiqueAction,
   updateBoutiqueAction,
+} from '@/app/actions/admin-boutique';
+import {
   INITIAL_BOUTIQUE_ACTION_STATE,
   type BoutiqueActionState,
   type BoutiqueActionFieldErrors,
-} from '@/app/actions/admin-boutique';
+} from '@/app/actions/admin-boutique.types';
 import {
   BOUTIQUE_NOM_MAX,
   BOUTIQUE_ADRESSE_MAX,
@@ -24,11 +26,11 @@ interface BoutiqueFormProps {
 }
 
 const INPUT_CLASSES =
-  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
+  'block w-full rounded-none border border-mg-noir/15 bg-mg-ivoire px-4 py-3 text-sm font-light text-mg-noir transition-colors placeholder:text-mg-noir/30 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:bg-mg-noir/5';
 const SUBMIT_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] bg-[#5D87FF] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex items-center justify-center bg-mg-noir px-8 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
 const ERROR_BOX_CLASSES =
-  'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]';
+  'border border-mg-or/40 bg-mg-or/5 px-4 py-3 text-xs font-light uppercase tracking-[0.15em] text-mg-or';
 
 const DUPLICATE_MESSAGE =
   'Une boutique avec ce nom et cette ville existe deja.';
@@ -180,7 +182,7 @@ export function BoutiqueForm({ mode, boutique }: BoutiqueFormProps) {
 
       {mode === 'edit' && state.status === 'success' ? (
         <p
-          className="rounded-[7px] border border-[#13DEB9]/30 bg-[#E6FBF6] px-4 py-3 text-sm text-[#0F9F86]"
+          className="border border-mg-or/30 bg-mg-or/5 px-4 py-3 text-xs font-light uppercase tracking-[0.15em] text-mg-noir/80"
           role="status"
           aria-live="polite"
           data-testid="boutique-success"

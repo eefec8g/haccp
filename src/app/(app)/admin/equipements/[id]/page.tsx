@@ -18,11 +18,11 @@ interface AdminEquipementDetailPageProps {
 }
 
 const BACK_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-1.5 text-sm font-medium text-[#5A6A85] transition-colors hover:bg-[#F6F9FC] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
-const STATUS_ACTIVE_CLASSES =
-  'inline-flex items-center rounded-full bg-[#E6FBF6] px-3 py-1 text-xs font-semibold text-[#0F9F86]';
-const STATUS_INACTIVE_CLASSES =
-  'inline-flex items-center rounded-full bg-[#F1F4F9] px-3 py-1 text-xs font-semibold text-[#5A6A85]';
+  'inline-flex items-center justify-center border border-mg-noir/20 bg-transparent px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+const BADGE_BASE =
+  'inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em]';
+const STATUS_ACTIVE_CLASSES = `${BADGE_BASE} border-mg-or/40 text-mg-or`;
+const STATUS_INACTIVE_CLASSES = `${BADGE_BASE} border-mg-noir/20 text-mg-noir/50`;
 
 const TYPE_LABELS: Readonly<Record<TypeEquipement, string>> = {
   CONGELATEUR: 'Congelateur',
@@ -89,7 +89,7 @@ export default async function AdminEquipementDetailPage({
         }
       />
 
-      <section className="rounded-[7px] border border-[#DFE5EF] bg-white p-6">
+      <section className="border border-mg-noir/10 bg-mg-ivoire p-8">
         <EquipementForm
           mode="edit"
           equipement={equipement}

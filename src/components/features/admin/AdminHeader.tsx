@@ -10,10 +10,10 @@ const ROLE_LABEL_FR: Readonly<Record<string, string>> = {
 /**
  * Header de la zone admin (Server Component).
  *
- * Affiche l'email + role + bouton logout. La session est relue en SC
- * pour eviter toute fuite cote client (le JWT ne traverse pas le bundle
- * client). Si la session est absente le composant n'affiche que le
- * bouton de logout, le layout parent gere deja la redirection.
+ * Charte Maison Givre : sticky en haut du main, fond ivoire, fine
+ * border-bottom noire opaque, typographie sobre. Affiche l'email + role
+ * a droite avec le bouton de logout. La session est relue server-side
+ * pour eviter toute fuite cote client (JWT ne traverse pas le bundle).
  */
 export async function AdminHeader() {
   const session = await auth();
@@ -23,18 +23,22 @@ export async function AdminHeader() {
 
   return (
     <header
-      className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-[#DFE5EF] bg-white px-6"
+      className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-mg-noir/10 bg-mg-ivoire px-6 lg:px-10"
       data-testid="admin-header"
     >
       <div className="lg:hidden">
-        <span className="text-lg font-bold text-[#2A3547]">Maison Givre</span>
+        <span className="text-sm font-semibold tracking-[0.3em] text-mg-noir uppercase">
+          Maison Givre
+        </span>
       </div>
-      <div className="ml-auto flex items-center gap-4">
+      <div className="ml-auto flex items-center gap-6">
         {email ? (
           <div className="text-right">
-            <p className="text-sm font-semibold text-[#2A3547]">{email}</p>
+            <p className="text-xs font-medium tracking-wide text-mg-noir">
+              {email}
+            </p>
             {roleLabel ? (
-              <p className="text-xs uppercase tracking-wider text-[#5D87FF]">
+              <p className="mt-0.5 text-[10px] font-light tracking-[0.3em] text-mg-or uppercase">
                 {roleLabel}
               </p>
             ) : null}

@@ -7,6 +7,7 @@ import {
   type AdminDataTableColumn,
 } from '@/components/features/admin/AdminDataTable';
 import { Pagination } from '@/components/features/admin/Pagination';
+import { PrimaryLinkButton } from '@/components/features/admin/PrimaryLinkButton';
 import { BoutiqueToggleActiveButton } from '@/components/features/admin/BoutiqueToggleActiveButton';
 import { listBoutiques } from '@/lib/services/boutique.service';
 import { paginationQuerySchema } from '@/lib/validations/admin';
@@ -25,14 +26,12 @@ interface BoutiquesPageProps {
   }>;
 }
 
-const PRIMARY_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] bg-[#5D87FF] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
 const SECONDARY_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-1.5 text-sm font-medium text-[#5D87FF] transition-colors hover:bg-[#ECF2FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
-const STATUS_ACTIVE_CLASSES =
-  'inline-flex items-center rounded-full bg-[#E6FBF6] px-3 py-1 text-xs font-semibold text-[#0F9F86]';
-const STATUS_INACTIVE_CLASSES =
-  'inline-flex items-center rounded-full bg-[#F1F4F9] px-3 py-1 text-xs font-semibold text-[#5A6A85]';
+  'inline-flex h-10 items-center justify-center border border-mg-noir/20 bg-transparent px-5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+const BADGE_BASE =
+  'inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em]';
+const STATUS_ACTIVE_CLASSES = `${BADGE_BASE} border-mg-or/40 text-mg-or`;
+const STATUS_INACTIVE_CLASSES = `${BADGE_BASE} border-mg-noir/20 text-mg-noir/50`;
 
 function buildPaginationBaseHref(includeInactive: boolean): string {
   return includeInactive
@@ -55,7 +54,7 @@ const BOUTIQUE_COLUMNS: readonly AdminDataTableColumn<BoutiqueListItem>[] = [
     render: (row) => (
       <Link
         href={`/admin/boutiques/${row.id}` as Route}
-        className="font-medium text-[#5D87FF] hover:text-[#4570e6]"
+        className="font-light uppercase tracking-[0.15em] text-mg-noir transition-colors hover:text-mg-or"
         data-testid={`boutique-link-${row.id}`}
       >
         {row.nom}
@@ -143,13 +142,12 @@ export default async function AdminBoutiquesPage({
             >
               {filterLabel}
             </Link>
-            <Link
+            <PrimaryLinkButton
               href={'/admin/boutiques/nouvelle' as Route}
-              className={PRIMARY_LINK_CLASSES}
               data-testid="boutique-create-link"
             >
               + Nouvelle boutique
-            </Link>
+            </PrimaryLinkButton>
           </>
         }
       />

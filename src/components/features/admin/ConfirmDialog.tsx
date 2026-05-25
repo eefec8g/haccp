@@ -35,30 +35,33 @@ interface ConfirmDialogProps {
 }
 
 const OVERLAY_CLASSES =
-  'fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm';
+  'fixed inset-0 z-50 flex items-center justify-center bg-mg-noir/60 backdrop-blur-sm';
 const DIALOG_CLASSES =
-  'w-full max-w-md rounded-[7px] border border-[#DFE5EF] bg-white p-6 shadow-2xl';
-const TITLE_CLASSES = 'text-lg font-semibold text-[#2A3547]';
-const DESCRIPTION_CLASSES = 'mt-2 text-sm text-[#5A6A85]';
+  'w-full max-w-md border border-mg-noir/10 bg-mg-ivoire p-8';
+const TITLE_CLASSES =
+  'text-lg font-light uppercase tracking-[0.2em] text-mg-noir';
+const DIVIDER_CLASSES = 'mt-3 inline-block h-px w-10 bg-mg-or';
+const DESCRIPTION_CLASSES = 'mt-4 text-sm font-light text-mg-noir/70';
+const DANGER_HINT_CLASSES =
+  'mt-4 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-or';
 const CANCEL_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-2 text-sm font-semibold text-[#2A3547] transition-colors hover:bg-[#ECF2FF] hover:text-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:opacity-60';
+  'inline-flex items-center justify-center border border-mg-noir/30 bg-transparent px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.25em] text-mg-noir transition-colors hover:border-mg-noir hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
 const CONFIRM_BASE =
-  'inline-flex items-center justify-center rounded-[7px] px-4 py-2 text-sm font-semibold text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
-const CONFIRM_DEFAULT = 'bg-[#5D87FF] hover:bg-[#4570e6] focus:ring-[#5D87FF]';
-const CONFIRM_DANGER = 'bg-[#FA896B] hover:bg-[#e7745a] focus:ring-[#FA896B]';
-const MOTIF_LABEL_CLASSES = 'mt-4 block text-sm font-medium text-[#2A3547]';
+  'inline-flex items-center justify-center bg-mg-noir px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.25em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
+const MOTIF_LABEL_CLASSES =
+  'mt-6 block text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70';
 const MOTIF_TEXTAREA_CLASSES =
-  'mt-1 block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-2 text-sm text-[#2A3547] placeholder:text-[#9AA5B5] focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-0 disabled:opacity-60';
-const MOTIF_HINT_CLASSES = 'mt-1 text-xs text-[#5A6A85]';
-
-function confirmClass(variant: ConfirmVariant): string {
-  return `${CONFIRM_BASE} ${
-    variant === 'danger' ? CONFIRM_DANGER : CONFIRM_DEFAULT
-  }`;
-}
+  'mt-2 block w-full border border-mg-noir/15 bg-mg-ivoire px-3 py-2 text-sm font-light text-mg-noir placeholder:text-mg-noir/30 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:opacity-50';
+const MOTIF_HINT_CLASSES = 'mt-1 text-xs font-light italic text-mg-noir/50';
 
 /**
  * Dialog de confirmation accessible.
+ *
+ * Charte Maison Givre : backdrop noir flou, dialog ivoire sans ombre
+ * lourde avec liseret subtil, titre capitales espacees + divider or,
+ * boutons sobres (noir vers or au hover, l'or sert d'accent universel).
+ * Pour les actions destructives, un avertissement or s'affiche
+ * au-dessus des boutons plutot qu'un rouge classique.
  *
  * a11y :
  *   - `role="dialog"` + `aria-modal="true"`.
@@ -119,6 +122,7 @@ export function ConfirmDialog({
   }
 
   const motifMax = motifConfig?.maxLength ?? ENTITY_DISABLE_MOTIF_MAX;
+  const isDanger = confirmVariant === 'danger';
 
   return (
     <div
@@ -142,9 +146,18 @@ export function ConfirmDialog({
         <h2 id={titleId} className={TITLE_CLASSES}>
           {title}
         </h2>
+        <span aria-hidden="true" className={DIVIDER_CLASSES} />
         {description ? (
           <p id={descId} className={DESCRIPTION_CLASSES}>
             {description}
+          </p>
+        ) : null}
+        {isDanger ? (
+          <p
+            className={DANGER_HINT_CLASSES}
+            data-testid="confirm-dialog-danger"
+          >
+            Action sensible &mdash; verifier avant de confirmer.
           </p>
         ) : null}
         {motifConfig ? (
@@ -171,7 +184,7 @@ export function ConfirmDialog({
             ) : null}
           </>
         ) : null}
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-8 flex justify-end gap-3">
           <button
             type="button"
             className={CANCEL_CLASSES}
@@ -184,7 +197,7 @@ export function ConfirmDialog({
           <button
             ref={confirmRef}
             type="button"
-            className={confirmClass(confirmVariant)}
+            className={CONFIRM_BASE}
             onClick={handleConfirm}
             disabled={isPending}
             aria-busy={isPending}

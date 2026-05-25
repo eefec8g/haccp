@@ -2,12 +2,12 @@
 
 import { useActionState, useId, useState } from 'react';
 import type { UserRole } from '@prisma/client';
+import { inviteUserAction } from '@/app/actions/admin-user';
 import {
-  inviteUserAction,
   INITIAL_USER_INVITE_STATE,
   type UserActionFieldErrors,
   type UserInviteActionState,
-} from '@/app/actions/admin-user';
+} from '@/app/actions/admin-user.types';
 import { USER_NOM_MAX, EMAIL_MAX } from '@/lib/constants/admin';
 import { FormField } from './FormField';
 
@@ -22,13 +22,13 @@ interface UserInviteFormProps {
 }
 
 const INPUT_CLASSES =
-  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
+  'block w-full rounded-none border border-mg-noir/15 bg-mg-ivoire px-4 py-3 text-sm font-light text-mg-noir transition-colors placeholder:text-mg-noir/30 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:bg-mg-noir/5';
 const SUBMIT_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] bg-[#5D87FF] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex items-center justify-center bg-mg-noir px-8 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
 const ERROR_BOX_CLASSES =
-  'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]';
+  'border border-mg-or/40 bg-mg-or/5 px-4 py-3 text-xs font-light uppercase tracking-[0.15em] text-mg-or';
 const CHECKBOX_GROUP_CLASSES =
-  'space-y-2 rounded-[7px] border border-[#DFE5EF] bg-white p-3';
+  'space-y-2 border border-mg-noir/15 bg-mg-ivoire p-4';
 
 const EMAIL_EXISTS_MESSAGE =
   'Cet email correspond a un compte existant (actif ou desactive). ' +
@@ -238,13 +238,13 @@ export function UserInviteForm({ boutiques }: UserInviteFormProps) {
             {boutiques.map((boutique) => (
               <label
                 key={boutique.id}
-                className="flex items-center gap-2 text-sm text-[#2A3547]"
+                className="flex items-center gap-3 text-sm font-light text-mg-noir"
               >
                 <input
                   type="checkbox"
                   name="boutiquesResponsable"
                   value={boutique.id}
-                  className="h-4 w-4 rounded border-[#DFE5EF] text-[#5D87FF] focus:ring-[#5D87FF]"
+                  className="h-4 w-4 rounded-none border-mg-noir/30 bg-mg-ivoire text-mg-or focus:ring-1 focus:ring-mg-or"
                   data-testid={`invite-boutique-responsable-${boutique.id}`}
                 />
                 {formatBoutiqueOption(boutique)}
@@ -256,7 +256,7 @@ export function UserInviteForm({ boutiques }: UserInviteFormProps) {
 
       {role === 'ADMIN' ? (
         <p
-          className="rounded-[7px] border border-[#5D87FF]/20 bg-[#ECF2FF] px-4 py-3 text-xs text-[#3B5BB8]"
+          className="border-l border-mg-or/40 bg-mg-or/5 px-4 py-3 text-xs font-light italic text-mg-noir/60"
           data-testid="invite-admin-hint"
         >
           Un administrateur a acces a toutes les boutiques. Aucune affectation

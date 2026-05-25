@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 const BACK_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-1.5 text-sm font-medium text-[#5A6A85] transition-colors hover:bg-[#F6F9FC] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
+  'inline-flex items-center justify-center border border-mg-noir/20 bg-transparent px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 
 /**
  * Page d'invitation d'un utilisateur (Server Component, US-ADM-003).
@@ -39,7 +39,7 @@ export default async function AdminUserInviterPage() {
           </Link>
         }
       />
-      <section className="rounded-[7px] border border-[#DFE5EF] bg-white p-6">
+      <section className="border border-mg-noir/10 bg-mg-ivoire p-8">
         <UserInviteForm boutiques={boutiquesResult.items} />
       </section>
     </div>

@@ -192,6 +192,29 @@ describe('[middleware] role-based access on protected paths', () => {
   });
 });
 
+describe('[middleware] landing page (always public)', () => {
+  it('should let anonymous users access /', async () => {
+    const res = await handler(makeRequest('/', null));
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('location')).toBeNull();
+  });
+
+  it('should let an authenticated SALARIE access / without redirect', async () => {
+    const res = await handler(makeRequest('/', makeSession('SALARIE')));
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('location')).toBeNull();
+  });
+
+  it('should let an authenticated ADMIN access / without redirect', async () => {
+    const res = await handler(makeRequest('/', makeSession('ADMIN')));
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('location')).toBeNull();
+  });
+});
+
 describe('[middleware] NextAuth internal routes', () => {
   it('should let any /api/auth/* request through without redirect (anonymous)', async () => {
     const res = await handler(makeRequest('/api/auth/session', null));

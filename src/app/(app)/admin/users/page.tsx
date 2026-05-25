@@ -31,18 +31,18 @@ interface UsersPageProps {
 }
 
 const SECONDARY_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-1.5 text-sm font-medium text-[#5D87FF] transition-colors hover:bg-[#ECF2FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
+  'inline-flex h-10 items-center justify-center border border-mg-noir/20 bg-transparent px-5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 const ROLE_BADGE_BASE =
-  'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold';
+  'inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em]';
 const FILTER_FORM_CLASSES =
-  'mb-4 flex flex-wrap items-center gap-2 rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3';
+  'mb-6 flex flex-wrap items-center gap-3 border border-mg-noir/10 bg-mg-ivoire px-4 py-3';
 const FILTER_SELECT_CLASSES =
-  'rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-2 text-sm text-[#2A3547] focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF]';
+  'rounded-none border border-mg-noir/15 bg-mg-ivoire px-3 py-2 text-sm font-light text-mg-noir focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or';
 
 const ROLE_BADGE_CLASSES: Readonly<Record<UserRole, string>> = {
-  SALARIE: 'bg-[#ECF2FF] text-[#5D87FF]',
-  RESPONSABLE: 'bg-[#F3E8FF] text-[#7A5AF8]',
-  ADMIN: 'bg-[#FFF5E6] text-[#B26E00]',
+  SALARIE: 'border-mg-noir/30 text-mg-noir/70',
+  RESPONSABLE: 'border-mg-noir/40 text-mg-noir',
+  ADMIN: 'border-mg-or/50 text-mg-or',
 } as const;
 
 const ROLE_FILTER_VALUES: readonly UserRole[] = [
@@ -119,7 +119,7 @@ const USER_COLUMNS: readonly AdminDataTableColumn<UserListItem>[] = [
     render: (row) => (
       <Link
         href={`/admin/users/${row.id}` as Route}
-        className="font-medium text-[#5D87FF] hover:text-[#4570e6]"
+        className="font-light text-mg-noir transition-colors hover:text-mg-or"
         data-testid={`user-link-${row.id}`}
       >
         {row.email}
@@ -235,8 +235,11 @@ export default async function AdminUsersPage({ searchParams }: UsersPageProps) {
         aria-label="Filtrer par role"
         data-testid="user-filter-form"
       >
-        <label htmlFor="filter-role" className="text-sm text-[#5A6A85]">
-          Role :
+        <label
+          htmlFor="filter-role"
+          className="text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir/70"
+        >
+          Role
         </label>
         <select
           id="filter-role"

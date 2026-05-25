@@ -29,6 +29,16 @@ function evaluateRules(password: string): readonly Rule[] {
   ];
 }
 
+/**
+ * Liste sobre des criteres de force du mot de passe (style Maison Givre).
+ *
+ * Pas de barre de progression : la charte privilegie la typographie aux
+ * elements "techno". Chaque critere est un item avec un marqueur or si
+ * valide, point ivoire/40% sinon. Tout en capitales legeres et espacees.
+ *
+ * a11y : conteneur `aria-live="polite"` pour annoncer les changements de
+ * statut sans interrompre la saisie utilisateur.
+ */
 export function PasswordStrengthIndicator({
   password,
   id,
@@ -40,20 +50,20 @@ export function PasswordStrengthIndicator({
       id={id}
       aria-live="polite"
       aria-atomic="false"
-      className="rounded-[7px] border border-[#DFE5EF] bg-[#ECF2FF]/40 p-4"
+      className="border border-mg-noir/10 bg-mg-ivoire/40 p-4"
       data-testid="password-strength"
     >
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#2A3547]/70">
+      <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/60">
         Exigences du mot de passe
       </p>
-      <ul className="space-y-1.5 text-sm">
+      <ul className="space-y-2">
         {rules.map((rule) => (
           <li
             key={rule.label}
             className={
               rule.satisfied
-                ? 'flex items-center gap-2 text-[#0a9d83]'
-                : 'flex items-center gap-2 text-[#2A3547]/60'
+                ? 'flex items-center gap-3 text-[11px] font-light uppercase tracking-[0.1em] text-mg-noir'
+                : 'flex items-center gap-3 text-[11px] font-light uppercase tracking-[0.1em] text-mg-noir/40'
             }
             data-testid={`password-rule-${rule.satisfied ? 'ok' : 'ko'}`}
           >
@@ -61,12 +71,10 @@ export function PasswordStrengthIndicator({
               aria-hidden="true"
               className={
                 rule.satisfied
-                  ? 'inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#13DEB9]/20 text-xs font-bold text-[#0a9d83]'
-                  : 'inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#DFE5EF] text-xs text-gray-400'
+                  ? 'inline-block h-1.5 w-1.5 rounded-full bg-mg-or'
+                  : 'inline-block h-1.5 w-1.5 rounded-full border border-mg-noir/30 bg-transparent'
               }
-            >
-              {rule.satisfied ? 'v' : ''}
-            </span>
+            />
             <span className="sr-only">
               {rule.satisfied ? 'Critere rempli :' : 'Critere manquant :'}{' '}
             </span>

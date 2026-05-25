@@ -1,11 +1,11 @@
 'use client';
 
 import { useActionState, useEffect, useId, useState } from 'react';
+import { resetPasswordAction } from '@/app/actions/password-reset';
 import {
-  resetPasswordAction,
   INITIAL_RESET_PASSWORD_STATE,
   type ResetPasswordActionState,
-} from '@/app/actions/password-reset';
+} from '@/app/actions/password-reset.types';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 
 const GENERIC_ERROR_MESSAGE =
@@ -16,10 +16,15 @@ const INTERNAL_ERROR_MESSAGE =
   'Une erreur est survenue. Merci de reessayer dans quelques instants.';
 
 const INPUT_BASE_CLASSES =
-  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
-const LABEL_CLASSES = 'mb-1 block text-sm font-medium text-[#2A3547]';
+  'block w-full border border-mg-noir/15 bg-transparent px-4 py-3 text-mg-noir font-light transition-colors placeholder:text-mg-noir/40 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:opacity-60';
+const LABEL_CLASSES =
+  'mb-2 block text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir/70';
 const SUBMIT_CLASSES =
-  'inline-flex w-full items-center justify-center rounded-[7px] bg-[#5D87FF] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex w-full items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-medium tracking-[0.3em] text-mg-ivoire uppercase transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
+const TOGGLE_CLASSES =
+  'absolute inset-y-0 right-0 flex items-center px-4 text-[10px] font-medium uppercase tracking-[0.2em] text-mg-noir/70 transition-colors hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or';
+const ERROR_BOX_CLASSES =
+  'border-l-2 border-mg-or bg-mg-or/5 px-4 py-3 text-xs font-light text-mg-noir';
 
 function deriveErrorMessage(state: ResetPasswordActionState): string | null {
   if (state.status !== 'error') {
@@ -53,7 +58,6 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 
   useEffect(() => {
     if (state.status === 'success') {
-      // Hard navigation : force le rejeu du middleware sans cache RSC.
       window.location.assign(state.redirectTo);
     }
   }, [state]);
@@ -62,7 +66,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     <form
       action={formAction}
       aria-label="Formulaire de reinitialisation du mot de passe"
-      className="space-y-5"
+      className="space-y-6"
       data-testid="reset-form"
       noValidate
     >
@@ -79,12 +83,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             type={showPassword ? 'text' : 'password'}
             required
             autoComplete="new-password"
-            placeholder="............"
+            placeholder={String.fromCharCode(8226).repeat(12)}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             aria-invalid={!!errorMessage}
             aria-describedby={`${rulesId}${errorMessage ? ` ${errorId}` : ''}`}
-            className={INPUT_BASE_CLASSES + ' pr-20'}
+            className={INPUT_BASE_CLASSES + ' pr-24'}
             data-testid="reset-password"
           />
           <button
@@ -96,7 +100,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                 ? 'Masquer le mot de passe'
                 : 'Afficher le mot de passe'
             }
-            className="absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-[#5D87FF] hover:text-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2"
+            className={TOGGLE_CLASSES}
             data-testid="reset-toggle-visibility"
           >
             {showPassword ? 'Masquer' : 'Afficher'}
@@ -116,7 +120,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           type={showPassword ? 'text' : 'password'}
           required
           autoComplete="new-password"
-          placeholder="............"
+          placeholder={String.fromCharCode(8226).repeat(12)}
           aria-invalid={!!errorMessage}
           aria-describedby={errorMessage ? errorId : undefined}
           className={INPUT_BASE_CLASSES}
@@ -129,11 +133,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         role="alert"
         aria-live="polite"
         aria-atomic="true"
-        className={
-          errorMessage
-            ? 'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]'
-            : 'sr-only'
-        }
+        className={errorMessage ? ERROR_BOX_CLASSES : 'sr-only'}
         data-testid="reset-error"
       >
         {errorMessage}
@@ -146,9 +146,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         className={SUBMIT_CLASSES}
         data-testid="reset-submit"
       >
-        {isPending
-          ? 'Reinitialisation en cours...'
-          : 'Reinitialiser le mot de passe'}
+        {isPending ? 'Reinitialisation en cours...' : 'Reinitialiser'}
       </button>
     </form>
   );

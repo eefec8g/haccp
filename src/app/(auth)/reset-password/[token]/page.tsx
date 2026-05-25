@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { ResetPasswordForm } from '@/components/features/auth/ResetPasswordForm';
+import { BrandDivider } from '@/features/landing/BrandDivider';
 
 export const metadata: Metadata = {
   title: 'Reinitialiser le mot de passe - HACCP Maison Givre',
@@ -21,14 +22,22 @@ interface ResetPasswordPageProps {
   readonly params: Promise<{ readonly token: string }>;
 }
 
+const PRIMARY_BUTTON_CLASSES =
+  'inline-flex items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-medium tracking-[0.3em] text-mg-ivoire uppercase transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+const SECONDARY_BUTTON_CLASSES =
+  'inline-flex items-center justify-center border border-mg-or/40 bg-transparent px-6 py-3 text-[11px] font-medium tracking-[0.3em] text-mg-noir uppercase transition-colors hover:border-mg-or hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+
 function MalformedTokenScreen() {
   return (
     <section data-testid="reset-malformed">
-      <header className="mb-6 text-center">
-        <h2 className="text-2xl font-bold text-[#2A3547]">
-          Lien invalide ou expire
+      <header className="mb-10 text-center">
+        <h2 className="text-3xl font-light tracking-[0.2em] text-mg-noir uppercase">
+          Lien invalide
         </h2>
-        <p className="mt-2 text-sm text-gray-500">
+        <div className="mt-5 flex justify-center">
+          <BrandDivider width="small" />
+        </div>
+        <p className="mt-5 text-xs font-light tracking-wide text-mg-noir/70">
           Le lien de reinitialisation est invalide ou a expire. Demandez un
           nouveau lien pour continuer.
         </p>
@@ -37,14 +46,14 @@ function MalformedTokenScreen() {
       <div className="flex flex-col gap-3">
         <Link
           href={FORGOT_PASSWORD_HREF}
-          className="inline-flex items-center justify-center rounded-[7px] bg-[#5D87FF] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2"
+          className={PRIMARY_BUTTON_CLASSES}
           data-testid="reset-request-new-link"
         >
           Demander un nouveau lien
         </Link>
         <Link
           href={LOGIN_HREF}
-          className="inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-sm font-semibold text-[#2A3547] transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2"
+          className={SECONDARY_BUTTON_CLASSES}
           data-testid="reset-back-to-login"
         >
           Retour a la connexion
@@ -65,11 +74,14 @@ export default async function ResetPasswordPage({
 
   return (
     <section>
-      <header className="mb-6">
-        <h2 className="text-2xl font-bold text-[#2A3547]">
+      <header className="mb-10">
+        <h2 className="text-3xl font-light tracking-[0.2em] text-mg-noir uppercase">
           Nouveau mot de passe
         </h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <div className="mt-5">
+          <BrandDivider width="small" />
+        </div>
+        <p className="mt-5 text-xs font-light tracking-wide text-mg-noir/70">
           Choisissez un mot de passe robuste pour proteger votre compte.
         </p>
       </header>

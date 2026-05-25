@@ -6,10 +6,12 @@ import { TypeEquipement } from '@prisma/client';
 import {
   createEquipementAction,
   updateEquipementAction,
+} from '@/app/actions/admin-equipement';
+import {
   INITIAL_EQUIPEMENT_ACTION_STATE,
   type EquipementActionState,
   type EquipementActionFieldErrors,
-} from '@/app/actions/admin-equipement';
+} from '@/app/actions/admin-equipement.types';
 import {
   EQUIPEMENT_NOM_MAX,
   SEUIL_TEMP_MAX,
@@ -33,11 +35,11 @@ interface EquipementFormProps {
 }
 
 const INPUT_CLASSES =
-  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
+  'block w-full rounded-none border border-mg-noir/15 bg-mg-ivoire px-4 py-3 text-sm font-light text-mg-noir transition-colors placeholder:text-mg-noir/30 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:bg-mg-noir/5';
 const SUBMIT_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] bg-[#5D87FF] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex items-center justify-center bg-mg-noir px-8 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
 const ERROR_BOX_CLASSES =
-  'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]';
+  'border border-mg-or/40 bg-mg-or/5 px-4 py-3 text-xs font-light uppercase tracking-[0.15em] text-mg-or';
 
 const DUPLICATE_MESSAGE =
   'Un equipement avec ce nom existe deja dans cette boutique.';
@@ -276,10 +278,10 @@ export function EquipementForm({
         </FormField>
       </div>
 
-      <p className="rounded-[7px] border border-[#5D87FF]/20 bg-[#ECF2FF] px-4 py-3 text-xs text-[#3B5BB8]">
-        Reperes conseilles : Congelateur -25°C / -18°C, Vitrine refrigeree -18°C
-        / -10°C, Chambre froide 0°C / 4°C. Ces seuils doivent etre saisis
-        manuellement (aucune valeur par defaut).
+      <p className="border-l border-mg-or/40 bg-mg-or/5 px-4 py-3 text-xs font-light italic text-mg-noir/60">
+        Seuils par defaut conseilles : Congelateur -25°C / -18°C, Vitrine
+        refrigeree -18°C / -10°C, Chambre froide 0°C / 4°C. Ces seuils doivent
+        etre saisis manuellement (aucune valeur par defaut).
       </p>
 
       <div
@@ -295,7 +297,7 @@ export function EquipementForm({
 
       {mode === 'edit' && state.status === 'success' ? (
         <p
-          className="rounded-[7px] border border-[#13DEB9]/30 bg-[#E6FBF6] px-4 py-3 text-sm text-[#0F9F86]"
+          className="border border-mg-or/30 bg-mg-or/5 px-4 py-3 text-xs font-light uppercase tracking-[0.15em] text-mg-noir/80"
           role="status"
           aria-live="polite"
           data-testid="equipement-success"

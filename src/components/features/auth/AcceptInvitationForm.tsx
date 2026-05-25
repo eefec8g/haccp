@@ -2,11 +2,11 @@
 
 import { useActionState, useEffect, useId, useState } from 'react';
 import type { UserRole } from '@prisma/client';
+import { acceptInvitationAction } from '@/app/actions/admin-user';
 import {
-  acceptInvitationAction,
   INITIAL_ACCEPT_INVITATION_STATE,
   type AcceptInvitationActionState,
-} from '@/app/actions/admin-user';
+} from '@/app/actions/admin-user.types';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 
 interface AcceptInvitationFormProps {
@@ -16,12 +16,17 @@ interface AcceptInvitationFormProps {
 }
 
 const INPUT_BASE_CLASSES =
-  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
-const LABEL_CLASSES = 'mb-1 block text-sm font-medium text-[#2A3547]';
+  'block w-full border border-mg-noir/15 bg-transparent px-4 py-3 text-mg-noir font-light transition-colors placeholder:text-mg-noir/40 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:opacity-60';
+const LABEL_CLASSES =
+  'mb-2 block text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir/70';
 const SUBMIT_CLASSES =
-  'inline-flex w-full items-center justify-center rounded-[7px] bg-[#5D87FF] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex w-full items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-medium tracking-[0.3em] text-mg-ivoire uppercase transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
+const TOGGLE_CLASSES =
+  'absolute inset-y-0 right-0 flex items-center px-4 text-[10px] font-medium uppercase tracking-[0.2em] text-mg-noir/70 transition-colors hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or';
 const ERROR_BOX_CLASSES =
-  'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]';
+  'border-l-2 border-mg-or bg-mg-or/5 px-4 py-3 text-xs font-light text-mg-noir';
+const SUMMARY_CLASSES =
+  'border border-mg-or/30 bg-mg-ivoire px-4 py-3 text-xs font-light tracking-wide text-mg-noir';
 
 const ROLE_LABELS: Readonly<Record<UserRole, string>> = {
   SALARIE: 'salarie',
@@ -55,7 +60,7 @@ function deriveErrorMessage(state: AcceptInvitationActionState): string | null {
 }
 
 /**
- * Formulaire d'acceptation d'invitation (US-ADM-003).
+ * Formulaire d'acceptation d'invitation (US-ADM-003), style Maison Givre.
  *
  * - Public (l'utilisateur n'est pas encore connecte).
  * - Le token est passe en hidden + valide cote serveur.
@@ -90,18 +95,18 @@ export function AcceptInvitationForm({
     <form
       action={formAction}
       aria-label="Formulaire d'acceptation d'invitation"
-      className="space-y-5"
+      className="space-y-6"
       data-testid="accept-form"
       noValidate
     >
       <input type="hidden" name="token" value={token} />
 
-      <p
-        className="rounded-[7px] border border-[#5D87FF]/20 bg-[#ECF2FF] px-4 py-3 text-sm text-[#3B5BB8]"
-        data-testid="accept-invitation-summary"
-      >
-        Vous etes invite a creer un compte <strong>{ROLE_LABELS[role]}</strong>{' '}
-        pour <strong>{email}</strong>.
+      <p className={SUMMARY_CLASSES} data-testid="accept-invitation-summary">
+        Vous etes invite a creer un compte{' '}
+        <strong className="font-medium tracking-wide text-mg-or uppercase">
+          {ROLE_LABELS[role]}
+        </strong>{' '}
+        pour <strong className="font-medium text-mg-noir">{email}</strong>.
       </p>
 
       <div>
@@ -115,12 +120,12 @@ export function AcceptInvitationForm({
             type={showPassword ? 'text' : 'password'}
             required
             autoComplete="new-password"
-            placeholder="............"
+            placeholder={String.fromCharCode(8226).repeat(12)}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             aria-invalid={!!errorMessage}
             aria-describedby={`${rulesId}${errorMessage ? ` ${errorId}` : ''}`}
-            className={INPUT_BASE_CLASSES + ' pr-20'}
+            className={INPUT_BASE_CLASSES + ' pr-24'}
             data-testid="accept-password"
           />
           <button
@@ -132,7 +137,7 @@ export function AcceptInvitationForm({
                 ? 'Masquer le mot de passe'
                 : 'Afficher le mot de passe'
             }
-            className="absolute inset-y-0 right-0 flex items-center px-4 text-sm font-medium text-[#5D87FF] hover:text-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2"
+            className={TOGGLE_CLASSES}
             data-testid="accept-toggle-visibility"
           >
             {showPassword ? 'Masquer' : 'Afficher'}
@@ -152,7 +157,7 @@ export function AcceptInvitationForm({
           type={showPassword ? 'text' : 'password'}
           required
           autoComplete="new-password"
-          placeholder="............"
+          placeholder={String.fromCharCode(8226).repeat(12)}
           aria-invalid={!!errorMessage}
           aria-describedby={errorMessage ? errorId : undefined}
           className={INPUT_BASE_CLASSES}

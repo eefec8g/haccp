@@ -1,59 +1,54 @@
 @import 'tailwindcss';
 
+/**
+ * Charte de marque Maison Givre.
+ * Palette : ivoire, noir profond, or mat (et 2 variations subtiles).
+ * Police : Montserrat (variable injectee via next/font dans layout.tsx).
+ */
 @theme {
-  /* Modernize palette - aligne sur Maison Givre */
-  --color-givre-ink: #2a3547;
-  --color-givre-primary: #5d87ff;
-  --color-givre-primary-hover: #4570e6;
-  --color-givre-success: #13deb9;
-  --color-givre-warning: #ffae1f;
-  --color-givre-danger: #fa896b;
-  --color-givre-border: #dfe5ef;
-  --color-givre-surface: #ecf2ff;
+  --color-mg-ivoire: #f7f4ef;
+  --color-mg-noir: #0d0d0d;
+  --color-mg-or: #c6a46c;
+  --color-mg-or-light: #d4b584;
+  --color-mg-or-dark: #9e834a;
 
-  /* Animations Modernize */
-  --animate-float: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-18px);
-  }
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #2a3547;
-}
+  --background: #f7f4ef;
+  --foreground: #0d0d0d;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-  }
+  /* Aliases CSS bruts utilisables hors Tailwind. */
+  --color-ivoire: #f7f4ef;
+  --color-noir: #0d0d0d;
+  --color-or: #c6a46c;
+  --color-or-light: #d4b584;
+  --color-or-dark: #9e834a;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Touch targets HACCP (gants en boutique) */
+/* Touch targets HACCP (gants en boutique - heritage de l'app interne). */
 button,
 [role='button'] {
   min-height: 44px;
+}
+
+/* Utilities Maison Givre */
+.mg-divider {
+  display: inline-block;
+  width: 60px;
+  height: 1px;
+  background-color: var(--color-or);
+}
+
+.mg-dot {
+  color: var(--color-or);
 }

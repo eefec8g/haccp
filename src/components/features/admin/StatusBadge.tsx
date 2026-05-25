@@ -4,6 +4,11 @@ import type { ReactNode } from 'react';
  * Badge de statut Actif / Inactif partage par les pages admin et
  * les detail pages (boutique, equipement, user).
  *
+ * Charte Maison Givre : pill rounded en capitales tres espacees, fond
+ * transparent + liseret. L'or signale l'etat actif (accent universel),
+ * le gris noir signale les etats neutres / inactifs. Pas de
+ * rouge/vert/jaune dans la palette MG.
+ *
  * Factorise les classes Tailwind dupliquees (DRY, Clean Code #4).
  * Server Component (rendu serveur uniquement, pas d'interactivite).
  */
@@ -15,10 +20,10 @@ interface StatusBadgeProps {
   readonly 'data-testid'?: string;
 }
 
-const STATUS_ACTIVE_CLASSES =
-  'inline-flex items-center rounded-full bg-[#E6FBF6] px-3 py-1 text-xs font-semibold text-[#0F9F86]';
-const STATUS_INACTIVE_CLASSES =
-  'inline-flex items-center rounded-full bg-[#F1F4F9] px-3 py-1 text-xs font-semibold text-[#5A6A85]';
+const BADGE_BASE =
+  'inline-flex items-center rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em]';
+const STATUS_ACTIVE_CLASSES = `${BADGE_BASE} border border-mg-or/40 bg-transparent text-mg-or`;
+const STATUS_INACTIVE_CLASSES = `${BADGE_BASE} border border-mg-noir/20 bg-transparent text-mg-noir/50`;
 
 export function StatusBadge({
   variant,

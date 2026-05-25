@@ -19,13 +19,13 @@ interface AdminUserDetailPageProps {
 }
 
 const BACK_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-1.5 text-sm font-medium text-[#5A6A85] transition-colors hover:bg-[#F6F9FC] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
-const SECTION_CLASSES =
-  'rounded-[7px] border border-[#DFE5EF] bg-white p-6 space-y-3';
-const KEY_CLASSES = 'text-xs uppercase tracking-wider text-[#5A6A85]';
-const VALUE_CLASSES = 'text-sm font-medium text-[#2A3547]';
+  'inline-flex items-center justify-center border border-mg-noir/20 bg-transparent px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+const SECTION_CLASSES = 'border border-mg-noir/10 bg-mg-ivoire p-8 space-y-6';
+const KEY_CLASSES =
+  'text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir/50';
+const VALUE_CLASSES = 'mt-1 text-sm font-light text-mg-noir';
 const CHIP_CLASSES =
-  'inline-flex items-center rounded-full bg-[#ECF2FF] px-3 py-1 text-xs font-medium text-[#3B5BB8]';
+  'inline-flex items-center rounded-full border border-mg-or/40 px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em] text-mg-or';
 
 interface BoutiqueOption {
   readonly id: string;
@@ -144,14 +144,14 @@ export default async function AdminUserDetailPage({
           <p className={KEY_CLASSES}>Boutiques</p>
           {user.role === 'ADMIN' ? (
             <p
-              className={`${VALUE_CLASSES} mt-1`}
+              className={VALUE_CLASSES}
               data-testid="user-detail-boutiques-admin"
             >
               Acces a toutes les boutiques (administrateur).
             </p>
           ) : boutiques.length === 0 ? (
             <p
-              className={`${VALUE_CLASSES} mt-1 text-[#5A6A85]`}
+              className="mt-1 text-sm font-light italic text-mg-noir/50"
               data-testid="user-detail-boutiques-empty"
             >
               Aucune boutique rattachee.

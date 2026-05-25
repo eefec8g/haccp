@@ -27,21 +27,19 @@ interface AuditLogPageProps {
 }
 
 const FILTER_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-1.5 text-sm font-medium text-[#5D87FF] transition-colors hover:bg-[#ECF2FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
+  'inline-flex items-center justify-center border border-mg-noir/20 bg-transparent px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 const FILTER_LINK_ACTIVE =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#5D87FF] bg-[#5D87FF] px-3 py-1.5 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
+  'inline-flex items-center justify-center border border-mg-or bg-mg-or px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+
+const BADGE_BASE =
+  'inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em]';
 
 const ACTION_BADGE: Readonly<Record<AuditAction, string>> = {
-  CREATE:
-    'inline-flex items-center rounded-full bg-[#E6FBF6] px-3 py-1 text-xs font-semibold text-[#0F9F86]',
-  UPDATE:
-    'inline-flex items-center rounded-full bg-[#ECF2FF] px-3 py-1 text-xs font-semibold text-[#5D87FF]',
-  DISABLE:
-    'inline-flex items-center rounded-full bg-[#FFF0EC] px-3 py-1 text-xs font-semibold text-[#FA896B]',
-  ENABLE:
-    'inline-flex items-center rounded-full bg-[#E6FBF6] px-3 py-1 text-xs font-semibold text-[#0F9F86]',
-  DELETE:
-    'inline-flex items-center rounded-full bg-[#FFF0EC] px-3 py-1 text-xs font-semibold text-[#FA896B]',
+  CREATE: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
+  UPDATE: `${BADGE_BASE} border-mg-noir/20 text-mg-noir/70`,
+  DISABLE: `${BADGE_BASE} border-mg-noir/30 text-mg-noir`,
+  ENABLE: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
+  DELETE: `${BADGE_BASE} border-mg-noir/30 text-mg-noir`,
 };
 
 const ENTITY_LABEL: Readonly<Record<AuditEntityType, string>> = {
@@ -80,7 +78,10 @@ const AUDIT_COLUMNS: readonly AdminDataTableColumn<AuditLogListItem>[] = [
     key: 'createdAt',
     label: 'Date',
     render: (row) => (
-      <span className="text-[#2A3547]" data-testid={`audit-row-${row.id}-date`}>
+      <span
+        className="font-light text-mg-noir/80"
+        data-testid={`audit-row-${row.id}-date`}
+      >
         {formatDate(row.createdAt)}
       </span>
     ),
@@ -102,11 +103,14 @@ const AUDIT_COLUMNS: readonly AdminDataTableColumn<AuditLogListItem>[] = [
     label: 'Entite',
     render: (row) => (
       <span data-testid={`audit-row-${row.id}-entity`}>
-        <span className="font-medium text-[#2A3547]">
+        <span className="font-light text-mg-noir">
           {ENTITY_LABEL[row.entityType]}
         </span>
         {row.entityLabel ? (
-          <span className="ml-1 text-[#5A6A85]"> : {row.entityLabel}</span>
+          <span className="ml-1 font-light text-mg-noir/60">
+            {' '}
+            : {row.entityLabel}
+          </span>
         ) : null}
       </span>
     ),
@@ -117,14 +121,14 @@ const AUDIT_COLUMNS: readonly AdminDataTableColumn<AuditLogListItem>[] = [
     render: (row) =>
       row.motif ? (
         <span
-          className="text-[#5A6A85]"
+          className="font-light text-mg-noir/60"
           title={row.motif}
           data-testid={`audit-row-${row.id}-motif`}
         >
           {truncate(row.motif, 80)}
         </span>
       ) : (
-        <span className="text-[#9AA5B5]">-</span>
+        <span className="text-mg-noir/30">-</span>
       ),
   },
   {
@@ -132,10 +136,8 @@ const AUDIT_COLUMNS: readonly AdminDataTableColumn<AuditLogListItem>[] = [
     label: 'Effectue par',
     render: (row) => (
       <span data-testid={`audit-row-${row.id}-actor`}>
-        <span className="font-medium text-[#2A3547]">
-          {row.performedByName}
-        </span>
-        <span className="ml-1 text-xs text-[#5A6A85]">
+        <span className="font-light text-mg-noir">{row.performedByName}</span>
+        <span className="ml-1 text-xs font-light text-mg-noir/50">
           ({row.performedByEmail})
         </span>
       </span>

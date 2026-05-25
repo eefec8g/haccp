@@ -111,8 +111,8 @@ model Equipement {
   id        String         @id @default(uuid())
   nom       String
   type      TypeEquipement
-  seuilMin  Decimal        @db.Decimal(4, 1)
-  seuilMax  Decimal        @db.Decimal(4, 1)
+  seuilMin  Float
+  seuilMax  Float
   actif     Boolean        @default(true)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
@@ -129,7 +129,7 @@ model Releve {
   id               String   @id @default(uuid())
   date             DateTime @db.Date
   creneau          Creneau
-  temperature      Decimal  @db.Decimal(4, 1)
+  temperature      Float
   commentaire      String?
   alerteHorsSeuils Boolean  @default(false)
   signature        String

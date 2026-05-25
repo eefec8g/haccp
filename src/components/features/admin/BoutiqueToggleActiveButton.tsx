@@ -14,7 +14,7 @@ interface BoutiqueToggleActiveButtonProps {
 }
 
 const ENABLE_BUTTON_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#13DEB9]/40 bg-white px-3 py-1.5 text-sm font-semibold text-[#0F9F86] transition-colors hover:bg-[#E6FBF6] focus:outline-none focus:ring-2 focus:ring-[#13DEB9] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex h-11 w-44 items-center justify-center border border-mg-or/40 bg-transparent px-5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
 
 /**
  * Wrapper client pour activer/desactiver une boutique depuis la liste

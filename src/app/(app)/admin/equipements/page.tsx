@@ -8,6 +8,8 @@ import {
   type AdminDataTableColumn,
 } from '@/components/features/admin/AdminDataTable';
 import { Pagination } from '@/components/features/admin/Pagination';
+import { PrimaryLinkButton } from '@/components/features/admin/PrimaryLinkButton';
+import { EquipementBoutiqueFilter } from '@/components/features/admin/EquipementBoutiqueFilter';
 import { EquipementToggleActiveButton } from '@/components/features/admin/EquipementToggleActiveButton';
 import { listEquipements } from '@/lib/services/equipement.service';
 import { listBoutiques } from '@/lib/services/boutique.service';
@@ -28,20 +30,14 @@ interface EquipementsPageProps {
   }>;
 }
 
-const PRIMARY_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] bg-[#5D87FF] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
 const SECONDARY_LINK_CLASSES =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-1.5 text-sm font-medium text-[#5D87FF] transition-colors hover:bg-[#ECF2FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
-const STATUS_ACTIVE_CLASSES =
-  'inline-flex items-center rounded-full bg-[#E6FBF6] px-3 py-1 text-xs font-semibold text-[#0F9F86]';
-const STATUS_INACTIVE_CLASSES =
-  'inline-flex items-center rounded-full bg-[#F1F4F9] px-3 py-1 text-xs font-semibold text-[#5A6A85]';
+  'inline-flex h-11 w-44 items-center justify-center border border-mg-noir/20 bg-transparent px-5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+const STATUS_BADGE_BASE =
+  'inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em]';
+const STATUS_ACTIVE_CLASSES = `${STATUS_BADGE_BASE} border-mg-or/40 text-mg-or`;
+const STATUS_INACTIVE_CLASSES = `${STATUS_BADGE_BASE} border-mg-noir/20 text-mg-noir/50`;
 const TYPE_BADGE_BASE =
-  'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold';
-const FILTER_FORM_CLASSES =
-  'mb-4 flex flex-wrap items-center gap-2 rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3';
-const FILTER_SELECT_CLASSES =
-  'rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-2 text-sm text-[#2A3547] focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF]';
+  'inline-flex items-center rounded-full border border-mg-or/40 px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em] text-mg-or';
 
 const TYPE_LABELS: Readonly<Record<TypeEquipement, string>> = {
   CONGELATEUR: 'Congelateur',
@@ -50,12 +46,8 @@ const TYPE_LABELS: Readonly<Record<TypeEquipement, string>> = {
   AUTRE: 'Autre',
 } as const;
 
-const TYPE_BADGE_CLASSES: Readonly<Record<TypeEquipement, string>> = {
-  CONGELATEUR: 'bg-[#ECF2FF] text-[#5D87FF]',
-  VITRINE: 'bg-[#F3E8FF] text-[#7A5AF8]',
-  CHAMBRE_FROIDE: 'bg-[#E6FBF6] text-[#0F9F86]',
-  AUTRE: 'bg-[#F1F4F9] text-[#5A6A85]',
-} as const;
+// Type badges en or uniforme (charte MG : pas de palette multicolore).
+// La differenciation visuelle entre types se fait par le label texte.
 
 function buildPaginationBaseHref(
   boutiqueId: string | undefined,
@@ -106,11 +98,7 @@ function renderStatusBadge(actif: boolean) {
 }
 
 function renderTypeBadge(type: TypeEquipement) {
-  return (
-    <span className={`${TYPE_BADGE_BASE} ${TYPE_BADGE_CLASSES[type]}`}>
-      {TYPE_LABELS[type]}
-    </span>
-  );
+  return <span className={TYPE_BADGE_BASE}>{TYPE_LABELS[type]}</span>;
 }
 
 const EQUIPEMENT_COLUMNS: readonly AdminDataTableColumn<EquipementListItem>[] =
@@ -121,7 +109,7 @@ const EQUIPEMENT_COLUMNS: readonly AdminDataTableColumn<EquipementListItem>[] =
       render: (row) => (
         <Link
           href={`/admin/equipements/${row.id}` as Route}
-          className="font-medium text-[#5D87FF] hover:text-[#4570e6]"
+          className="font-light uppercase tracking-[0.15em] text-mg-noir transition-colors hover:text-mg-or"
           data-testid={`equipement-link-${row.id}`}
         >
           {row.nom}
@@ -234,54 +222,21 @@ export default async function AdminEquipementsPage({
             >
               {toggleInactiveLabel}
             </Link>
-            <Link
+            <PrimaryLinkButton
               href={buildCreateHref(validBoutiqueId)}
-              className={PRIMARY_LINK_CLASSES}
               data-testid="equipement-create-link"
             >
               + Nouvel equipement
-            </Link>
+            </PrimaryLinkButton>
           </>
         }
       />
 
-      <form
-        method="get"
-        action="/admin/equipements"
-        className={FILTER_FORM_CLASSES}
-        aria-label="Filtrer par boutique"
-        data-testid="equipement-filter-form"
-      >
-        <label htmlFor="filter-boutique" className="text-sm text-[#5A6A85]">
-          Boutique :
-        </label>
-        <select
-          id="filter-boutique"
-          name="boutiqueId"
-          defaultValue={validBoutiqueId ?? ''}
-          className={FILTER_SELECT_CLASSES}
-          data-testid="equipement-filter-boutique"
-        >
-          <option value="">Toutes les boutiques</option>
-          {boutiqueOptions.map((boutique) => (
-            <option key={boutique.id} value={boutique.id}>
-              {boutique.ville
-                ? `${boutique.nom} - ${boutique.ville}`
-                : boutique.nom}
-            </option>
-          ))}
-        </select>
-        {includeInactive ? (
-          <input type="hidden" name="includeInactive" value="true" />
-        ) : null}
-        <button
-          type="submit"
-          className={SECONDARY_LINK_CLASSES}
-          data-testid="equipement-filter-submit"
-        >
-          Filtrer
-        </button>
-      </form>
+      <EquipementBoutiqueFilter
+        boutiques={boutiqueOptions}
+        currentBoutiqueId={validBoutiqueId ?? null}
+        includeInactive={includeInactive}
+      />
 
       <AdminDataTable
         name="equipements"

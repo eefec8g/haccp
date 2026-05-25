@@ -1,11 +1,11 @@
 'use client';
 
 import { useActionState, useId } from 'react';
+import { forgotPasswordAction } from '@/app/actions/password-reset';
 import {
-  forgotPasswordAction,
   INITIAL_FORGOT_PASSWORD_STATE,
   type ForgotPasswordActionState,
-} from '@/app/actions/password-reset';
+} from '@/app/actions/password-reset.types';
 import { buildRateLimitMessage } from '@/lib/utils/rate-limit-message';
 
 const GENERIC_SUCCESS_MESSAGE =
@@ -15,10 +15,11 @@ const INTERNAL_ERROR_MESSAGE =
   'Une erreur est survenue. Merci de reessayer dans quelques instants.';
 
 const INPUT_BASE_CLASSES =
-  'block w-full rounded-[7px] border border-[#DFE5EF] bg-white px-4 py-3 text-[#2A3547] shadow-sm transition-colors placeholder:text-gray-400 focus:border-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] disabled:cursor-not-allowed disabled:bg-gray-50';
-const LABEL_CLASSES = 'mb-1 block text-sm font-medium text-[#2A3547]';
+  'block w-full border border-mg-noir/15 bg-transparent px-4 py-3 text-mg-noir font-light transition-colors placeholder:text-mg-noir/40 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:opacity-60';
+const LABEL_CLASSES =
+  'mb-2 block text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir/70';
 const SUBMIT_CLASSES =
-  'inline-flex w-full items-center justify-center rounded-[7px] bg-[#5D87FF] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex w-full items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-medium tracking-[0.3em] text-mg-ivoire uppercase transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
 
 interface DerivedMessage {
   readonly text: string | null;
@@ -46,10 +47,10 @@ function deriveMessage(state: ForgotPasswordActionState): DerivedMessage {
 
 function getMessageClasses(tone: 'success' | 'error' | null): string {
   if (tone === 'success') {
-    return 'rounded-[7px] border border-[#13DEB9]/20 bg-[#E6FFFA] px-4 py-3 text-sm text-[#0a9d83]';
+    return 'border-l-2 border-mg-or bg-mg-or/5 px-4 py-3 text-xs font-light text-mg-noir';
   }
   if (tone === 'error') {
-    return 'rounded-[7px] border border-[#FA896B]/20 bg-[#FFF0EC] px-4 py-3 text-sm text-[#FA896B]';
+    return 'border-l-2 border-mg-or bg-mg-or/5 px-4 py-3 text-xs font-light text-mg-noir';
   }
   return 'sr-only';
 }
@@ -68,7 +69,7 @@ export function ForgotPasswordForm() {
     <form
       action={formAction}
       aria-label="Formulaire de demande de reinitialisation"
-      className="space-y-5"
+      className="space-y-6"
       data-testid="forgot-form"
       noValidate
     >
@@ -110,9 +111,7 @@ export function ForgotPasswordForm() {
         className={SUBMIT_CLASSES}
         data-testid="forgot-submit"
       >
-        {isPending
-          ? 'Envoi en cours...'
-          : 'Envoyer le lien de reinitialisation'}
+        {isPending ? 'Envoi en cours...' : 'Envoyer le lien'}
       </button>
     </form>
   );

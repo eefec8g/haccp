@@ -18,9 +18,9 @@ interface AdminDataTableProps<T> {
 }
 
 const TH_BASE =
-  'border-b border-[#DFE5EF] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[#5A6A85]';
+  'border-b border-mg-or/40 px-5 py-4 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-ivoire';
 const TD_BASE =
-  'border-b border-[#F1F4F9] px-4 py-3 text-sm text-[#2A3547] align-middle';
+  'border-b border-mg-noir/10 px-5 py-4 text-sm font-light text-mg-noir align-middle';
 
 function alignClass(align: AdminDataTableColumn<unknown>['align']): string {
   if (align === 'right') {
@@ -48,6 +48,10 @@ function renderCell<T>(row: T, column: AdminDataTableColumn<T>): ReactNode {
 /**
  * Table de donnees generique (Server Component).
  *
+ * Charte Maison Givre : header noir profond, cellules d'entete en
+ * capitales tres espacees ivoire, lignes ivoire avec hover noir tres
+ * subtil, separateurs fins. Empty state minimaliste en gris clair.
+ *
  * a11y :
  *   - `role="table"` explicite (deja implicite sur `<table>` mais
  *     defensif vs reset CSS).
@@ -67,17 +71,20 @@ export function AdminDataTable<T>({
   if (rows.length === 0) {
     return (
       <div
-        className="rounded-[7px] border border-dashed border-[#DFE5EF] bg-white px-6 py-12 text-center text-sm text-[#5A6A85]"
+        className="border border-mg-noir/10 bg-mg-ivoire px-6 py-16 text-center"
         data-testid={`admin-table-${name}-empty`}
         role="status"
       >
-        {empty ?? 'Aucun element a afficher pour le moment.'}
+        <span aria-hidden="true" className="inline-block h-px w-10 bg-mg-or" />
+        <p className="mt-4 text-sm font-light tracking-wide text-mg-noir/50">
+          {empty ?? 'Aucun element a afficher pour le moment.'}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-[7px] border border-[#DFE5EF] bg-white">
+    <div className="overflow-hidden border border-mg-noir/10 bg-mg-ivoire">
       <div className="overflow-x-auto">
         <table
           role="table"
@@ -85,7 +92,7 @@ export function AdminDataTable<T>({
           data-testid={`admin-table-${name}`}
         >
           {caption ? <caption className="sr-only">{caption}</caption> : null}
-          <thead className="bg-[#F6F9FC]">
+          <thead className="bg-mg-noir">
             <tr>
               {columns.map((column) => (
                 <th
@@ -106,7 +113,7 @@ export function AdminDataTable<T>({
                 <tr
                   key={id}
                   data-testid={`admin-table-${name}-row-${id}`}
-                  className="hover:bg-[#F6F9FC]"
+                  className="transition-colors hover:bg-mg-noir/[0.03]"
                 >
                   {columns.map((column) => (
                     <td

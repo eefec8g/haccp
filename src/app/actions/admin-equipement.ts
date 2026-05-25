@@ -18,6 +18,10 @@ import {
 } from '@/lib/services/equipement.service';
 import { ENTITY_DISABLE_MOTIF_MAX } from '@/lib/constants/admin';
 import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
+import type {
+  EquipementActionErrorCode,
+  EquipementActionState,
+} from './admin-equipement.types';
 
 /**
  * Server Actions admin Equipement (US-ADM-002).
@@ -35,37 +39,6 @@ import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
  */
 
 const ADMIN_EQUIPEMENTS_PATH = '/admin/equipements';
-
-export type EquipementActionErrorCode =
-  | 'FORBIDDEN'
-  | 'VALIDATION'
-  | 'NOT_FOUND'
-  | 'DUPLICATE'
-  | 'BOUTIQUE_NOT_FOUND'
-  | 'INVALID'
-  | 'INTERNAL';
-
-export interface EquipementActionFieldErrors {
-  readonly nom?: readonly string[];
-  readonly type?: readonly string[];
-  readonly boutiqueId?: readonly string[];
-  readonly seuilMin?: readonly string[];
-  readonly seuilMax?: readonly string[];
-  readonly id?: readonly string[];
-}
-
-export type EquipementActionState =
-  | { readonly status: 'idle' }
-  | { readonly status: 'success' }
-  | {
-      readonly status: 'error';
-      readonly code: EquipementActionErrorCode;
-      readonly fieldErrors?: EquipementActionFieldErrors;
-    };
-
-export const INITIAL_EQUIPEMENT_ACTION_STATE: EquipementActionState = {
-  status: 'idle',
-};
 
 interface AdminGuardOk {
   readonly ok: true;
@@ -175,7 +148,7 @@ export async function createEquipementAction(
   }
 
   revalidatePath(ADMIN_EQUIPEMENTS_PATH);
-  redirect(`${ADMIN_EQUIPEMENTS_PATH}/${result.data.id}`);
+  redirect(ADMIN_EQUIPEMENTS_PATH);
 }
 
 /**

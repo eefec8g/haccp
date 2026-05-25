@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { escapeHtml } from '@/lib/utils/escape-html';
 
 const MISSING_API_KEY_MESSAGE =
   'Email service requires RESEND_API_KEY env var.';
@@ -39,45 +40,94 @@ function formatExpiryParis(expiresAt: Date): string {
 }
 
 /**
- * HTML email template. Pas de logger du `resetUrl` (contient le token).
+ * Template HTML email charte Maison Givre.
+ *
+ * Contraintes clients mail :
+ *   - Tables HTML pour layout (Outlook).
+ *   - Styles inline (pas de <style>, peu fiable).
+ *   - Pas d'images / SVG decoratives.
+ *   - Width max 560px pour mobile.
+ *
+ * Palette : ivoire #F7F4EF, noir profond #0D0D0D, or mat #C6A46C.
+ *
+ * `resetUrl` est echappe via `escapeHtml` (defense en profondeur).
+ * `expiryLabel` provient d'`Intl.DateTimeFormat` (pas de caracteres
+ * HTML possibles) mais on l'echappe aussi pour rester coherent.
  */
 function buildResetEmailHtml(resetUrl: string, expiryLabel: string): string {
-  return `
-    <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-      <h1 style="color: #0f172a; font-size: 20px;">Reinitialisation de votre mot de passe</h1>
-      <p>Bonjour,</p>
-      <p>
-        Vous avez demande la reinitialisation de votre mot de passe pour
-        HACCP Maison Givre. Cliquez sur le lien ci-dessous pour le definir :
-      </p>
-      <p style="margin: 24px 0;">
-        <a href="${resetUrl}"
-           style="background:#2563eb;color:#fff;padding:12px 20px;
-                  border-radius:6px;text-decoration:none;display:inline-block;">
-          Reinitialiser mon mot de passe
-        </a>
-      </p>
-      <p style="color:#475569;font-size:14px;">
-        Ce lien expire le <strong>${expiryLabel}</strong>.
-      </p>
-      <p style="color:#475569;font-size:14px;">
-        Si vous n'etes pas a l'origine de cette demande, ignorez cet email :
-        votre mot de passe actuel reste inchange.
-      </p>
-    </div>
-  `;
+  const safeResetUrl = escapeHtml(resetUrl);
+  const safeExpiryLabel = escapeHtml(expiryLabel);
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maison Givre</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F7F4EF;font-family:Montserrat, 'Segoe UI', system-ui, sans-serif;color:#0D0D0D;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#F7F4EF;">
+    <tr>
+      <td align="center" style="padding:48px 24px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background-color:#FFFFFF;">
+          <tr>
+            <td style="padding:40px 32px;text-align:center;">
+              <p style="margin:0;color:#0D0D0D;font-size:22px;font-weight:300;letter-spacing:0.3em;">MAISON GIVRE</p>
+              <div style="margin:16px auto;width:60px;height:1px;background-color:#C6A46C;line-height:1px;font-size:0;">&nbsp;</div>
+              <p style="margin:0;color:#C6A46C;font-size:10px;font-weight:400;letter-spacing:0.3em;">GLACIER ARTISAN</p>
+              <p style="margin:8px 0 0;color:#0D0D0D;opacity:0.6;font-size:9px;letter-spacing:0.3em;">&middot; DEPUIS 1933 &middot;</p>
+
+              <h1 style="margin:48px 0 0;color:#0D0D0D;font-size:14px;font-weight:400;letter-spacing:0.3em;text-transform:uppercase;">Reinitialisation du mot de passe</h1>
+              <div style="margin:24px auto;width:40px;height:1px;background-color:#C6A46C;line-height:1px;font-size:0;">&nbsp;</div>
+
+              <p style="margin:0 0 16px;color:#0D0D0D;font-size:14px;line-height:1.7;font-weight:300;">
+                Vous avez demande la reinitialisation du mot de passe associe a votre compte Maison Givre.
+              </p>
+              <p style="margin:0 0 32px;color:#0D0D0D;font-size:14px;line-height:1.7;font-weight:300;">
+                Pour definir un nouveau mot de passe, cliquez sur le bouton ci-dessous. Ce lien est valable jusqu'au ${safeExpiryLabel}.
+              </p>
+
+              <a href="${safeResetUrl}" style="display:inline-block;background-color:#0D0D0D;color:#F7F4EF;padding:14px 32px;text-decoration:none;font-size:11px;font-weight:500;letter-spacing:0.3em;text-transform:uppercase;border:1px solid #0D0D0D;">
+                Reinitialiser mon mot de passe
+              </a>
+
+              <p style="margin:48px 0 0;color:#0D0D0D;opacity:0.5;font-size:11px;line-height:1.6;font-weight:300;font-style:italic;">
+                Si vous n'etes pas a l'origine de cette demande, ignorez cet email.
+                Aucun changement ne sera effectue sur votre compte.
+              </p>
+
+              <div style="margin:48px auto 0;width:40px;height:1px;background-color:#C6A46C;line-height:1px;font-size:0;">&nbsp;</div>
+              <p style="margin:24px 0 0;color:#0D0D0D;opacity:0.5;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;">
+                Maison Givre &middot; Glacier Artisan
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 function buildResetEmailText(resetUrl: string, expiryLabel: string): string {
   return [
-    'Reinitialisation de votre mot de passe HACCP Maison Givre',
+    'MAISON GIVRE',
+    'GLACIER ARTISAN',
+    '· DEPUIS 1933 ·',
     '',
-    'Cliquez sur le lien ci-dessous pour definir un nouveau mot de passe :',
+    'REINITIALISATION DU MOT DE PASSE',
+    '─────',
+    '',
+    'Vous avez demande la reinitialisation du mot de passe associe a votre compte Maison Givre.',
+    '',
+    `Pour definir un nouveau mot de passe, ouvrez le lien suivant (valable jusqu'au ${expiryLabel}) :`,
+    '',
     resetUrl,
     '',
-    `Ce lien expire le ${expiryLabel}.`,
-    '',
     "Si vous n'etes pas a l'origine de cette demande, ignorez cet email.",
+    '',
+    '—',
+    'Maison Givre · Glacier Artisan',
   ].join('\n');
 }
 
@@ -103,7 +153,7 @@ export async function sendPasswordResetEmail({
     const { error } = await getResendClient().emails.send({
       from: getFromAddress(),
       to: email,
-      subject: 'Reinitialisation de votre mot de passe - HACCP Maison Givre',
+      subject: 'Maison Givre - Reinitialisation de votre mot de passe',
       html: buildResetEmailHtml(resetUrl, expiryLabel),
       text: buildResetEmailText(resetUrl, expiryLabel),
     });

@@ -12,12 +12,14 @@ interface PaginationProps {
   readonly baseHref: string;
 }
 
-const NAV_CLASSES = 'mt-4 flex items-center justify-between';
+const NAV_CLASSES = 'mt-8 flex items-center justify-between';
 const LINK_BASE =
-  'inline-flex items-center justify-center rounded-[7px] border border-[#DFE5EF] bg-white px-3 py-1.5 text-sm font-medium text-[#2A3547] transition-colors hover:bg-[#ECF2FF] hover:text-[#5D87FF] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
+  'inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:text-mg-or focus:outline-none focus:text-mg-or';
 const LINK_DISABLED =
-  'pointer-events-none cursor-not-allowed opacity-40 select-none';
-const STATUS_CLASSES = 'text-sm text-[#5A6A85]';
+  'pointer-events-none cursor-not-allowed text-mg-noir/30 select-none';
+const STATUS_CLASSES =
+  'text-[10px] font-light uppercase tracking-[0.25em] text-mg-noir/60';
+const STATUS_STRONG_CLASSES = 'font-medium text-mg-or';
 
 function buildHref(baseHref: string, page: number): Route {
   const separator = baseHref.includes('?') ? '&' : '?';
@@ -26,6 +28,9 @@ function buildHref(baseHref: string, page: number): Route {
 
 /**
  * Pagination simple (Server Component) avec liens `<Link>` natifs.
+ *
+ * Charte Maison Givre : style sobre, liens en capitales espacees gris,
+ * hover or, page courante mise en valeur via l'or dans le compteur.
  *
  * a11y :
  *   - `<nav aria-label="Pagination">`.
@@ -51,9 +56,10 @@ export function Pagination({
       data-testid="admin-pagination"
     >
       <p className={STATUS_CLASSES} aria-live="polite">
-        Page <strong>{currentPage}</strong> sur <strong>{totalPages}</strong>
+        Page <strong className={STATUS_STRONG_CLASSES}>{currentPage}</strong>{' '}
+        sur <strong className={STATUS_STRONG_CLASSES}>{totalPages}</strong>
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
         {hasPrev ? (
           <Link
             href={buildHref(baseHref, currentPage - 1)}

@@ -64,9 +64,11 @@ import {
   disableUserAction,
   enableUserAction,
   inviteUserAction,
+} from './admin-user';
+import {
   INITIAL_ACCEPT_INVITATION_STATE,
   INITIAL_USER_INVITE_STATE,
-} from './admin-user';
+} from './admin-user.types';
 
 const ADMIN_ID = 'admin-1';
 const USER_ID = '11111111-1111-4111-8111-111111111111';

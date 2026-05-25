@@ -6,10 +6,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from '@/lib/validations/auth';
-import {
-  checkRateLimit,
-  getForgotPasswordRateLimiter,
-} from '@/lib/utils/rate-limit';
+import { checkRateLimit } from '@/lib/services/rateLimit';
 import {
   generatePasswordResetToken,
   resetPassword,
@@ -19,6 +16,14 @@ import { getClientIp } from '@/lib/utils/request';
 
 const DEFAULT_APP_BASE_URL = 'http://localhost:3000';
 const RESET_SUCCESS_REDIRECT = '/login?reset=success';
+const MILLISECONDS_PER_SECOND = 1000;
+
+function toRetryAfterSeconds(retryAfterMs: number | undefined): number {
+  if (!retryAfterMs) {
+    return 0;
+  }
+  return Math.ceil(retryAfterMs / MILLISECONDS_PER_SECOND);
+}
 
 /**
  * Cles d'erreur cote UI. Le composant client mappe vers le message
@@ -111,12 +116,12 @@ export async function forgotPasswordAction(
 ): Promise<ForgotPasswordActionState> {
   const requestHeaders = await headers();
   const ip = getClientIp(requestHeaders);
-  const rateLimit = await checkRateLimit(getForgotPasswordRateLimiter(), ip);
-  if (!rateLimit.success) {
+  const rateLimit = await checkRateLimit('PASSWORD_RESET', ip);
+  if (!rateLimit.allowed) {
     return {
       status: 'error',
       code: 'RATE_LIMITED',
-      retryAfterSeconds: rateLimit.retryAfterSeconds,
+      retryAfterSeconds: toRetryAfterSeconds(rateLimit.retryAfterMs),
     };
   }
 

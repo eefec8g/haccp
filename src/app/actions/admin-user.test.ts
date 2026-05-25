@@ -28,9 +28,12 @@ vi.mock('next/server', () => ({
   }),
 }));
 
-vi.mock('@/lib/utils/rate-limit', () => ({
-  checkRateLimit: vi.fn(),
-  createRateLimiter: vi.fn(() => ({})),
+const { checkRateLimit } = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
+vi.mock('@/lib/services/rateLimit', () => ({
+  checkRateLimit,
+  peekRateLimit: vi.fn(),
+  resetRateLimit: vi.fn(),
+  formatRetryAfter: vi.fn(),
 }));
 
 vi.mock('@/lib/services/user.service', () => ({
@@ -47,7 +50,6 @@ vi.mock('@/lib/services/email-invitation.service', () => ({
 import { auth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { checkRateLimit } from '@/lib/utils/rate-limit';
 import {
   acceptInvitation,
   disableUser,
@@ -108,16 +110,25 @@ function makeFormData(
 }
 
 function rateOk() {
-  return { success: true, retryAfterSeconds: 0 };
+  return {
+    allowed: true,
+    remainingRequests: 9,
+    resetAtMs: Date.now() + 3_600_000,
+  };
 }
 
 function rateBlocked() {
-  return { success: false, retryAfterSeconds: 42 };
+  return {
+    allowed: false,
+    remainingRequests: 0,
+    resetAtMs: Date.now() + 42_000,
+    retryAfterMs: 42_000,
+  };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(checkRateLimit).mockResolvedValue(rateOk());
+  checkRateLimit.mockResolvedValue(rateOk());
 });
 
 describe('[inviteUserAction]', () => {
@@ -157,7 +168,7 @@ describe('[inviteUserAction]', () => {
 
   it('should return RATE_LIMITED with retryAfterSeconds when limiter blocks', async () => {
     vi.mocked(auth).mockResolvedValue(adminSession());
-    vi.mocked(checkRateLimit).mockResolvedValue(rateBlocked());
+    checkRateLimit.mockResolvedValue(rateBlocked());
 
     const result = await inviteUserAction(
       INITIAL_USER_INVITE_STATE,
@@ -364,7 +375,7 @@ describe('[inviteUserAction]', () => {
 
 describe('[acceptInvitationAction]', () => {
   it('should return RATE_LIMITED with retryAfterSeconds when limiter blocks', async () => {
-    vi.mocked(checkRateLimit).mockResolvedValue(rateBlocked());
+    checkRateLimit.mockResolvedValue(rateBlocked());
 
     const result = await acceptInvitationAction(
       INITIAL_ACCEPT_INVITATION_STATE,

@@ -22,20 +22,6 @@ export const ADMIN_PAGE_SIZE = 25;
 export const ADMIN_PAGE_SIZE_MAX = 100;
 
 /**
- * Rate limit envoi d'invitations : 10 / heure / admin. Evite qu'un
- * compte admin compromis (ou bot) spamme les invitations email.
- */
-export const INVITATION_RATE_LIMIT_MAX = 10;
-export const INVITATION_RATE_LIMIT_WINDOW = '1 h' as const;
-
-/**
- * Rate limit acceptation d'invitation : 5 tentatives / 15 min / IP.
- * Anti-bruteforce sur le token (meme si 256 bits, defense en profondeur).
- */
-export const ACCEPT_INVITATION_RATE_LIMIT_MAX = 5;
-export const ACCEPT_INVITATION_RATE_LIMIT_WINDOW = '15 m' as const;
-
-/**
  * Bornes de validation Zod pour les entites admin.
  */
 export const BOUTIQUE_NOM_MIN = 2;

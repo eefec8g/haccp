@@ -9,14 +9,16 @@ vi.mock('@/lib/auth', () => ({
   signIn: vi.fn(),
 }));
 
-vi.mock('@/lib/utils/rate-limit', () => ({
-  getLoginRateLimiter: vi.fn(() => ({}) as unknown),
-  checkRateLimit: vi.fn(),
+const { checkRateLimit } = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
+vi.mock('@/lib/services/rateLimit', () => ({
+  checkRateLimit,
+  peekRateLimit: vi.fn(),
+  resetRateLimit: vi.fn(),
+  formatRetryAfter: vi.fn(),
 }));
 
 import { headers } from 'next/headers';
 import { auth, signIn } from '@/lib/auth';
-import { checkRateLimit } from '@/lib/utils/rate-limit';
 import { loginAction, INITIAL_LOGIN_STATE } from './auth';
 
 const TEST_EMAIL = 'lea@maison-givre.fr';
@@ -44,17 +46,20 @@ beforeEach(() => {
   vi.mocked(headers).mockResolvedValue(
     makeHeaders({ 'x-forwarded-for': '1.2.3.4' }) as never
   );
-  vi.mocked(checkRateLimit).mockResolvedValue({
-    success: true,
-    retryAfterSeconds: 0,
+  checkRateLimit.mockResolvedValue({
+    allowed: true,
+    remainingRequests: 4,
+    resetAtMs: Date.now() + 900_000,
   });
 });
 
 describe('[loginAction]', () => {
   it('should return RATE_LIMITED error when limiter blocks the request', async () => {
-    vi.mocked(checkRateLimit).mockResolvedValue({
-      success: false,
-      retryAfterSeconds: 120,
+    checkRateLimit.mockResolvedValue({
+      allowed: false,
+      remainingRequests: 0,
+      resetAtMs: Date.now() + 120_000,
+      retryAfterMs: 120_000,
     });
 
     const result = await loginAction(
@@ -187,7 +192,7 @@ describe('[loginAction]', () => {
       makeFormData(TEST_EMAIL, TEST_PASSWORD)
     );
 
-    expect(checkRateLimit).toHaveBeenCalledWith(expect.anything(), '9.9.9.9');
+    expect(checkRateLimit).toHaveBeenCalledWith('LOGIN', '9.9.9.9');
   });
 
   it('should fallback to "unknown" IP when no proxy headers are present', async () => {
@@ -202,7 +207,7 @@ describe('[loginAction]', () => {
       makeFormData(TEST_EMAIL, TEST_PASSWORD)
     );
 
-    expect(checkRateLimit).toHaveBeenCalledWith(expect.anything(), 'unknown');
+    expect(checkRateLimit).toHaveBeenCalledWith('LOGIN', 'unknown');
   });
 
   it('should count failed attempts against the rate limit (signIn called)', async () => {

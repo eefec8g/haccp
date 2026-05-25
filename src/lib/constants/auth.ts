@@ -19,20 +19,6 @@ export const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/;
 
 /**
- * Rate limiting login : 5 tentatives / 15 min par IP (EX-AUTH-004).
- * Le `window` est exprime en format Upstash Ratelimit Duration.
- */
-export const RATE_LIMIT_LOGIN_MAX = 5;
-export const RATE_LIMIT_LOGIN_WINDOW = '15 m' as const;
-
-/**
- * Rate limiting forgot-password : 3 demandes / 1h par IP+email.
- * Plus strict que le login car cout email + anti-spam.
- */
-export const RATE_LIMIT_FORGOT_MAX = 3;
-export const RATE_LIMIT_FORGOT_WINDOW = '1 h' as const;
-
-/**
  * Validite d'un reset token (1h). Au-dela, le token est expire.
  */
 export const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;

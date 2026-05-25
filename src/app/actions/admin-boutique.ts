@@ -18,6 +18,10 @@ import {
 } from '@/lib/services/boutique.service';
 import { ENTITY_DISABLE_MOTIF_MAX } from '@/lib/constants/admin';
 import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
+import type {
+  BoutiqueActionErrorCode,
+  BoutiqueActionState,
+} from './admin-boutique.types';
 
 /**
  * Server Actions admin Boutique (US-ADM-001).
@@ -35,34 +39,6 @@ import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
  */
 
 const ADMIN_BOUTIQUES_PATH = '/admin/boutiques';
-
-export type BoutiqueActionErrorCode =
-  | 'FORBIDDEN'
-  | 'VALIDATION'
-  | 'NOT_FOUND'
-  | 'DUPLICATE'
-  | 'INVALID'
-  | 'INTERNAL';
-
-export interface BoutiqueActionFieldErrors {
-  readonly nom?: readonly string[];
-  readonly adresse?: readonly string[];
-  readonly ville?: readonly string[];
-  readonly id?: readonly string[];
-}
-
-export type BoutiqueActionState =
-  | { readonly status: 'idle' }
-  | { readonly status: 'success' }
-  | {
-      readonly status: 'error';
-      readonly code: BoutiqueActionErrorCode;
-      readonly fieldErrors?: BoutiqueActionFieldErrors;
-    };
-
-export const INITIAL_BOUTIQUE_ACTION_STATE: BoutiqueActionState = {
-  status: 'idle',
-};
 
 interface AdminGuardOk {
   readonly ok: true;
@@ -143,7 +119,7 @@ export async function createBoutiqueAction(
   }
 
   revalidatePath(ADMIN_BOUTIQUES_PATH);
-  redirect(`${ADMIN_BOUTIQUES_PATH}/${result.data.id}`);
+  redirect(ADMIN_BOUTIQUES_PATH);
 }
 
 /**

@@ -37,12 +37,11 @@ import {
   resetPassword,
 } from '@/lib/services/auth.service';
 import { sendPasswordResetEmail } from '@/lib/services/email.service';
+import { forgotPasswordAction, resetPasswordAction } from './password-reset';
 import {
-  forgotPasswordAction,
-  resetPasswordAction,
   INITIAL_FORGOT_PASSWORD_STATE,
   INITIAL_RESET_PASSWORD_STATE,
-} from './password-reset';
+} from './password-reset.types';
 
 const TEST_EMAIL = 'lea@maison-givre.fr';
 const VALID_TOKEN = 'a'.repeat(43);

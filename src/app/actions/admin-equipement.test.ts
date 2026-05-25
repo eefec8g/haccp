@@ -38,9 +38,9 @@ import {
   createEquipementAction,
   disableEquipementAction,
   enableEquipementAction,
-  INITIAL_EQUIPEMENT_ACTION_STATE,
   updateEquipementAction,
 } from './admin-equipement';
+import { INITIAL_EQUIPEMENT_ACTION_STATE } from './admin-equipement.types';
 
 const EQUIPEMENT_UUID = '22222222-2222-4222-8222-222222222222';
 const BOUTIQUE_UUID = '11111111-1111-4111-8111-111111111111';
@@ -251,9 +251,7 @@ describe('[createEquipementAction]', () => {
       'admin-1'
     );
     expect(revalidatePath).toHaveBeenCalledWith('/admin/equipements');
-    expect(redirect).toHaveBeenCalledWith(
-      `/admin/equipements/${EQUIPEMENT_UUID}`
-    );
+    expect(redirect).toHaveBeenCalledWith('/admin/equipements');
   });
 });
 

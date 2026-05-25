@@ -24,6 +24,11 @@ import { checkRateLimit, toRetryAfterSeconds } from '@/lib/services/rateLimit';
 import { getClientIp } from '@/lib/utils/request';
 import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
 import { logger } from '@/lib/logger';
+import type {
+  AcceptInvitationActionState,
+  UserActionErrorCode,
+  UserInviteActionState,
+} from './admin-user.types';
 
 /**
  * Server Actions admin Utilisateurs (US-ADM-003).
@@ -47,56 +52,6 @@ import { logger } from '@/lib/logger';
 const ADMIN_USERS_PATH = '/admin/users';
 const ACCEPT_SUCCESS_REDIRECT = '/login?welcome=true';
 const DEFAULT_APP_BASE_URL = 'http://localhost:3000';
-
-export type UserActionErrorCode =
-  | 'FORBIDDEN'
-  | 'VALIDATION'
-  | 'NOT_FOUND'
-  | 'EMAIL_ALREADY_EXISTS'
-  | 'BOUTIQUE_NOT_FOUND'
-  | 'LAST_ADMIN'
-  | 'RATE_LIMITED'
-  | 'INVALID'
-  | 'INTERNAL';
-
-export interface UserActionFieldErrors {
-  readonly email?: readonly string[];
-  readonly name?: readonly string[];
-  readonly role?: readonly string[];
-  readonly boutiqueSalarieId?: readonly string[];
-  readonly boutiquesResponsable?: readonly string[];
-  readonly token?: readonly string[];
-  readonly password?: readonly string[];
-  readonly confirmPassword?: readonly string[];
-}
-
-export type UserInviteActionState =
-  | { readonly status: 'idle' }
-  | { readonly status: 'success' }
-  | {
-      readonly status: 'error';
-      readonly code: UserActionErrorCode;
-      readonly fieldErrors?: UserActionFieldErrors;
-      readonly retryAfterSeconds?: number;
-    };
-
-export type AcceptInvitationActionState =
-  | { readonly status: 'idle' }
-  | { readonly status: 'success'; readonly redirectTo: string }
-  | {
-      readonly status: 'error';
-      readonly code: UserActionErrorCode;
-      readonly fieldErrors?: UserActionFieldErrors;
-      readonly retryAfterSeconds?: number;
-    };
-
-export const INITIAL_USER_INVITE_STATE: UserInviteActionState = {
-  status: 'idle',
-};
-
-export const INITIAL_ACCEPT_INVITATION_STATE: AcceptInvitationActionState = {
-  status: 'idle',
-};
 
 interface AdminGuardOk {
   readonly ok: true;

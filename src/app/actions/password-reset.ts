@@ -14,45 +14,14 @@ import {
 import { sendPasswordResetEmail } from '@/lib/services/email.service';
 import { getClientIp } from '@/lib/utils/request';
 import { logger } from '@/lib/logger';
+import type {
+  ForgotPasswordActionState,
+  ResetPasswordActionState,
+  ResetPasswordErrorCode,
+} from './password-reset.types';
 
 const DEFAULT_APP_BASE_URL = 'http://localhost:3000';
 const RESET_SUCCESS_REDIRECT = '/login?reset=success';
-
-/**
- * Cles d'erreur cote UI. Le composant client mappe vers le message
- * i18n pour eviter toute fuite d'info dans la reponse server.
- */
-export type ForgotPasswordErrorCode = 'VALIDATION' | 'RATE_LIMITED';
-
-export type ForgotPasswordActionState =
-  | { readonly status: 'idle' }
-  | { readonly status: 'success' }
-  | {
-      readonly status: 'error';
-      readonly code: ForgotPasswordErrorCode;
-      readonly retryAfterSeconds?: number;
-    };
-
-export const INITIAL_FORGOT_PASSWORD_STATE: ForgotPasswordActionState = {
-  status: 'idle',
-};
-
-export type ResetPasswordErrorCode =
-  | 'VALIDATION'
-  | 'INVALID_OR_EXPIRED'
-  | 'INTERNAL';
-
-export type ResetPasswordActionState =
-  | { readonly status: 'idle' }
-  | { readonly status: 'success'; readonly redirectTo: string }
-  | {
-      readonly status: 'error';
-      readonly code: ResetPasswordErrorCode;
-    };
-
-export const INITIAL_RESET_PASSWORD_STATE: ResetPasswordActionState = {
-  status: 'idle',
-};
 
 function getAppBaseUrl(): string {
   return process.env.APP_BASE_URL ?? DEFAULT_APP_BASE_URL;

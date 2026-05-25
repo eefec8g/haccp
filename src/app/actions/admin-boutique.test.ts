@@ -38,9 +38,9 @@ import {
   createBoutiqueAction,
   disableBoutiqueAction,
   enableBoutiqueAction,
-  INITIAL_BOUTIQUE_ACTION_STATE,
   updateBoutiqueAction,
 } from './admin-boutique';
+import { INITIAL_BOUTIQUE_ACTION_STATE } from './admin-boutique.types';
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111';
 
@@ -160,7 +160,7 @@ describe('[createBoutiqueAction]', () => {
       'admin-1'
     );
     expect(revalidatePath).toHaveBeenCalledWith('/admin/boutiques');
-    expect(redirect).toHaveBeenCalledWith(`/admin/boutiques/${VALID_UUID}`);
+    expect(redirect).toHaveBeenCalledWith('/admin/boutiques');
   });
 });
 

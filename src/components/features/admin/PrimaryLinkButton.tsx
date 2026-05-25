@@ -20,7 +20,7 @@ interface PrimaryLinkButtonProps {
 }
 
 const PRIMARY_LINK_CLASSES =
-  'inline-flex h-10 items-center justify-center bg-mg-noir px-5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+  'inline-flex h-11 items-center justify-center bg-mg-noir px-5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 
 export function PrimaryLinkButton({
   href,

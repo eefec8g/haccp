@@ -11,7 +11,7 @@ interface UserToggleActiveButtonProps {
 }
 
 const ENABLE_BUTTON_CLASSES =
-  'inline-flex items-center justify-center border border-mg-or/40 bg-transparent px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex h-11 w-44 items-center justify-center border border-mg-or/40 bg-transparent px-5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
 const ERROR_BOX_CLASSES =
   'mt-2 border border-mg-or/40 bg-mg-or/5 px-3 py-2 text-[10px] font-light uppercase tracking-[0.15em] text-mg-or';
 

@@ -70,14 +70,15 @@ function incrementEntry(key: string, windowMs: number): RateLimitEntry {
 /**
  * Adapter in-memory : compteur fixe `(count, expiresAt)` par cle. Utilise
  * en dev local et comme fallback resilient quand Upstash echoue. Pas
- * distribue : sur Vercel multi-region chaque lambda a son propre Map --
- * assume par design pour le fallback (et logue un warning explicite).
+ * distribue : sur multi-instance (Vercel/Fly/Render/Docker self-host)
+ * chaque process a son propre Map -- assume par design pour le fallback
+ * (et logue un warning explicite en production).
  */
 export function createInMemoryProvider(): RateLimitProvider {
-  if (!hasWarnedServerless && process.env.VERCEL) {
+  if (!hasWarnedServerless && process.env.NODE_ENV === 'production') {
     hasWarnedServerless = true;
     logger.warn(
-      'Rate limiting using in-memory fallback on serverless. ' +
+      'Rate limiting using in-memory fallback in production. ' +
         'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed rate limiting.'
     );
   }

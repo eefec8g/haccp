@@ -20,18 +20,10 @@ import {
 } from '@/lib/services/user.service';
 import { sendUserInvitationEmail } from '@/lib/services/email-invitation.service';
 import { ENTITY_DISABLE_MOTIF_MAX } from '@/lib/constants/admin';
-import { checkRateLimit } from '@/lib/services/rateLimit';
+import { checkRateLimit, toRetryAfterSeconds } from '@/lib/services/rateLimit';
 import { getClientIp } from '@/lib/utils/request';
 import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
-
-const MILLISECONDS_PER_SECOND = 1000;
-
-function toRetryAfterSeconds(retryAfterMs: number | undefined): number {
-  if (!retryAfterMs) {
-    return 0;
-  }
-  return Math.ceil(retryAfterMs / MILLISECONDS_PER_SECOND);
-}
+import { logger } from '@/lib/logger';
 
 /**
  * Server Actions admin Utilisateurs (US-ADM-003).
@@ -194,7 +186,7 @@ function dispatchInvitationEmail({
       inviterName,
     });
     if (!result.success) {
-      console.error('[invite-user] email send failed', {
+      logger.error('[invite-user] email send failed', {
         to,
         role,
         error: result.error,

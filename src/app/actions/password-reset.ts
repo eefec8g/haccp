@@ -6,24 +6,17 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from '@/lib/validations/auth';
-import { checkRateLimit } from '@/lib/services/rateLimit';
+import { checkRateLimit, toRetryAfterSeconds } from '@/lib/services/rateLimit';
 import {
   generatePasswordResetToken,
   resetPassword,
 } from '@/lib/services/auth.service';
 import { sendPasswordResetEmail } from '@/lib/services/email.service';
 import { getClientIp } from '@/lib/utils/request';
+import { logger } from '@/lib/logger';
 
 const DEFAULT_APP_BASE_URL = 'http://localhost:3000';
 const RESET_SUCCESS_REDIRECT = '/login?reset=success';
-const MILLISECONDS_PER_SECOND = 1000;
-
-function toRetryAfterSeconds(retryAfterMs: number | undefined): number {
-  if (!retryAfterMs) {
-    return 0;
-  }
-  return Math.ceil(retryAfterMs / MILLISECONDS_PER_SECOND);
-}
 
 /**
  * Cles d'erreur cote UI. Le composant client mappe vers le message
@@ -90,7 +83,7 @@ function dispatchPasswordResetEmail({
   after(async () => {
     const result = await sendPasswordResetEmail({ email, resetUrl, expiresAt });
     if (!result.success) {
-      console.error('[forgot-password] email send failed', {
+      logger.error('[forgot-password] email send failed', {
         email,
         error: result.error,
       });

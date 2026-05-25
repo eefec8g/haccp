@@ -31,6 +31,15 @@ describe('[logger]', () => {
     expect(spy).toHaveBeenCalledWith('careful', { code: 42 });
   });
 
+  it('should forward warn() to console.warn without meta when omitted', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    logger.warn('just a warning');
+
+    expect(spy).toHaveBeenCalledWith('just a warning');
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
   it('should forward error() to console.error with the meta object when provided', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 

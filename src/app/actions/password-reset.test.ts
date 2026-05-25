@@ -18,6 +18,8 @@ vi.mock('@/lib/services/rateLimit', () => ({
   peekRateLimit: vi.fn(),
   resetRateLimit: vi.fn(),
   formatRetryAfter: vi.fn(),
+  toRetryAfterSeconds: (retryAfterMs: number | undefined): number =>
+    retryAfterMs ? Math.ceil(retryAfterMs / 1000) : 0,
 }));
 
 vi.mock('@/lib/services/auth.service', () => ({

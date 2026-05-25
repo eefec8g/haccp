@@ -10,23 +10,20 @@ const MINUTES_PER_HOUR = 60;
  *
  * Les valeurs sont declarees directement en ms (canonique cote provider
  * in-memory) et converties au format Upstash via `toUpstashDuration`
- * (cote Upstash). Pourquoi inliner ici plutot que reutiliser des
- * constantes externes (`RATE_LIMIT_LOGIN_MAX`, etc.) : ce module est
- * la source de verite du rate-limit ; les anciennes constantes
- * (`*_WINDOW` en format Upstash string) ne servent plus a personne
- * apres ce refacto et ont ete supprimees pour eviter le mort code.
+ * (cote Upstash).
  */
-interface RateLimitConfig {
+interface RateLimitTypeConfig {
   readonly windowMs: number;
   readonly maxRequests: number;
 }
 
-export const RATE_LIMITS: Readonly<Record<RateLimitType, RateLimitConfig>> = {
-  LOGIN: { windowMs: 900_000, maxRequests: 5 }, // 15 min, 5 essais
-  PASSWORD_RESET: { windowMs: 3_600_000, maxRequests: 3 }, // 1 h, 3 demandes
-  USER_INVITE: { windowMs: 3_600_000, maxRequests: 10 }, // 1 h, 10 invitations
-  INVITATION_ACCEPT: { windowMs: 900_000, maxRequests: 5 }, // 15 min, 5 essais token
-} as const;
+export const RATE_LIMITS: Readonly<Record<RateLimitType, RateLimitTypeConfig>> =
+  {
+    LOGIN: { windowMs: 900_000, maxRequests: 5 }, // 15 min, 5 essais
+    PASSWORD_RESET: { windowMs: 3_600_000, maxRequests: 3 }, // 1 h, 3 demandes
+    USER_INVITE: { windowMs: 3_600_000, maxRequests: 10 }, // 1 h, 10 invitations
+    INVITATION_ACCEPT: { windowMs: 900_000, maxRequests: 5 }, // 15 min, 5 essais token
+  } as const;
 
 /**
  * Convertit une duree (ms) en format Upstash Ratelimit Duration

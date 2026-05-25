@@ -8,6 +8,7 @@
  *   - resetRateLimitEnhanced  : reset compteur (admin / tests)
  *   - getRateLimitHeaders     : helpers headers X-RateLimit-* + Retry-After
  *   - formatRetryAfterEnhanced: format humain "X secondes"/"X minutes"
+ *   - toRetryAfterSeconds     : helper ms -> secondes (arrondi superieur)
  *
  * Aliases courts conserves pour symetrie avec C8GApp et faciliter
  * la portabilite des call sites :
@@ -23,6 +24,19 @@ import type { RateLimitType, RateLimitResult } from './types';
 
 const MILLISECONDS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
+
+/**
+ * Convertit un `retryAfterMs` (potentiellement absent) en secondes pour
+ * exposition au client. Garde un contrat simple : `undefined` ou `0`
+ * retourne `0` (rien a attendre), arrondi superieur sinon pour ne jamais
+ * promettre une attente plus courte que la realite.
+ */
+export function toRetryAfterSeconds(retryAfterMs: number | undefined): number {
+  if (!retryAfterMs) {
+    return 0;
+  }
+  return Math.ceil(retryAfterMs / MILLISECONDS_PER_SECOND);
+}
 
 export async function checkRateLimitEnhanced(
   type: RateLimitType,

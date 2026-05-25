@@ -19,17 +19,11 @@ import {
   type InviteUserError,
 } from '@/lib/services/user.service';
 import { sendUserInvitationEmail } from '@/lib/services/email-invitation.service';
-import {
-  ACCEPT_INVITATION_RATE_LIMIT_MAX,
-  ACCEPT_INVITATION_RATE_LIMIT_WINDOW,
-  ENTITY_DISABLE_MOTIF_MAX,
-  INVITATION_RATE_LIMIT_MAX,
-  INVITATION_RATE_LIMIT_WINDOW,
-} from '@/lib/constants/admin';
-import { checkRateLimit, createRateLimiter } from '@/lib/utils/rate-limit';
+import { ENTITY_DISABLE_MOTIF_MAX } from '@/lib/constants/admin';
+import { checkRateLimit, toRetryAfterSeconds } from '@/lib/services/rateLimit';
 import { getClientIp } from '@/lib/utils/request';
 import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
-import type { Ratelimit } from '@upstash/ratelimit';
+import { logger } from '@/lib/logger';
 
 /**
  * Server Actions admin Utilisateurs (US-ADM-003).
@@ -39,8 +33,8 @@ import type { Ratelimit } from '@upstash/ratelimit';
  *      `acceptInvitationAction` qui est public (l'invite n'est pas
  *      encore connecte).
  *   2. Rate-limit Upstash :
- *      - inviteUser  : 10 / 1h par admin (session.user.id)
- *      - acceptInvit : 5 / 15 min par IP (anti-bruteforce token)
+ *      - USER_INVITE       : 10 / 1h par admin (session.user.id)
+ *      - INVITATION_ACCEPT : 5 / 15 min par IP (anti-bruteforce token)
  *   3. Parse FormData via Zod (userInviteSchema / acceptInvitationSchema).
  *   4. Delegation au service `user.service` (Result pattern).
  *   5. revalidatePath('/admin/users') apres toute mutation.
@@ -162,41 +156,6 @@ function buildInviteUrl(plainToken: string): string {
   return `${getAppBaseUrl()}/accept-invitation/${plainToken}`;
 }
 
-let inviteLimiter: Ratelimit | null = null;
-let acceptLimiter: Ratelimit | null = null;
-
-/**
- * Rate limiter envoi d'invitation : 10/h/admin.
- * L'identifier est `session.user.id` (vs IP) car l'admin est authentifie ;
- * cela bloque un compte compromis sans penaliser les autres admins.
- */
-function getInviteRateLimiter(): Ratelimit {
-  if (!inviteLimiter) {
-    inviteLimiter = createRateLimiter({
-      prefix: 'rl:admin-invite',
-      max: INVITATION_RATE_LIMIT_MAX,
-      window: INVITATION_RATE_LIMIT_WINDOW,
-    });
-  }
-  return inviteLimiter;
-}
-
-/**
- * Rate limiter acceptation d'invitation : 5 / 15 min / IP.
- * Defense en profondeur contre bruteforce sur le token (meme si
- * 256 bits d'entropie, on borne).
- */
-function getAcceptInvitationRateLimiter(): Ratelimit {
-  if (!acceptLimiter) {
-    acceptLimiter = createRateLimiter({
-      prefix: 'rl:accept-invite',
-      max: ACCEPT_INVITATION_RATE_LIMIT_MAX,
-      window: ACCEPT_INVITATION_RATE_LIMIT_WINDOW,
-    });
-  }
-  return acceptLimiter;
-}
-
 interface DispatchInviteEmailArgs {
   readonly to: string;
   readonly inviteUrl: string;
@@ -227,7 +186,7 @@ function dispatchInvitationEmail({
       inviterName,
     });
     if (!result.success) {
-      console.error('[invite-user] email send failed', {
+      logger.error('[invite-user] email send failed', {
         to,
         role,
         error: result.error,
@@ -250,15 +209,12 @@ export async function inviteUserAction(
     return guard.state;
   }
 
-  const rate = await checkRateLimit(
-    getInviteRateLimiter(),
-    guard.session.user.id
-  );
-  if (!rate.success) {
+  const rate = await checkRateLimit('USER_INVITE', guard.session.user.id);
+  if (!rate.allowed) {
     return {
       status: 'error',
       code: 'RATE_LIMITED',
-      retryAfterSeconds: rate.retryAfterSeconds,
+      retryAfterSeconds: toRetryAfterSeconds(rate.retryAfterMs),
     };
   }
 
@@ -306,12 +262,12 @@ export async function acceptInvitationAction(
 ): Promise<AcceptInvitationActionState> {
   const requestHeaders = await headers();
   const ip = getClientIp(requestHeaders);
-  const rate = await checkRateLimit(getAcceptInvitationRateLimiter(), ip);
-  if (!rate.success) {
+  const rate = await checkRateLimit('INVITATION_ACCEPT', ip);
+  if (!rate.allowed) {
     return {
       status: 'error',
       code: 'RATE_LIMITED',
-      retryAfterSeconds: rate.retryAfterSeconds,
+      retryAfterSeconds: toRetryAfterSeconds(rate.retryAfterMs),
     };
   }
 

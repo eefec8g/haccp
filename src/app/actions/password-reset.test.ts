@@ -12,9 +12,14 @@ vi.mock('next/server', () => ({
   }),
 }));
 
-vi.mock('@/lib/utils/rate-limit', () => ({
-  getForgotPasswordRateLimiter: vi.fn(() => ({}) as unknown),
-  checkRateLimit: vi.fn(),
+const { checkRateLimit } = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
+vi.mock('@/lib/services/rateLimit', () => ({
+  checkRateLimit,
+  peekRateLimit: vi.fn(),
+  resetRateLimit: vi.fn(),
+  formatRetryAfter: vi.fn(),
+  toRetryAfterSeconds: (retryAfterMs: number | undefined): number =>
+    retryAfterMs ? Math.ceil(retryAfterMs / 1000) : 0,
 }));
 
 vi.mock('@/lib/services/auth.service', () => ({
@@ -27,7 +32,6 @@ vi.mock('@/lib/services/email.service', () => ({
 }));
 
 import { headers } from 'next/headers';
-import { checkRateLimit } from '@/lib/utils/rate-limit';
 import {
   generatePasswordResetToken,
   resetPassword,
@@ -82,18 +86,21 @@ beforeEach(() => {
   vi.mocked(headers).mockResolvedValue(
     makeHeaders({ 'x-forwarded-for': '1.2.3.4' }) as never
   );
-  vi.mocked(checkRateLimit).mockResolvedValue({
-    success: true,
-    retryAfterSeconds: 0,
+  checkRateLimit.mockResolvedValue({
+    allowed: true,
+    remainingRequests: 2,
+    resetAtMs: Date.now() + 3_600_000,
   });
   process.env.APP_BASE_URL = 'http://localhost:3000';
 });
 
 describe('[forgotPasswordAction]', () => {
   it('should return RATE_LIMITED with retryAfter when limiter blocks the request', async () => {
-    vi.mocked(checkRateLimit).mockResolvedValue({
-      success: false,
-      retryAfterSeconds: 1800,
+    checkRateLimit.mockResolvedValue({
+      allowed: false,
+      remainingRequests: 0,
+      resetAtMs: Date.now() + 1_800_000,
+      retryAfterMs: 1_800_000,
     });
 
     const result = await forgotPasswordAction(

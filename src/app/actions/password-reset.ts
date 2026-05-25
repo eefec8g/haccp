@@ -6,16 +6,14 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from '@/lib/validations/auth';
-import {
-  checkRateLimit,
-  getForgotPasswordRateLimiter,
-} from '@/lib/utils/rate-limit';
+import { checkRateLimit, toRetryAfterSeconds } from '@/lib/services/rateLimit';
 import {
   generatePasswordResetToken,
   resetPassword,
 } from '@/lib/services/auth.service';
 import { sendPasswordResetEmail } from '@/lib/services/email.service';
 import { getClientIp } from '@/lib/utils/request';
+import { logger } from '@/lib/logger';
 
 const DEFAULT_APP_BASE_URL = 'http://localhost:3000';
 const RESET_SUCCESS_REDIRECT = '/login?reset=success';
@@ -85,7 +83,7 @@ function dispatchPasswordResetEmail({
   after(async () => {
     const result = await sendPasswordResetEmail({ email, resetUrl, expiresAt });
     if (!result.success) {
-      console.error('[forgot-password] email send failed', {
+      logger.error('[forgot-password] email send failed', {
         email,
         error: result.error,
       });
@@ -111,12 +109,12 @@ export async function forgotPasswordAction(
 ): Promise<ForgotPasswordActionState> {
   const requestHeaders = await headers();
   const ip = getClientIp(requestHeaders);
-  const rateLimit = await checkRateLimit(getForgotPasswordRateLimiter(), ip);
-  if (!rateLimit.success) {
+  const rateLimit = await checkRateLimit('PASSWORD_RESET', ip);
+  if (!rateLimit.allowed) {
     return {
       status: 'error',
       code: 'RATE_LIMITED',
-      retryAfterSeconds: rateLimit.retryAfterSeconds,
+      retryAfterSeconds: toRetryAfterSeconds(rateLimit.retryAfterMs),
     };
   }
 

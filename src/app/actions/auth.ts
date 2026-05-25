@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import type { UserRole } from '@prisma/client';
 import { auth, signIn } from '@/lib/auth';
 import { loginSchema } from '@/lib/validations/auth';
-import { checkRateLimit, getLoginRateLimiter } from '@/lib/utils/rate-limit';
+import { checkRateLimit, toRetryAfterSeconds } from '@/lib/services/rateLimit';
 import { POST_LOGIN_REDIRECT } from '@/lib/constants/auth';
 import { getClientIp } from '@/lib/utils/request';
 import { isNextRedirectError } from '@/lib/utils/next-errors';
@@ -45,12 +45,12 @@ export async function loginAction(
 ): Promise<LoginActionState> {
   const requestHeaders = await headers();
   const ip = getClientIp(requestHeaders);
-  const rateLimit = await checkRateLimit(getLoginRateLimiter(), ip);
-  if (!rateLimit.success) {
+  const rateLimit = await checkRateLimit('LOGIN', ip);
+  if (!rateLimit.allowed) {
     return {
       status: 'error',
       code: 'RATE_LIMITED',
-      retryAfterSeconds: rateLimit.retryAfterSeconds,
+      retryAfterSeconds: toRetryAfterSeconds(rateLimit.retryAfterMs),
     };
   }
 

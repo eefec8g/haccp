@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { AcceptInvitationForm } from '@/components/features/auth/AcceptInvitationForm';
+import { BrandDivider } from '@/features/landing/BrandDivider';
 import { validateInvitationToken } from '@/lib/services/user.service';
 
 export const metadata: Metadata = {
@@ -15,8 +16,8 @@ interface AcceptInvitationPageProps {
   readonly params: Promise<{ readonly token: string }>;
 }
 
-const ERROR_BUTTON_PRIMARY =
-  'inline-flex items-center justify-center rounded-[7px] bg-[#5D87FF] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#4570e6] focus:outline-none focus:ring-2 focus:ring-[#5D87FF] focus:ring-offset-2';
+const PRIMARY_BUTTON_CLASSES =
+  'inline-flex items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-medium tracking-[0.3em] text-mg-ivoire uppercase transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 
 /**
  * Ecran d'erreur generique (token manquant / invalide / expire / utilise).
@@ -29,20 +30,23 @@ const ERROR_BUTTON_PRIMARY =
 function InvitationErrorScreen() {
   return (
     <section data-testid="accept-invitation-error">
-      <header className="mb-6 text-center">
-        <h2 className="text-2xl font-bold text-[#2A3547]">
-          Lien invalide ou expire
+      <header className="mb-10 text-center">
+        <h2 className="text-3xl font-light tracking-[0.2em] text-mg-noir uppercase">
+          Lien invalide
         </h2>
-        <p className="mt-2 text-sm text-gray-500">
-          Le lien d'invitation est invalide ou a expire. Demandez une nouvelle
-          invitation a votre administrateur.
+        <div className="mt-5 flex justify-center">
+          <BrandDivider width="small" />
+        </div>
+        <p className="mt-5 text-xs font-light tracking-wide text-mg-noir/70">
+          Le lien d&apos;invitation est invalide ou a expire. Demandez une
+          nouvelle invitation a votre administrateur.
         </p>
       </header>
 
       <div className="flex flex-col gap-3">
         <Link
           href={LOGIN_HREF}
-          className={ERROR_BUTTON_PRIMARY}
+          className={PRIMARY_BUTTON_CLASSES}
           data-testid="accept-invitation-back-to-login"
         >
           Retour a la connexion
@@ -57,7 +61,7 @@ function InvitationErrorScreen() {
  *
  * Public (l'utilisateur invite n'est pas encore authentifie).
  * Route placee sous `(auth)/` pour beneficier du layout d'authentification
- * (split panel Modernize) et eviter la garde middleware `/admin`.
+ * (split panel Maison Givre) et eviter la garde middleware `/admin`.
  *
  * Pipeline :
  *   1. Validation rapide du format token (length >= 32). Sinon ecran
@@ -83,11 +87,14 @@ export default async function AcceptInvitationPage({
 
   return (
     <section data-testid="accept-invitation-page">
-      <header className="mb-6">
-        <h2 className="text-2xl font-bold text-[#2A3547]">
+      <header className="mb-10">
+        <h2 className="text-3xl font-light tracking-[0.2em] text-mg-noir uppercase">
           Activer mon compte
         </h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <div className="mt-5">
+          <BrandDivider width="small" />
+        </div>
+        <p className="mt-5 text-xs font-light tracking-wide text-mg-noir/70">
           Choisissez un mot de passe robuste pour finaliser la creation de votre
           compte.
         </p>

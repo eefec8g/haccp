@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { LoginForm } from '@/components/features/auth/LoginForm';
+import { BrandDivider } from '@/features/landing/BrandDivider';
 
 export const metadata: Metadata = {
   title: 'Connexion - HACCP Maison Givre',
@@ -11,7 +12,7 @@ function LoginFormFallback() {
     <div
       aria-busy="true"
       aria-live="polite"
-      className="h-64 animate-pulse rounded-md bg-slate-100"
+      className="h-64 animate-pulse bg-mg-noir/5"
       data-testid="login-form-loading"
     />
   );
@@ -20,9 +21,14 @@ function LoginFormFallback() {
 export default function LoginPage() {
   return (
     <section>
-      <header className="mb-6">
-        <h2 className="text-2xl font-bold text-[#2A3547]">Bon retour</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <header className="mb-10">
+        <h2 className="text-3xl font-light tracking-[0.2em] text-mg-noir uppercase">
+          Connexion
+        </h2>
+        <div className="mt-5">
+          <BrandDivider width="small" />
+        </div>
+        <p className="mt-5 text-xs font-light tracking-wide text-mg-noir/70">
           Connectez-vous pour saisir les releves de temperature du jour.
         </p>
       </header>

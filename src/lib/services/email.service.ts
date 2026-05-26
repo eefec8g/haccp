@@ -1,35 +1,9 @@
-import { Resend } from 'resend';
 import { escapeHtml } from '@/lib/utils/escape-html';
-
-const MISSING_API_KEY_MESSAGE =
-  'Email service requires RESEND_API_KEY env var.';
-const DEFAULT_FROM = 'HACCP Maison Givre <noreply@maison-givre.fr>';
+import { sendEmail } from './emailService';
 
 export type EmailResult =
   | { readonly success: true }
   | { readonly success: false; readonly error: string };
-
-let cachedClient: Resend | null = null;
-
-/**
- * Singleton Resend client (lazy init). Throw clair si la cle manque
- * pour ne pas faire planter `next build` sans config email.
- */
-function getResendClient(): Resend {
-  if (cachedClient) {
-    return cachedClient;
-  }
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    throw new Error(MISSING_API_KEY_MESSAGE);
-  }
-  cachedClient = new Resend(apiKey);
-  return cachedClient;
-}
-
-function getFromAddress(): string {
-  return process.env.RESEND_FROM_EMAIL ?? DEFAULT_FROM;
-}
 
 function formatExpiryParis(expiresAt: Date): string {
   return new Intl.DateTimeFormat('fr-FR', {
@@ -63,6 +37,14 @@ function buildResetEmailHtml(resetUrl: string, expiryLabel: string): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Maison Givre</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <!--[if !mso]><!-->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap');
+  </style>
+  <!--<![endif]-->
 </head>
 <body style="margin:0;padding:0;background-color:#F7F4EF;font-family:Montserrat, 'Segoe UI', system-ui, sans-serif;color:#0D0D0D;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#F7F4EF;">
@@ -139,7 +121,7 @@ interface SendResetEmailArgs {
 
 /**
  * Envoie l'email de reinitialisation. Ne JAMAIS logger `resetUrl`
- * ni le token. En cas d'erreur Resend, retourne un Result error
+ * ni le token. En cas d'erreur transport, retourne un Result error
  * et laisse le caller decider (en general : log + repondre success
  * silencieusement pour ne pas leak l'existence du compte).
  */
@@ -148,21 +130,15 @@ export async function sendPasswordResetEmail({
   resetUrl,
   expiresAt,
 }: SendResetEmailArgs): Promise<EmailResult> {
-  try {
-    const expiryLabel = formatExpiryParis(expiresAt);
-    const { error } = await getResendClient().emails.send({
-      from: getFromAddress(),
-      to: email,
-      subject: 'Maison Givre - Reinitialisation de votre mot de passe',
-      html: buildResetEmailHtml(resetUrl, expiryLabel),
-      text: buildResetEmailText(resetUrl, expiryLabel),
-    });
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return { success: false, error: message };
+  const expiryLabel = formatExpiryParis(expiresAt);
+  const result = await sendEmail({
+    to: email,
+    subject: 'Maison Givre - Reinitialisation de votre mot de passe',
+    html: buildResetEmailHtml(resetUrl, expiryLabel),
+    text: buildResetEmailText(resetUrl, expiryLabel),
+  });
+  if (!result.success) {
+    return { success: false, error: result.error ?? 'Unknown error' };
   }
+  return { success: true };
 }

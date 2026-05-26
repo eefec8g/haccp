@@ -1,7 +1,7 @@
 import type { UserRole } from '@prisma/client';
-import { Resend } from 'resend';
 import { escapeHtml } from '@/lib/utils/escape-html';
 import { USER_ROLE_LABELS } from '@/lib/constants/user-labels';
+import { sendEmail } from './emailService';
 
 /**
  * Email d'invitation utilisateur.
@@ -11,37 +11,13 @@ import { USER_ROLE_LABELS } from '@/lib/constants/user-labels';
  *     password vs invitation vs futur alertes...) -> SRP (Clean Code #3).
  *   - Permet de mocker indpendamment dans les tests d'`acceptInvitation`.
  *
- * Pas de duplication : le pattern (singleton Resend lazy, formattage
- * date FR, Result<...>) est intentionnellement aligne avec
- * `email.service.ts` pour rester lisible. Une eventuelle extraction
- * du client Resend sera faite quand on aura 3+ services email.
+ * Le transport (SMTP/Resend/Ethereal) est centralise dans `emailService.ts`
+ * (mirror du pattern C8GApp).
  */
-
-const MISSING_API_KEY_MESSAGE =
-  'Email service requires RESEND_API_KEY env var.';
-const DEFAULT_FROM = 'HACCP Maison Givre <noreply@maison-givre.fr>';
 
 export type InvitationEmailResult =
   | { readonly success: true }
   | { readonly success: false; readonly error: string };
-
-let cachedClient: Resend | null = null;
-
-function getResendClient(): Resend {
-  if (cachedClient) {
-    return cachedClient;
-  }
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    throw new Error(MISSING_API_KEY_MESSAGE);
-  }
-  cachedClient = new Resend(apiKey);
-  return cachedClient;
-}
-
-function getFromAddress(): string {
-  return process.env.RESEND_FROM_EMAIL ?? DEFAULT_FROM;
-}
 
 function formatExpiryParis(expiresAt: Date): string {
   return new Intl.DateTimeFormat('fr-FR', {
@@ -88,6 +64,17 @@ function buildInvitationHtml({
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Maison Givre</title>
+  <!-- Montserrat (police officielle, alignee sur le site). Charge via Google
+       Fonts car les clients mail ne peuvent pas atteindre la version self-host
+       Next.js. Outlook desktop ignorera et fallback en sans-serif systeme. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <!--[if !mso]><!-->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap');
+  </style>
+  <!--<![endif]-->
 </head>
 <body style="margin:0;padding:0;background-color:#F7F4EF;font-family:Montserrat, 'Segoe UI', system-ui, sans-serif;color:#0D0D0D;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#F7F4EF;">
@@ -181,27 +168,21 @@ export async function sendUserInvitationEmail({
   role,
   inviterName = null,
 }: SendInvitationEmailArgs): Promise<InvitationEmailResult> {
-  try {
-    const expiryLabel = formatExpiryParis(expiresAt);
-    const args: BuildEmailArgs = {
-      inviteUrl,
-      expiryLabel,
-      role,
-      inviterName,
-    };
-    const { error } = await getResendClient().emails.send({
-      from: getFromAddress(),
-      to,
-      subject: "Maison Givre - Invitation a rejoindre l'equipe",
-      html: buildInvitationHtml(args),
-      text: buildInvitationText(args),
-    });
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return { success: false, error: message };
+  const expiryLabel = formatExpiryParis(expiresAt);
+  const args: BuildEmailArgs = {
+    inviteUrl,
+    expiryLabel,
+    role,
+    inviterName,
+  };
+  const result = await sendEmail({
+    to,
+    subject: "Maison Givre - Invitation a rejoindre l'equipe",
+    html: buildInvitationHtml(args),
+    text: buildInvitationText(args),
+  });
+  if (!result.success) {
+    return { success: false, error: result.error ?? 'Unknown error' };
   }
+  return { success: true };
 }

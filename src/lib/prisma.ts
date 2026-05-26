@@ -1,5 +1,43 @@
 import { PrismaClient } from '@prisma/client';
 
+const IMMUTABILITY_ERROR =
+  "Operation interdite : la table Releve est immuable (HACCP). Creez un releve d'annulation.";
+
+/**
+ * Liste blanche des champs autorises dans un UPDATE sur Releve.
+ *
+ * SEUL `annuleParId` peut etre modifie, et SEUL de `null` vers un uuid
+ * (US-REL-004 : le responsable cree un releve "annulation" et lie
+ * l'original en posant ce pointeur). Toute autre mutation est rejetee.
+ *
+ * Ce trou controle preserve l'immutabilite HACCP (RG-IMMU-001) car :
+ *   - on ne change PAS les champs metier (temperature, commentaire, ...) ;
+ *   - le pointeur va de null -> uuid (one-way, jamais reset a null) ;
+ *   - le couple original + annulation est cree dans une transaction
+ *     dediee dans le service (cf. annulerReleve).
+ */
+const ALLOWED_RELEVE_UPDATE_FIELDS: ReadonlySet<string> = new Set([
+  'annuleParId',
+]);
+
+function isAnnulationOnlyUpdate(data: unknown): boolean {
+  if (!data || typeof data !== 'object') {
+    return false;
+  }
+  const entries = Object.entries(data as Record<string, unknown>);
+  if (entries.length === 0) {
+    return false;
+  }
+  return entries.every(([key, value]) => {
+    if (!ALLOWED_RELEVE_UPDATE_FIELDS.has(key)) {
+      return false;
+    }
+    // Set d'un id : la valeur doit etre une string non vide ; on
+    // n'autorise PAS le reset a null/undefined (one-way).
+    return typeof value === 'string' && value.length > 0;
+  });
+}
+
 function createPrismaClient() {
   const client = new PrismaClient({
     log:
@@ -9,34 +47,28 @@ function createPrismaClient() {
   });
 
   // Immutabilite HACCP : aucun UPDATE/DELETE/UPSERT direct sur Releve.
-  // La correction se fait via un nouveau releve avec annuleParId pointant vers l'original.
+  // Exception controlee : UPDATE { annuleParId: <uuid> } pour US-REL-004
+  // (cf. ALLOWED_RELEVE_UPDATE_FIELDS et isAnnulationOnlyUpdate).
   return client.$extends({
     query: {
       releve: {
-        update() {
-          throw new Error(
-            "Operation interdite : la table Releve est immuable (HACCP). Creez un releve d'annulation."
-          );
+        update({ args, query }) {
+          if (isAnnulationOnlyUpdate(args.data)) {
+            return query(args);
+          }
+          throw new Error(IMMUTABILITY_ERROR);
         },
         updateMany() {
-          throw new Error(
-            'Operation interdite : la table Releve est immuable (HACCP).'
-          );
+          throw new Error(IMMUTABILITY_ERROR);
         },
         delete() {
-          throw new Error(
-            'Operation interdite : la table Releve est immuable (HACCP).'
-          );
+          throw new Error(IMMUTABILITY_ERROR);
         },
         deleteMany() {
-          throw new Error(
-            'Operation interdite : la table Releve est immuable (HACCP).'
-          );
+          throw new Error(IMMUTABILITY_ERROR);
         },
         upsert() {
-          throw new Error(
-            'Operation interdite : la table Releve est immuable (HACCP).'
-          );
+          throw new Error(IMMUTABILITY_ERROR);
         },
       },
     },

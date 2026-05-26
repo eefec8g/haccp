@@ -98,6 +98,9 @@ describe('[upstashProvider]', () => {
       'haccp:rl:PASSWORD_RESET',
       'haccp:rl:USER_INVITE',
       'haccp:rl:INVITATION_ACCEPT',
+      'haccp:rl:RELEVE_CREATE',
+      'haccp:rl:RELEVE_ANNULATION',
+      'haccp:rl:ALERTE_RESOLVE',
     ]);
     expect(capturedOptions.every((o) => o.analytics === false)).toBe(true);
   });

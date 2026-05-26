@@ -12,16 +12,24 @@
  * Identifie le type de rate-limit a appliquer. Chaque type a sa propre
  * configuration (maxRequests / window) declaree dans `config.ts`.
  *
- * - `LOGIN`             : 5 / 15 min, anti brute-force /login.
- * - `PASSWORD_RESET`    : 3 / 1h,    anti spam reset mdp.
- * - `USER_INVITE`       : 10 / 1h,   anti spam admin invitations.
- * - `INVITATION_ACCEPT` : 5 / 15 min, anti brute-force token.
+ * - `LOGIN`              : 5 / 15 min, anti brute-force /login.
+ * - `PASSWORD_RESET`     : 3 / 1h,    anti spam reset mdp.
+ * - `USER_INVITE`        : 10 / 1h,   anti spam admin invitations.
+ * - `INVITATION_ACCEPT`  : 5 / 15 min, anti brute-force token.
+ * - `RELEVE_CREATE`      : 60 / 5 min, sature pour saisie operationnelle
+ *                         (cas reel : ~15 releves/jour/salarie). Garde-fou
+ *                         anti-script/replay, pas contrainte UX.
+ * - `RELEVE_ANNULATION`  : 10 / 1h,   action rare (correction responsable).
+ * - `ALERTE_RESOLVE`     : 30 / 1h,   responsable resout en pic d'activite.
  */
 export type RateLimitType =
   | 'LOGIN'
   | 'PASSWORD_RESET'
   | 'USER_INVITE'
-  | 'INVITATION_ACCEPT';
+  | 'INVITATION_ACCEPT'
+  | 'RELEVE_CREATE'
+  | 'RELEVE_ANNULATION'
+  | 'ALERTE_RESOLVE';
 
 /**
  * Resultat normalise d'une verification rate-limit.

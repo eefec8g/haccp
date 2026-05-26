@@ -23,6 +23,9 @@ export const RATE_LIMITS: Readonly<Record<RateLimitType, RateLimitTypeConfig>> =
     PASSWORD_RESET: { windowMs: 3_600_000, maxRequests: 3 }, // 1 h, 3 demandes
     USER_INVITE: { windowMs: 3_600_000, maxRequests: 10 }, // 1 h, 10 invitations
     INVITATION_ACCEPT: { windowMs: 900_000, maxRequests: 5 }, // 15 min, 5 essais token
+    RELEVE_CREATE: { windowMs: 300_000, maxRequests: 60 }, // 5 min, 60 saisies (operationnel)
+    RELEVE_ANNULATION: { windowMs: 3_600_000, maxRequests: 10 }, // 1 h, 10 annulations (rare)
+    ALERTE_RESOLVE: { windowMs: 3_600_000, maxRequests: 30 }, // 1 h, 30 resolutions
   } as const;
 
 /**

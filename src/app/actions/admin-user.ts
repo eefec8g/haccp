@@ -23,6 +23,7 @@ import { ENTITY_DISABLE_MOTIF_MAX } from '@/lib/constants/admin';
 import { checkRateLimit, toRetryAfterSeconds } from '@/lib/services/rateLimit';
 import { getClientIp } from '@/lib/utils/request';
 import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
+import { readRequiredString, readOptionalString } from '@/lib/utils/form-data';
 import { logger } from '@/lib/logger';
 import type {
   AcceptInvitationActionState,
@@ -79,23 +80,6 @@ function mapInviteServiceError(error: InviteUserError): UserActionErrorCode {
     return 'EMAIL_ALREADY_EXISTS';
   }
   return 'BOUTIQUE_NOT_FOUND';
-}
-
-function readOptionalString(
-  formData: FormData,
-  key: string
-): string | undefined {
-  const raw = formData.get(key);
-  if (typeof raw !== 'string') {
-    return undefined;
-  }
-  const trimmed = raw.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}
-
-function readRequiredString(formData: FormData, key: string): string {
-  const raw = formData.get(key);
-  return typeof raw === 'string' ? raw : '';
 }
 
 function readBoutiquesResponsable(formData: FormData): readonly string[] {

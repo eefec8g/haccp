@@ -18,6 +18,7 @@ import {
 } from '@/lib/services/equipement.service';
 import { ENTITY_DISABLE_MOTIF_MAX } from '@/lib/constants/admin';
 import { assertAdminOrRedirect } from '@/lib/utils/admin-auth';
+import { readRequiredString, readOptionalString } from '@/lib/utils/form-data';
 import type {
   EquipementActionErrorCode,
   EquipementActionState,
@@ -72,22 +73,6 @@ function mapServiceError(error: EquipementError): EquipementActionErrorCode {
     return 'BOUTIQUE_NOT_FOUND';
   }
   return 'INVALID';
-}
-
-function readOptionalString(
-  formData: FormData,
-  key: string
-): string | undefined {
-  const raw = formData.get(key);
-  if (typeof raw !== 'string') {
-    return undefined;
-  }
-  return raw;
-}
-
-function readRequiredString(formData: FormData, key: string): string {
-  const raw = formData.get(key);
-  return typeof raw === 'string' ? raw : '';
 }
 
 /**

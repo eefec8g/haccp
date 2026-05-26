@@ -21,7 +21,9 @@ async function main() {
 
   console.log('✅ Seed termine');
   console.log('   Admin :', admin.email, '(Password123!)');
-  console.log('   → Connecte-toi et cree tes boutiques / equipements / utilisateurs depuis /admin');
+  console.log(
+    '   → Connecte-toi et cree tes boutiques / equipements / utilisateurs depuis /admin'
+  );
 }
 
 main()

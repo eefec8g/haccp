@@ -48,7 +48,9 @@ export function EquipementBoutiqueFilter({
       params.set('includeInactive', 'true');
     }
     const qs = params.toString();
-    const href = (qs ? `/admin/equipements?${qs}` : '/admin/equipements') as Route;
+    const href = (
+      qs ? `/admin/equipements?${qs}` : '/admin/equipements'
+    ) as Route;
     startTransition(() => {
       router.push(href);
     });

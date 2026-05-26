@@ -1,34 +1,54 @@
 @import 'tailwindcss';
 
-:root {
-  --background: #ffffff;
-  --foreground: #0f172a;
+/**
+ * Charte de marque Maison Givre.
+ * Palette : ivoire, noir profond, or mat (et 2 variations subtiles).
+ * Police : Montserrat (variable injectee via next/font dans layout.tsx).
+ */
+@theme {
+  --color-mg-ivoire: #f7f4ef;
+  --color-mg-noir: #0d0d0d;
+  --color-mg-or: #c6a46c;
+  --color-mg-or-light: #d4b584;
+  --color-mg-or-dark: #9e834a;
+
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-  }
+:root {
+  --background: #f7f4ef;
+  --foreground: #0d0d0d;
+
+  /* Aliases CSS bruts utilisables hors Tailwind. */
+  --color-ivoire: #f7f4ef;
+  --color-noir: #0d0d0d;
+  --color-or: #c6a46c;
+  --color-or-light: #d4b584;
+  --color-or-dark: #9e834a;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Touch targets HACCP (gants en boutique) */
+/* Touch targets HACCP (gants en boutique - heritage de l'app interne). */
 button,
 [role='button'] {
   min-height: 44px;
+}
+
+/* Utilities Maison Givre */
+.mg-divider {
+  display: inline-block;
+  width: 60px;
+  height: 1px;
+  background-color: var(--color-or);
+}
+
+.mg-dot {
+  color: var(--color-or);
 }

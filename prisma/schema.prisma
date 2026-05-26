@@ -37,6 +37,21 @@ enum AlerteStatus {
   IGNOREE
 }
 
+enum AuditAction {
+  CREATE
+  UPDATE
+  DISABLE
+  ENABLE
+  DELETE
+}
+
+enum AuditEntityType {
+  BOUTIQUE
+  EQUIPEMENT
+  USER
+  INVITATION
+}
+
 // ===== MODELS =====
 
 model User {
@@ -54,7 +69,9 @@ model User {
 
   boutiquesResponsable BoutiqueUser[]
   releves              Releve[]
-  alertesResolues      Alerte[]       @relation("ResoluPar")
+  alertesResolues      Alerte[]         @relation("ResoluPar")
+  invitations          UserInvitation[] @relation("UserInvitations")
+  auditLogsPerformed   AuditLog[]       @relation("AuditPerformed")
 
   @@index([email])
   @@index([role])
@@ -94,8 +111,8 @@ model Equipement {
   id        String         @id @default(uuid())
   nom       String
   type      TypeEquipement
-  seuilMin  Decimal        @db.Decimal(4, 1)
-  seuilMax  Decimal        @db.Decimal(4, 1)
+  seuilMin  Float
+  seuilMax  Float
   actif     Boolean        @default(true)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
@@ -112,7 +129,7 @@ model Releve {
   id               String   @id @default(uuid())
   date             DateTime @db.Date
   creneau          Creneau
-  temperature      Decimal  @db.Decimal(4, 1)
+  temperature      Float
   commentaire      String?
   alerteHorsSeuils Boolean  @default(false)
   signature        String
@@ -160,4 +177,69 @@ model Alerte {
   resoluPar   User?   @relation("ResoluPar", fields: [resoluParId], references: [id])
 
   @@index([status, createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  email     String
+  token     String    @unique // hash SHA256 du token (jamais en clair)
+  expiresAt DateTime
+  usedAt    DateTime? // anti-replay : null = non utilise
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// Invitation envoyee par un Admin pour creer un nouvel utilisateur.
+// Le token reel est hash SHA256 (jamais stocke en clair). L'invitation
+// est consommee a l'acceptation (User cree + usedAt renseigne).
+model UserInvitation {
+  id        String    @id @default(uuid())
+  email     String
+  // Nom saisi par l'admin a l'invitation. Persiste ici (et non sur
+  // User) pour rester coherent meme si l'admin reinvite : User n'est
+  // cree qu'a l'acceptation (cf. service.acceptInvitation).
+  name      String?
+  token     String    @unique // hash SHA256 du token (jamais en clair)
+  role      UserRole // role assigne a l'acceptation
+  expiresAt DateTime
+  usedAt    DateTime? // anti-replay : null = non utilisee
+  createdAt DateTime  @default(now())
+
+  invitedById String
+  invitedBy   User   @relation("UserInvitations", fields: [invitedById], references: [id])
+
+  // Affectation enregistree au moment de l'invitation. Denormalisee
+  // pour rester independante de mutations sur les boutiques entre
+  // l'invitation et l'acceptation (resolution coherente).
+  boutiqueSalarieId    String?
+  boutiquesResponsable String[]
+
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+  @@index([invitedById])
+}
+
+// Journal d'audit immuable des actions admin sensibles (US-ADM-004).
+// La table n'est jamais modifiee/supprimee apres ecriture : tracabilite
+// HACCP. La cle etrangere `performedById` reste ON DELETE RESTRICT pour
+// empecher la suppression "fantome" d'un acteur audite.
+model AuditLog {
+  id            String          @id @default(uuid())
+  action        AuditAction
+  entityType    AuditEntityType
+  entityId      String
+  entityLabel   String? // snapshot lisible (nom boutique, email user...)
+  motif         String?         @db.Text
+  metadata      Json?
+  performedById String
+  performedBy   User            @relation("AuditPerformed", fields: [performedById], references: [id])
+  createdAt     DateTime        @default(now())
+
+  @@index([entityType, entityId])
+  @@index([performedById])
+  @@index([createdAt])
 }

@@ -3,6 +3,7 @@ node_modules
 dist
 coverage
 .git
+.claude
 *.min.js
 *.min.css
 package-lock.json

@@ -1,49 +1,63 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { auth, signOut } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { listTournee } from '@/lib/services/releve.service';
+import { tourneeQuerySchema } from '@/lib/validations/releve';
+import { getCurrentCreneau, todayParisISO } from '@/lib/utils/dates';
+import { TourneeHeader } from '@/components/features/releves/TourneeHeader';
+import { TourneeGrid } from '@/components/features/releves/TourneeGrid';
 
 export const metadata: Metadata = {
-  title: 'Releves du jour - HACCP Maison Givre',
+  title: 'Ma tournee - HACCP Maison Givre',
+  robots: { index: false, follow: false },
 };
 
-export default async function RelevesPage() {
+interface RelevesPageSearchParams {
+  readonly date?: string;
+}
+
+interface RelevesPageProps {
+  readonly searchParams: Promise<RelevesPageSearchParams>;
+}
+
+/**
+ * Page tournee du jour (US-REL-001).
+ *
+ * Server Component async :
+ *   - Auth check : redirect /login si pas de session (defense en
+ *     profondeur, le middleware filtre deja en amont).
+ *   - Parse optionnel de `?date=YYYY-MM-DD` (sinon today Europe/Paris).
+ *   - Charge la tournee via le service (scope boutiques par role).
+ *   - Calcule le creneau courant (heure Europe/Paris).
+ *   - Rend TourneeHeader + TourneeGrid (aucun fetch client-side).
+ *
+ * Accessible aux 3 roles : SALARIE (sa boutique), RESPONSABLE
+ * (toutes ses boutiques), ADMIN (toutes boutiques actives).
+ */
+export default async function RelevesPage({ searchParams }: RelevesPageProps) {
   const session = await auth();
   if (!session?.user) {
     redirect('/login');
   }
 
+  const raw = await searchParams;
+  const parsed = tourneeQuerySchema.safeParse({ date: raw.date });
+  const dateISO =
+    parsed.success && parsed.data.date ? parsed.data.date : todayParisISO();
+
+  const viewer = { id: session.user.id, role: session.user.role };
+  const cards = await listTournee({ viewer, dateISO });
+  const currentCreneau = getCurrentCreneau();
+
   return (
-    <main className="min-h-screen p-6 max-w-3xl mx-auto">
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-semibold">Releves du jour</h1>
-          <p className="text-sm text-slate-500">
-            Connecte : {session.user.name} ({session.user.role})
-          </p>
-        </div>
-        <form
-          action={async () => {
-            'use server';
-            await signOut({ redirectTo: '/login' });
-          }}
-        >
-          <button
-            type="submit"
-            className="text-sm px-3 py-2 rounded-md border border-slate-300"
-            data-testid="logout-button"
-          >
-            Deconnexion
-          </button>
-        </form>
-      </header>
-      <section className="rounded-lg border border-slate-200 p-6 text-center text-slate-500">
-        <p className="font-medium">
-          Tournee du jour - a venir (US-REL-001 / US-REL-002)
-        </p>
-        <p className="text-sm mt-2">
-          Cette page sera implementee dans le sprint v1.0. Elle affichera la
-          grille equipements x creneaux (matin/midi/soir).
-        </p>
+    <main className="min-h-screen bg-mg-ivoire" data-testid="releves-page">
+      <TourneeHeader
+        dateISO={dateISO}
+        userName={session.user.name ?? session.user.email ?? 'Utilisateur'}
+        userRole={session.user.role}
+      />
+      <section className="px-6 py-10 sm:px-10">
+        <TourneeGrid cards={cards} currentCreneau={currentCreneau} />
       </section>
     </main>
   );

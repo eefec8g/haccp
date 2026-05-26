@@ -26,3 +26,9 @@ tsconfig.tsbuildinfo
 # Prisma local
 prisma/dev.db
 prisma/dev.db-journal
+
+# Orchestrateur agent state (local only)
+.claude/epic-state*.md
+
+# Photos source brutes (les copies traitees sont dans public/illustrations/)
+photo illustration/

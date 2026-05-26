@@ -1,0 +1,12 @@
+export { LandingHeader } from './LandingHeader';
+export { HeroSection } from './HeroSection';
+export { ValeursSection } from './ValeursSection';
+export { PiliersSection } from './PiliersSection';
+export { HistoireSection } from './HistoireSection';
+export { CTASection } from './CTASection';
+export { LandingFooter } from './LandingFooter';
+export { FleurDeLys } from './FleurDeLys';
+export { BrandDivider } from './BrandDivider';
+export { FadeInSection } from './FadeInSection';
+export { HeroBackground } from './HeroBackground';
+export { StructuredData } from './StructuredData';

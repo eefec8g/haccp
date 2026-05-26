@@ -155,6 +155,46 @@ describe('[releve.service]', () => {
       const where = args?.where as { boutiqueId: { in: string[] } };
       expect(where.boutiqueId.in).toEqual([BOUTIQUE_ID]);
     });
+
+    it('should return [] for SALARIE when dateISO is older than 7 days (RG-LECT-001)', async () => {
+      const result = await listTournee({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        dateISO: '2020-01-01',
+      });
+
+      expect(result).toEqual([]);
+      // Bail-out anticipe : on n'a meme pas requete les boutiques.
+      expect(db.user.findUnique).not.toHaveBeenCalled();
+      expect(db.equipement.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should NOT restrict RESPONSABLE on an ancient dateISO (audit access)', async () => {
+      vi.mocked(db.boutiqueUser.findMany).mockResolvedValue([
+        { boutiqueId: BOUTIQUE_ID },
+      ] as never);
+      vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+
+      await listTournee({
+        viewer: { id: RESPONSABLE_ID, role: 'RESPONSABLE' },
+        dateISO: '2020-01-01',
+      });
+
+      expect(db.equipement.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT restrict ADMIN on an ancient dateISO (audit access)', async () => {
+      vi.mocked(db.boutique.findMany).mockResolvedValue([
+        { id: BOUTIQUE_ID },
+      ] as never);
+      vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+
+      await listTournee({
+        viewer: { id: ADMIN_ID, role: 'ADMIN' },
+        dateISO: '2020-01-01',
+      });
+
+      expect(db.equipement.findMany).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getSaisieContext', () => {
@@ -445,6 +485,44 @@ describe('[releve.service]', () => {
       expect(result).toEqual({ success: false, error: 'NOT_FOUND' });
     });
 
+    it('should expose motifAnnulation from the annule relation on a cancelled original (N-2)', async () => {
+      vi.mocked(db.releve.findUnique).mockResolvedValue({
+        id: RELEVE_ID,
+        date: new Date(),
+        creneau: 'MATIN',
+        temperature: -20,
+        alerteHorsSeuils: false,
+        commentaire: null,
+        motifAnnulation: null,
+        createdAt: new Date(),
+        equipementId: EQUIPEMENT_ID,
+        equipement: { nom: 'CGL-01', type: 'CONGELATEUR' },
+        boutiqueId: BOUTIQUE_ID,
+        boutique: { nom: 'MG Paris 11' },
+        user: { email: 'a@x.fr', name: 'A' },
+        userId: ADMIN_ID,
+        annule: {
+          id: NEW_ANNUL_ID,
+          motifAnnulation: 'Erreur de saisie verifiee',
+        },
+      } as never);
+      vi.mocked(db.boutique.findMany).mockResolvedValue([
+        { id: BOUTIQUE_ID },
+      ] as never);
+
+      const result = await getReleveById({
+        viewer: { id: ADMIN_ID, role: 'ADMIN' },
+        releveId: RELEVE_ID,
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.annule).toBe(true);
+        expect(result.data.annuleParReleveId).toBe(NEW_ANNUL_ID);
+        expect(result.data.motifAnnulation).toBe('Erreur de saisie verifiee');
+      }
+    });
+
     it('should return FORBIDDEN when viewer is not author and boutique not accessible', async () => {
       vi.mocked(db.releve.findUnique).mockResolvedValue({
         id: RELEVE_ID,
@@ -579,12 +657,22 @@ describe('[releve.service]', () => {
       if (result.success) {
         expect(result.data.annulationReleveId).toBe(NEW_ANNUL_ID);
         expect(result.data.replacementReleveId).toBeNull();
+        expect(result.data.replacementAlerteId).toBeNull();
       }
       expect(create).toHaveBeenCalledTimes(1);
       expect(update).toHaveBeenCalledWith({
         where: { id: RELEVE_ID },
         data: { annuleParId: NEW_ANNUL_ID },
       });
+
+      // N-1 : signature coherente avec la valeur stockee (commentaire null
+      // sur la ligne d'annulation, le motif est en motifAnnulation).
+      const annulationCreate = create.mock.calls[0]?.[0];
+      expect(annulationCreate?.data?.commentaire).toBeNull();
+      expect(annulationCreate?.data?.motifAnnulation).toBe(
+        'Erreur saisie verifiee'
+      );
+      expect(annulationCreate?.data?.signature).toEqual(expect.any(String));
     });
 
     it('should also create a replacement releve when provided', async () => {
@@ -607,6 +695,7 @@ describe('[releve.service]', () => {
                 equipementId: EQUIPEMENT_ID,
                 boutiqueId: BOUTIQUE_ID,
                 annuleParId: null,
+                equipement: { seuilMin: -25, seuilMax: -18 },
               }),
               create,
               update,
@@ -627,8 +716,111 @@ describe('[releve.service]', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.replacementReleveId).toBe(NEW_REPLACEMENT_ID);
+        // Replacement dans les seuils : pas d'alerte, pas d'email a dispatch.
+        expect(result.data.replacementAlerteId).toBeNull();
       }
       expect(create).toHaveBeenCalledTimes(2);
+    });
+
+    it('should create an Alerte when replacement is hors seuils with a commentaire', async () => {
+      setupResponsableScope();
+      const create = vi
+        .fn()
+        .mockResolvedValueOnce({ id: NEW_ANNUL_ID })
+        .mockResolvedValueOnce({ id: NEW_REPLACEMENT_ID });
+      const update = vi.fn().mockResolvedValue({});
+      const alerteCreate = vi.fn().mockResolvedValue({ id: 'alerte-new' });
+      vi.mocked(db.$transaction).mockImplementation(
+        async (cb: unknown) =>
+          await (cb as (tx: unknown) => Promise<unknown>)({
+            releve: {
+              findUnique: vi.fn().mockResolvedValue({
+                id: RELEVE_ID,
+                date: new Date('2026-05-26T00:00:00.000Z'),
+                creneau: 'MATIN',
+                temperature: -20,
+                alerteHorsSeuils: false,
+                equipementId: EQUIPEMENT_ID,
+                boutiqueId: BOUTIQUE_ID,
+                annuleParId: null,
+                equipement: { seuilMin: -25, seuilMax: -18 },
+              }),
+              create,
+              update,
+            },
+            alerte: { create: alerteCreate },
+          })
+      );
+
+      const result = await annulerReleve({
+        viewer: { id: RESPONSABLE_ID, role: 'RESPONSABLE' },
+        input: {
+          releveId: RELEVE_ID,
+          motif: 'Vraie valeur ré-évaluée',
+          replacement: {
+            temperature: -10,
+            commentaire: 'Releve replacement hors seuils documenté',
+          },
+        },
+        ip: null,
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.replacementReleveId).toBe(NEW_REPLACEMENT_ID);
+        // M-1 : l'alerte creee est exposee pour dispatch email post-commit.
+        expect(result.data.replacementAlerteId).toBe('alerte-new');
+      }
+      // 2 creates releve (annulation + replacement) + 1 alerte
+      expect(create).toHaveBeenCalledTimes(2);
+      expect(alerteCreate).toHaveBeenCalledTimes(1);
+      // Le replacement doit etre flagge alerteHorsSeuils=true
+      const replacementCall = create.mock.calls[1]?.[0];
+      expect(replacementCall?.data?.alerteHorsSeuils).toBe(true);
+    });
+
+    it('should return COMMENTAIRE_REQUIRED when replacement is hors seuils without commentaire', async () => {
+      setupResponsableScope();
+      const create = vi.fn();
+      const update = vi.fn();
+      vi.mocked(db.$transaction).mockImplementation(
+        async (cb: unknown) =>
+          await (cb as (tx: unknown) => Promise<unknown>)({
+            releve: {
+              findUnique: vi.fn().mockResolvedValue({
+                id: RELEVE_ID,
+                date: new Date('2026-05-26T00:00:00.000Z'),
+                creneau: 'MATIN',
+                temperature: -20,
+                alerteHorsSeuils: false,
+                equipementId: EQUIPEMENT_ID,
+                boutiqueId: BOUTIQUE_ID,
+                annuleParId: null,
+                equipement: { seuilMin: -25, seuilMax: -18 },
+              }),
+              create,
+              update,
+            },
+          })
+      );
+
+      const result = await annulerReleve({
+        viewer: { id: RESPONSABLE_ID, role: 'RESPONSABLE' },
+        input: {
+          releveId: RELEVE_ID,
+          motif: 'Erreur saisie remplacement à risque',
+          replacement: { temperature: -10 },
+        },
+        ip: null,
+      });
+
+      expect(result).toEqual({
+        success: false,
+        error: 'COMMENTAIRE_REQUIRED',
+      });
+      // L'integrite HACCP : on n'a rien insere
+      expect(create).not.toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
     });
   });
 });

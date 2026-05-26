@@ -93,8 +93,19 @@ export interface ReleveCreatedResult {
   readonly alerteId: string | null;
 }
 
-/** Resultat d'un annulerReleve : ids du releve d'annulation et du remplacement eventuel. */
+/**
+ * Resultat d'un annulerReleve.
+ *
+ * - `annulationReleveId` : id du releve d'annulation (toujours present).
+ * - `replacementReleveId` : id du releve actif de remplacement (null si
+ *   aucun remplacement n'a ete fourni).
+ * - `replacementAlerteId` : id de l'alerte creee si le remplacement est
+ *   hors seuils. `null` si pas de remplacement ou si le remplacement est
+ *   dans les seuils. Utilise par le caller pour dispatch l'email d'alerte
+ *   (RG-ALER-001) qui doit notifier toute alerte OUVERTE.
+ */
 export interface ReleveAnnulationResult {
   readonly annulationReleveId: string;
   readonly replacementReleveId: string | null;
+  readonly replacementAlerteId: string | null;
 }

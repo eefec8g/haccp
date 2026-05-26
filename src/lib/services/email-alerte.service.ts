@@ -149,6 +149,13 @@ function buildSubject(equipementNom: string, boutiqueNom: string): string {
  * Si la liste est vide, retourne success sans appeler le transport (aucun
  * destinataire = pas d'erreur metier, juste rien a faire).
  */
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Unknown error';
+}
+
 export async function sendAlerteEmail({
   recipients,
   ...fields
@@ -156,14 +163,22 @@ export async function sendAlerteEmail({
   if (recipients.length === 0) {
     return { success: true };
   }
-  const result = await sendEmail({
-    to: [...recipients],
-    subject: buildSubject(fields.equipementNom, fields.boutiqueNom),
-    html: buildAlerteEmailHtml(fields),
-    text: buildAlerteEmailText(fields),
-  });
-  if (!result.success) {
-    return { success: false, error: result.error ?? 'Unknown error' };
+  try {
+    const result = await sendEmail({
+      to: [...recipients],
+      subject: buildSubject(fields.equipementNom, fields.boutiqueNom),
+      html: buildAlerteEmailHtml(fields),
+      text: buildAlerteEmailText(fields),
+    });
+    if (!result.success) {
+      return { success: false, error: result.error ?? 'Unknown error' };
+    }
+    return { success: true };
+  } catch (error: unknown) {
+    // Best-effort : la latence email ne doit JAMAIS bloquer la saisie
+    // (ENF-1 < 10s). On encapsule un throw eventuel du transport (ex:
+    // erreur reseau imprevue) dans le Result pour que le caller
+    // fire-and-forget puisse juste logger sans crash de la requete.
+    return { success: false, error: toErrorMessage(error) };
   }
-  return { success: true };
 }

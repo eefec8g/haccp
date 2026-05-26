@@ -1,6 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 
-const IMMUTABILITY_ERROR =
+/**
+ * Message d'erreur leve par le middleware d'immutabilite Releve
+ * (RG-IMMU-001). Exporte pour permettre aux tests d'assert la
+ * propagation exacte sans dupliquer la string.
+ */
+export const IMMUTABILITY_ERROR =
   "Operation interdite : la table Releve est immuable (HACCP). Creez un releve d'annulation.";
 
 /**
@@ -20,7 +25,13 @@ const ALLOWED_RELEVE_UPDATE_FIELDS: ReadonlySet<string> = new Set([
   'annuleParId',
 ]);
 
-function isAnnulationOnlyUpdate(data: unknown): boolean {
+/**
+ * Exporte pour test unitaire (`prisma.test.ts`). Determine si un payload
+ * `data` represente l'unique mutation autorisee (set annuleParId -> uuid).
+ * Toute autre forme (champ different, valeur null/empty, mix) retourne
+ * `false` et doit etre rejetee.
+ */
+export function isAnnulationOnlyUpdate(data: unknown): boolean {
   if (!data || typeof data !== 'object') {
     return false;
   }

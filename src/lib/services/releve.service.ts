@@ -24,6 +24,7 @@ import { computeReleveSignature } from '@/lib/signature';
 import { buildPaginated } from '@/lib/utils/pagination';
 import {
   getRecentDaysRange,
+  isWithinRecentDays,
   parseISODateUtc,
   todayParisISO,
 } from '@/lib/utils/dates';
@@ -122,6 +123,18 @@ export async function listTournee({
   dateISO,
   boutiqueId,
 }: ListTourneeArgs): Promise<readonly TourneeEquipementCard[]> {
+  // RG-LECT-001 : un SALARIE ne peut consulter qu'une tournee dans la
+  // fenetre `DAYS_RECENT_HISTORY` (7j). RESPONSABLE/ADMIN gardent l'acces
+  // complet (use-case audit historique). Fallback vide = symetrique avec
+  // "scope vide" (le caller affiche un etat "aucune tournee").
+  if (
+    viewer.role === 'SALARIE' &&
+    dateISO &&
+    !isWithinRecentDays(dateISO, DAYS_RECENT_HISTORY)
+  ) {
+    return [];
+  }
+
   const accessible = await getAccessibleBoutiqueIds(viewer);
   if (accessible.length === 0) {
     return [];
@@ -175,6 +188,12 @@ interface GetSaisieContextArgs {
   readonly equipementId: string;
   readonly creneau: Creneau;
   readonly dateISO?: string;
+  /**
+   * Optimisation : si le caller dispose deja des boutiqueIds en session
+   * (JWT), il peut les passer ici pour court-circuiter un round-trip
+   * Prisma. Sans valeur, fallback sur `getAccessibleBoutiqueIds`.
+   */
+  readonly viewerBoutiqueIds?: readonly string[];
 }
 
 /**
@@ -190,8 +209,10 @@ export async function getSaisieContext({
   equipementId,
   creneau,
   dateISO,
+  viewerBoutiqueIds,
 }: GetSaisieContextArgs): Promise<Result<SaisieContext, ReleveError>> {
-  const accessible = await getAccessibleBoutiqueIds(viewer);
+  const accessible =
+    viewerBoutiqueIds ?? (await getAccessibleBoutiqueIds(viewer));
   const targetDateISO = dateISO ?? todayParisISO();
   const date = parseISODateUtc(targetDateISO);
 
@@ -311,6 +332,12 @@ async function insertReleve({
 interface CreateReleveArgs {
   readonly viewer: ViewerContext;
   readonly input: CreateReleveServiceInput;
+  /**
+   * Optimisation : si le caller dispose deja des boutiqueIds en session
+   * (JWT), il peut les passer ici pour court-circuiter un round-trip
+   * Prisma. Sans valeur, fallback sur `getAccessibleBoutiqueIds`.
+   */
+  readonly viewerBoutiqueIds?: readonly string[];
 }
 
 /**
@@ -326,8 +353,10 @@ interface CreateReleveArgs {
 export async function createReleve({
   viewer,
   input,
+  viewerBoutiqueIds,
 }: CreateReleveArgs): Promise<Result<ReleveCreatedResult, ReleveError>> {
-  const accessible = await getAccessibleBoutiqueIds(viewer);
+  const accessible =
+    viewerBoutiqueIds ?? (await getAccessibleBoutiqueIds(viewer));
   const equipement = await db.equipement.findUnique({
     where: { id: input.equipementId },
     select: {
@@ -422,13 +451,22 @@ interface ReleveDbRow {
   readonly boutiqueId: string;
   readonly boutique: { readonly nom: string };
   readonly user: { readonly email: string; readonly name: string };
-  readonly annule: { readonly id: string } | null;
+  readonly annule: {
+    readonly id: string;
+    readonly motifAnnulation: string | null;
+  } | null;
 }
 
 function mapReleveRow(
   row: ReleveDbRow,
   options: { readonly exposeSalarie: boolean }
 ): ReleveListItem {
+  // N-2 : sur un releve ORIGINAL annule, `row.motifAnnulation` est null
+  // (le motif est porte par la ligne d'ANNULATION, qui pointe vers
+  // l'original via la relation `annule`). On expose le motif depuis la
+  // relation si dispo : audit DDPP veut voir le motif sur l'original.
+  // Pour la ligne d'annulation elle-meme, on retombe sur son propre
+  // `motifAnnulation` (porte directement).
   return {
     id: row.id,
     date: row.date,
@@ -445,7 +483,7 @@ function mapReleveRow(
     salarieName: options.exposeSalarie ? row.user.name : null,
     annule: row.annule !== null,
     annuleParReleveId: row.annule?.id ?? null,
-    motifAnnulation: row.motifAnnulation,
+    motifAnnulation: row.annule?.motifAnnulation ?? row.motifAnnulation,
     createdAt: row.createdAt,
   };
 }
@@ -454,7 +492,7 @@ const RELEVE_LIST_INCLUDE = {
   equipement: { select: { nom: true, type: true } },
   boutique: { select: { nom: true } },
   user: { select: { email: true, name: true } },
-  annule: { select: { id: true } },
+  annule: { select: { id: true, motifAnnulation: true } },
 } as const;
 
 interface ListRecentsArgs {
@@ -581,6 +619,7 @@ export async function annulerReleve({
           equipementId: true,
           boutiqueId: true,
           annuleParId: true,
+          equipement: { select: { seuilMin: true, seuilMax: true } },
         },
       });
       if (!original) {
@@ -593,6 +632,32 @@ export async function annulerReleve({
         throw new ReleveServiceError('FORBIDDEN');
       }
 
+      // Verifie l'alerte du replacement AVANT d'inserer quoi que ce soit
+      // (integrite HACCP, RG-ALER-001) : un responsable ne peut pas
+      // "blanchir" une temperature dangereuse en l'inserant comme remplacement.
+      const replacementAlerte = input.replacement
+        ? isHorsSeuils(
+            input.replacement.temperature,
+            original.equipement.seuilMin,
+            original.equipement.seuilMax
+          )
+        : false;
+      if (
+        input.replacement &&
+        replacementAlerte &&
+        (!input.replacement.commentaire ||
+          input.replacement.commentaire.length < COMMENTAIRE_MIN_CHARS)
+      ) {
+        throw new ReleveServiceError('COMMENTAIRE_REQUIRED');
+      }
+
+      // N-1 : la signature doit refleter EXACTEMENT les valeurs stockees
+      // pour que `verifyReleveSignature` round-trip avec succes.
+      // Or la ligne d'annulation a `commentaire: null` (le motif est
+      // stocke dans `motifAnnulation`, colonne distincte). On passe donc
+      // `commentaire: null` ici. Le motif n'est pas couvert par la
+      // signature, mais il est immuable de toute facon (le middleware
+      // Prisma whitelist uniquement `annuleParId` sur UPDATE).
       const annulationSignature = computeReleveSignature({
         userId: viewer.id,
         serverTimestamp,
@@ -600,7 +665,7 @@ export async function annulerReleve({
         equipementId: original.equipementId,
         creneau: original.creneau,
         temperature: original.temperature,
-        commentaire: input.motif,
+        commentaire: null,
       });
 
       // 1. Cree le releve "annulation" (porte le motif).
@@ -631,6 +696,7 @@ export async function annulerReleve({
 
       // 3. Cree le remplacement optionnel (vraie valeur).
       let replacementReleveId: string | null = null;
+      let replacementAlerteId: string | null = null;
       if (input.replacement) {
         const replacementSignature = computeReleveSignature({
           userId: viewer.id,
@@ -647,7 +713,7 @@ export async function annulerReleve({
             creneau: original.creneau,
             temperature: input.replacement.temperature,
             commentaire: input.replacement.commentaire ?? null,
-            alerteHorsSeuils: false,
+            alerteHorsSeuils: replacementAlerte,
             signature: replacementSignature,
             ip,
             equipementId: original.equipementId,
@@ -657,11 +723,25 @@ export async function annulerReleve({
           select: { id: true },
         });
         replacementReleveId = replacement.id;
+
+        // Si le replacement est lui-meme hors seuils, l'alerte HACCP
+        // associee est creee DANS la meme transaction (RG-ALER-001) :
+        // l'integrite est preservee meme en cas d'echec ulterieur.
+        // On expose l'id au caller (M-1) pour dispatch email post-commit
+        // (le service ne fait pas de side-effect reseau, decision #2).
+        if (replacementAlerte) {
+          const alerte = await createAlerte({
+            releveId: replacement.id,
+            tx: tx as unknown as Parameters<typeof createAlerte>[0]['tx'],
+          });
+          replacementAlerteId = alerte.id;
+        }
       }
 
       return {
         annulationReleveId: annulation.id,
         replacementReleveId,
+        replacementAlerteId,
       } satisfies ReleveAnnulationResult;
     });
     return { success: true, data: result };

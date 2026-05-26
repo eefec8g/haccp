@@ -93,6 +93,27 @@ export function sanitizeEmailSubject(value: string): string {
   return value.replace(/[\r\n]/g, '');
 }
 
+/**
+ * RGPD A09 : les emails sont des PII identifiables. On loggue uniquement
+ * une forme redactee :
+ *   - `john@maison-givre.fr` -> `j***@maison-givre.fr`
+ *   - `[a@x.fr, b@x.fr]`     -> `[2 recipients]`
+ *
+ * Le payload reel envoye via SMTP ou Resend n'est PAS modifie : seule la
+ * sortie logger est masquee.
+ */
+export function redactEmail(value: string | readonly string[]): string {
+  if (Array.isArray(value)) {
+    return `[${value.length} recipients]`;
+  }
+  const single = value as string;
+  const atIndex = single.indexOf('@');
+  if (atIndex <= 0) {
+    return '***';
+  }
+  return `${single[0]}***${single.slice(atIndex)}`;
+}
+
 async function sendViaResendApi(
   options: EmailOptions
 ): Promise<SendEmailResult> {
@@ -143,7 +164,7 @@ async function sendViaSmtp(options: EmailOptions): Promise<SendEmailResult> {
   });
 
   logger.info('Email sent via SMTP', {
-    to: options.to,
+    to: redactEmail(options.to),
     messageId: info.messageId,
   });
 
@@ -168,7 +189,7 @@ export async function sendEmail(
     if (USE_RESEND_API) {
       const result = await sendViaResendApi(options);
       logger.info('Email sent via Resend API', {
-        to: options.to,
+        to: redactEmail(options.to),
         messageId: result.messageId,
       });
       return result;
@@ -177,7 +198,10 @@ export async function sendEmail(
     return await sendViaSmtp(options);
   } catch (error: unknown) {
     const message = extractErrorMessage(error, 'Failed to send email');
-    logger.error('Email sending failed', { to: options.to, error: message });
+    logger.error('Email sending failed', {
+      to: redactEmail(options.to),
+      error: message,
+    });
 
     return {
       success: false,

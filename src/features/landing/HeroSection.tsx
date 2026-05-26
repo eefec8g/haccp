@@ -1,10 +1,10 @@
-import Image from 'next/image';
 import {
   BRAND_NAME,
   BRAND_TAGLINE,
   BRAND_HERITAGE,
 } from '@/lib/constants/brand';
 import { BrandDivider } from './BrandDivider';
+import { HeroBackground } from './HeroBackground';
 
 /**
  * Hero principal de la vitrine Maison Givre (Server Component).
@@ -29,16 +29,7 @@ export function HeroSection() {
       className="relative flex min-h-screen flex-col items-center overflow-hidden bg-mg-noir pt-32 pb-24 lg:pt-40"
       data-testid="landing-hero"
     >
-      <Image
-        src="/illustrations/boutique-interieur.jpg"
-        alt="Interieur de la boutique Maison Givre"
-        fill
-        priority
-        quality={85}
-        sizes="100vw"
-        className="absolute inset-0 z-0 object-cover object-center"
-        style={{ filter: 'grayscale(20%) brightness(0.55)' }}
-      />
+      <HeroBackground />
       <div aria-hidden="true" className="absolute inset-0 z-10 bg-mg-noir/40" />
 
       <div className="relative z-20 mx-auto flex max-w-3xl flex-col items-center px-6 text-center lg:px-8">

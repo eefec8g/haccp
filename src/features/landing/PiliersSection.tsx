@@ -1,5 +1,10 @@
 import { BRAND_PILLARS, type PillarIconKey } from '@/lib/constants/brand';
 import { BrandDivider } from './BrandDivider';
+import { FadeInSection } from './FadeInSection';
+
+/** Decalage entre les piliers : titre, puis grille (subtile cascade). */
+const TITLE_DELAY_MS = 0;
+const GRID_DELAY_MS = 200;
 
 /**
  * Section "Savoir-faire" / 4 piliers de marque (Server Component).
@@ -59,7 +64,7 @@ export function PiliersSection() {
       data-testid="landing-piliers"
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="text-center">
+        <FadeInSection className="text-center" delay={TITLE_DELAY_MS}>
           <h2
             id="piliers-title"
             className="text-2xl font-light tracking-[0.3em] text-mg-ivoire sm:text-3xl"
@@ -73,45 +78,47 @@ export function PiliersSection() {
             Notre engagement repose sur quatre piliers transmis de generation en
             generation, depuis l&apos;atelier fondateur de 1933.
           </p>
-        </div>
+        </FadeInSection>
 
-        <ul
-          className="mt-20 grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8"
-          role="list"
-        >
-          {BRAND_PILLARS.map((pillar) => (
-            <li
-              key={pillar.id}
-              className="flex flex-col items-center text-center"
-              data-testid={`pillar-${pillar.id}`}
-            >
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-full border border-mg-or"
-                style={{ borderWidth: '1.5px' }}
+        <FadeInSection delay={GRID_DELAY_MS}>
+          <ul
+            className="mt-20 grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8"
+            role="list"
+          >
+            {BRAND_PILLARS.map((pillar) => (
+              <li
+                key={pillar.id}
+                className="flex flex-col items-center text-center"
+                data-testid={`pillar-${pillar.id}`}
               >
-                <svg
-                  className="h-7 w-7 text-mg-or"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  role="img"
-                  aria-label={pillar.title}
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-full border border-mg-or"
+                  style={{ borderWidth: '1.5px' }}
                 >
-                  {PILLAR_ICONS[pillar.iconKey]}
-                </svg>
-              </div>
-              <h3 className="mt-8 text-xs font-medium tracking-[0.25em] text-mg-ivoire uppercase">
-                {pillar.title}
-              </h3>
-              <p className="mt-4 max-w-xs text-sm leading-relaxed font-light text-mg-ivoire/65">
-                {pillar.description}
-              </p>
-            </li>
-          ))}
-        </ul>
+                  <svg
+                    className="h-7 w-7 text-mg-or"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    role="img"
+                    aria-label={pillar.title}
+                  >
+                    {PILLAR_ICONS[pillar.iconKey]}
+                  </svg>
+                </div>
+                <h3 className="mt-8 text-xs font-medium tracking-[0.25em] text-mg-ivoire uppercase">
+                  {pillar.title}
+                </h3>
+                <p className="mt-4 max-w-xs text-sm leading-relaxed font-light text-mg-ivoire/65">
+                  {pillar.description}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </FadeInSection>
       </div>
     </section>
   );

@@ -1,9 +1,18 @@
 import Link from 'next/link';
-import type { Route } from 'next';
+import type { Metadata, Route } from 'next';
 import { AuthLeftPanel } from '@/components/features/auth/AuthLeftPanel';
 import { BRAND_NAME } from '@/lib/constants/brand';
 
 const HOME_HREF = '/' as Route;
+
+/**
+ * Empeche l'indexation des pages auth par les moteurs de recherche :
+ * elles ne contiennent pas de contenu public et exposeraient des
+ * surfaces d'authentification dans la SERP.
+ */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 /**
  * Layout des pages auth (Server Component).

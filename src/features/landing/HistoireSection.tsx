@@ -6,7 +6,12 @@ import {
   BRAND_HISTORY_PARAGRAPHS,
 } from '@/lib/constants/brand';
 import { BrandDivider } from './BrandDivider';
+import { FadeInSection } from './FadeInSection';
 import { FleurDeLys } from './FleurDeLys';
+
+/** Delais des deux colonnes : photo immediate, texte legerement decale. */
+const PHOTO_DELAY_MS = 0;
+const TEXT_DELAY_MS = 150;
 
 /**
  * Section "Notre histoire" (Server Component).
@@ -45,19 +50,24 @@ export function HistoireSection() {
         </div>
 
         <div className="mt-16 grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-24">
-          <div className="relative aspect-[4/5] w-full overflow-hidden border border-mg-or/20">
-            <Image
-              src="/illustrations/histoire-jean-marc.jpg"
-              alt="Cornet Maison Givre devant le tableau d'histoire signe Jean-Marc, glacier artisan depuis 1933"
-              fill
-              quality={85}
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover object-center"
-              style={{ filter: 'grayscale(10%) brightness(0.95)' }}
-            />
-          </div>
+          <FadeInSection delay={PHOTO_DELAY_MS}>
+            <div className="relative aspect-[4/5] w-full overflow-hidden border border-mg-or/20">
+              <Image
+                src="/illustrations/histoire-jean-marc.jpg"
+                alt="Cornet Maison Givre devant le tableau d'histoire signe Jean-Marc, glacier artisan depuis 1933"
+                fill
+                quality={85}
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover object-center"
+                style={{ filter: 'grayscale(10%) brightness(0.95)' }}
+              />
+            </div>
+          </FadeInSection>
 
-          <div className="flex flex-col justify-center">
+          <FadeInSection
+            delay={TEXT_DELAY_MS}
+            className="flex flex-col justify-center"
+          >
             <div className="space-y-3 text-lg leading-relaxed font-light text-mg-noir sm:text-xl">
               <p>{BRAND_HISTORY_INTRO.line1}</p>
               <p>{BRAND_HISTORY_INTRO.line2}</p>
@@ -73,7 +83,7 @@ export function HistoireSection() {
               <p>{BRAND_HISTORY_OUTRO.line1}</p>
               <p>{BRAND_HISTORY_OUTRO.line2}</p>
             </div>
-          </div>
+          </FadeInSection>
         </div>
 
         <div className="mt-20 flex flex-col items-center">

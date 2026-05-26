@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import type { Route } from 'next';
+import type { UserRole } from '@prisma/client';
+import { auth } from '@/lib/auth';
+import { POST_LOGIN_REDIRECT } from '@/lib/constants/auth';
 import {
   BRAND_NAME,
   BRAND_TAGLINE,
@@ -9,6 +12,33 @@ import {
 import { FOOTER_BRAND_TAGLINE, FOOTER_LINK_GROUPS } from './constants';
 import { BrandDivider } from './BrandDivider';
 
+interface FooterCta {
+  readonly label: string;
+  readonly href: Route;
+  readonly testid: string;
+}
+
+/**
+ * Resout le CTA contextuel selon l'etat de session.
+ * Meme logique que `LandingHeader` / `CTASection` pour eviter qu'un
+ * utilisateur authentifie voie "Espace pro" en footer pendant que le
+ * header affiche "Acceder a mon espace" (incoherence visuelle).
+ */
+function resolveFooterCta(role: UserRole | undefined): FooterCta {
+  if (role && role in POST_LOGIN_REDIRECT) {
+    return {
+      label: 'Acceder a mon espace',
+      href: POST_LOGIN_REDIRECT[role] as Route,
+      testid: 'landing-footer-cta-app',
+    };
+  }
+  return {
+    label: 'Espace pro',
+    href: '/login' as Route,
+    testid: 'landing-footer-cta-pro',
+  };
+}
+
 /**
  * Footer public de la vitrine Maison Givre (Server Component).
  *
@@ -16,12 +46,15 @@ import { BrandDivider } from './BrandDivider';
  *  - Colonne marque : wordmark + tagline courte
  *  - Colonnes navigation, legal, reseaux sociaux
  *  - Mention copyright "1933-AAAA Maison Givre - Tous droits reserves"
- *  - Petit lien discret "Espace pro" vers /login
+ *  - Petit lien discret "Espace pro" (ou "Acceder a mon espace") vers /login
  *
  * La date courante est calculee cote serveur (no hydration mismatch).
  */
-export function LandingFooter() {
+export async function LandingFooter() {
   const currentYear = new Date().getFullYear();
+  const session = await auth();
+  const role = session?.user?.role as UserRole | undefined;
+  const cta = resolveFooterCta(role);
 
   return (
     <footer
@@ -105,11 +138,11 @@ export function LandingFooter() {
             <span className="text-mg-or">·</span>
           </p>
           <Link
-            href={'/login' as Route}
+            href={cta.href}
             className="text-[10px] font-medium tracking-[0.3em] text-mg-noir/60 uppercase transition-colors hover:text-mg-or"
-            data-testid="landing-footer-cta-pro"
+            data-testid={cta.testid}
           >
-            Espace pro {String.fromCharCode(8594)}
+            {cta.label} {String.fromCharCode(8594)}
           </Link>
         </div>
       </div>

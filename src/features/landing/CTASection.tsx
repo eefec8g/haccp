@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { POST_LOGIN_REDIRECT } from '@/lib/constants/auth';
 import { BRAND_BOUTIQUES, BRAND_CONTACT } from '@/lib/constants/brand';
 import { BrandDivider } from './BrandDivider';
+import { FadeInSection } from './FadeInSection';
 
 interface ProCta {
   readonly label: string;
@@ -66,7 +67,7 @@ export async function CTASection() {
       />
       <div aria-hidden="true" className="absolute inset-0 z-10 bg-mg-noir/75" />
 
-      <div className="relative z-20 mx-auto max-w-3xl px-6 text-center lg:px-8">
+      <FadeInSection className="relative z-20 mx-auto max-w-3xl px-6 text-center lg:px-8">
         <h2
           id="contact-title"
           className="text-2xl font-light tracking-[0.3em] text-mg-ivoire sm:text-3xl"
@@ -138,7 +139,7 @@ export async function CTASection() {
             </span>
           </Link>
         </div>
-      </div>
+      </FadeInSection>
     </section>
   );
 }

@@ -1,5 +1,14 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AdminLayout } from '@/components/features/admin/AdminLayout';
+
+/**
+ * Empeche l'indexation des routes /admin par les moteurs de recherche :
+ * elles sont protegees par auth() et ne presentent aucun contenu public.
+ */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 /**
  * Layout des routes `/admin/*`.

@@ -1,5 +1,6 @@
 import { BRAND_KEYWORDS, BRAND_STORY } from '@/lib/constants/brand';
 import { BrandDivider } from './BrandDivider';
+import { FadeInSection } from './FadeInSection';
 
 /**
  * Section "Valeurs" (Server Component).
@@ -21,7 +22,7 @@ export function ValeursSection() {
       className="bg-mg-ivoire py-28 lg:py-40"
       data-testid="landing-valeurs"
     >
-      <div className="mx-auto max-w-4xl px-6 text-center lg:px-8">
+      <FadeInSection className="mx-auto max-w-4xl px-6 text-center lg:px-8">
         <h2
           id="valeurs-title"
           className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 text-xl font-light tracking-[0.3em] text-mg-noir sm:text-2xl lg:text-3xl"
@@ -45,7 +46,7 @@ export function ValeursSection() {
         <p className="mx-auto mt-14 max-w-2xl text-base leading-relaxed font-light text-mg-noir/75 sm:text-lg">
           {BRAND_STORY}
         </p>
-      </div>
+      </FadeInSection>
     </section>
   );
 }

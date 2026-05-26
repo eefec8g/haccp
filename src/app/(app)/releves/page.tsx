@@ -1,77 +1,63 @@
 import type { Metadata } from 'next';
-import type { Route } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { LogoutButton } from '@/components/features/auth/LogoutButton';
+import { listTournee } from '@/lib/services/releve.service';
+import { tourneeQuerySchema } from '@/lib/validations/releve';
+import { getCurrentCreneau, todayParisISO } from '@/lib/utils/dates';
+import { TourneeHeader } from '@/components/features/releves/TourneeHeader';
+import { TourneeGrid } from '@/components/features/releves/TourneeGrid';
 
 export const metadata: Metadata = {
-  title: 'Mes releves - HACCP Maison Givre',
+  title: 'Ma tournee - HACCP Maison Givre',
+  robots: { index: false, follow: false },
 };
 
+interface RelevesPageSearchParams {
+  readonly date?: string;
+}
+
+interface RelevesPageProps {
+  readonly searchParams: Promise<RelevesPageSearchParams>;
+}
+
 /**
- * Page placeholder des releves (charte Maison Givre).
+ * Page tournee du jour (US-REL-001).
  *
- * Le module de saisie (US-REL-001 / US-REL-002) sera implemente dans le
- * sprint v1.0. Cette page affiche un placeholder coherent avec la charte
- * et permet aux roles ADMIN de revenir vers l'espace admin.
+ * Server Component async :
+ *   - Auth check : redirect /login si pas de session (defense en
+ *     profondeur, le middleware filtre deja en amont).
+ *   - Parse optionnel de `?date=YYYY-MM-DD` (sinon today Europe/Paris).
+ *   - Charge la tournee via le service (scope boutiques par role).
+ *   - Calcule le creneau courant (heure Europe/Paris).
+ *   - Rend TourneeHeader + TourneeGrid (aucun fetch client-side).
+ *
+ * Accessible aux 3 roles : SALARIE (sa boutique), RESPONSABLE
+ * (toutes ses boutiques), ADMIN (toutes boutiques actives).
  */
-export default async function RelevesPage() {
+export default async function RelevesPage({ searchParams }: RelevesPageProps) {
   const session = await auth();
   if (!session?.user) {
     redirect('/login');
   }
 
-  const isAdmin = session.user.role === 'ADMIN';
-  const backHref: Route = isAdmin ? ('/admin' as Route) : ('/' as Route);
-  const backLabel = isAdmin ? 'Espace admin' : 'Accueil';
+  const raw = await searchParams;
+  const parsed = tourneeQuerySchema.safeParse({ date: raw.date });
+  const dateISO =
+    parsed.success && parsed.data.date ? parsed.data.date : todayParisISO();
+
+  const viewer = { id: session.user.id, role: session.user.role };
+  const cards = await listTournee({ viewer, dateISO });
+  const currentCreneau = getCurrentCreneau();
 
   return (
-    <main className="min-h-screen bg-mg-ivoire">
-      <header
-        className="flex flex-col gap-4 border-b border-mg-noir/10 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-10"
-        data-testid="releves-header"
-      >
-        <div>
-          <p className="text-[10px] font-light uppercase tracking-[0.3em] text-mg-or">
-            Maison Givre
-          </p>
-          <p className="mt-1 text-sm font-light text-mg-noir/60">
-            {session.user.name}
-            <span className="ml-2 text-mg-noir/40">- {session.user.role}</span>
-          </p>
-        </div>
-        <LogoutButton />
-      </header>
-
-      <section
-        className="mx-auto max-w-3xl px-6 py-16 text-center sm:py-24"
-        data-testid="releves-placeholder"
-      >
-        <h1 className="text-2xl font-light uppercase tracking-[0.4em] text-mg-noir sm:text-3xl">
-          Mes releves
-        </h1>
-        <span
-          aria-hidden="true"
-          className="mx-auto mt-6 inline-block h-px w-16 bg-mg-or"
-        />
-        <p className="mt-8 text-sm font-light leading-relaxed text-mg-noir/60">
-          Module de saisie des temperatures - bientot disponible.
-        </p>
-        <p className="mt-3 text-xs font-light italic text-mg-noir/40">
-          La grille equipements x creneaux (matin / midi / soir) sera mise en
-          service avec le sprint v1.0.
-        </p>
-
-        <div className="mt-12">
-          <Link
-            href={backHref}
-            data-testid="releves-back-link"
-            className="inline-flex items-center justify-center border border-mg-or/40 bg-transparent px-8 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-or transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire"
-          >
-            Retour - {backLabel}
-          </Link>
-        </div>
+    <main className="min-h-screen bg-mg-ivoire" data-testid="releves-page">
+      <TourneeHeader
+        dateISO={dateISO}
+        userName={session.user.name ?? session.user.email ?? 'Utilisateur'}
+        userRole={session.user.role}
+      />
+      <section className="px-6 py-10 sm:px-10">
+        <TourneeGrid cards={cards} currentCreneau={currentCreneau} />
       </section>
     </main>
   );

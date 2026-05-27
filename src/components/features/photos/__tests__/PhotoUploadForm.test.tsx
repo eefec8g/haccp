@@ -24,7 +24,7 @@ interface UploadTestState {
   readonly code?: string;
   readonly retryAfterSeconds?: number;
   readonly photoId?: string;
-  readonly signedUrl?: string;
+  readonly imageUrl?: string;
 }
 
 const { mockState, useActionStateMock } = vi.hoisted(() => {

@@ -19,7 +19,7 @@ import { PhotoCard } from '../PhotoCard';
  *   - metadata visibles (auteur, date, taille),
  *   - alt text accessible avec auteur + date,
  *   - le bouton supprimer apparait si canDelete=true et seulement alors,
- *   - signedUrl injectee comme src.
+ *   - imageUrl injectee comme src.
  */
 
 const ALERTE_ID = '22222222-2222-4222-8222-222222222222';
@@ -34,7 +34,7 @@ function buildPhoto(overrides: Partial<PhotoListItem> = {}): PhotoListItem {
     uploadedByName: 'Lea',
     uploadedByUserId: 'u1',
     createdAt: new Date('2026-05-27T08:30:00.000Z'),
-    signedUrl: 'https://blob.example.com/photos/abc.jpg',
+    imageUrl: 'https://blob.example.com/photos/abc.jpg',
     ...overrides,
   };
 }
@@ -62,10 +62,10 @@ describe('[Photos] PhotoCard', () => {
     );
   });
 
-  it('should set the signedUrl as image src', () => {
+  it('should set the imageUrl as image src', () => {
     const html = renderToStaticMarkup(
       <PhotoCard
-        photo={buildPhoto({ signedUrl: 'https://cdn.test/foo.jpg' })}
+        photo={buildPhoto({ imageUrl: 'https://cdn.test/foo.jpg' })}
         canDelete={false}
         alerteId={ALERTE_ID}
       />

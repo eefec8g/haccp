@@ -312,7 +312,7 @@ describe('[photo.service.uploadPhotoToAlerte]', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.id).toBe(PHOTO_ID);
-      expect(result.data.signedUrl).toBe('https://blob.example/photos/k.jpg');
+      expect(result.data.imageUrl).toBe('https://blob.example/photos/k.jpg');
     }
     expect(putMock).toHaveBeenCalledTimes(1);
     expect(createSpy).toHaveBeenCalledWith(
@@ -379,7 +379,7 @@ describe('[photo.service.deletePhotoFromAlerte]', () => {
     expect(db.photo.findUnique).not.toHaveBeenCalled();
   });
 
-  it('should return ALERTE_NOT_FOUND when the photo does not exist', async () => {
+  it('should return PHOTO_NOT_FOUND when the photo does not exist', async () => {
     vi.mocked(canManageAlertes).mockReturnValue(true);
     vi.mocked(db.photo.findUnique).mockResolvedValue(null as never);
 
@@ -388,16 +388,17 @@ describe('[photo.service.deletePhotoFromAlerte]', () => {
       photoId: PHOTO_ID,
     });
 
-    expect(result).toEqual({ success: false, error: 'ALERTE_NOT_FOUND' });
+    expect(result).toEqual({ success: false, error: 'PHOTO_NOT_FOUND' });
   });
 
-  it('should return ALERTE_NOT_FOUND when the photo boutique is outside scope', async () => {
+  it('should return PHOTO_NOT_FOUND when the photo boutique is outside scope', async () => {
     vi.mocked(canManageAlertes).mockReturnValue(true);
     vi.mocked(db.photo.findUnique).mockResolvedValue({
       id: PHOTO_ID,
       storageKey: 'photos/x/k.jpg',
       alerteId: ALERTE_ID,
       filename: 'a.jpg',
+      mimeType: 'image/jpeg',
       alerte: { releve: { boutiqueId: 'b-foreign' } },
     } as never);
     vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
@@ -407,7 +408,7 @@ describe('[photo.service.deletePhotoFromAlerte]', () => {
       photoId: PHOTO_ID,
     });
 
-    expect(result).toEqual({ success: false, error: 'ALERTE_NOT_FOUND' });
+    expect(result).toEqual({ success: false, error: 'PHOTO_NOT_FOUND' });
   });
 
   it('should delete, audit (without storageKey) and remove the blob on happy path', async () => {
@@ -417,6 +418,7 @@ describe('[photo.service.deletePhotoFromAlerte]', () => {
       storageKey: 'photos/x/k.jpg',
       alerteId: ALERTE_ID,
       filename: 'a.jpg',
+      mimeType: 'image/jpeg',
       alerte: { releve: { boutiqueId: BOUTIQUE_ID } },
     } as never);
     vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
@@ -450,6 +452,7 @@ describe('[photo.service.deletePhotoFromAlerte]', () => {
       storageKey: 'photos/x/k.jpg',
       alerteId: ALERTE_ID,
       filename: 'a.jpg',
+      mimeType: 'image/jpeg',
       alerte: { releve: { boutiqueId: BOUTIQUE_ID } },
     } as never);
     vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
@@ -466,7 +469,7 @@ describe('[photo.service.deletePhotoFromAlerte]', () => {
 });
 
 describe('[photo.service.listPhotosForAlerte]', () => {
-  it('should reuse getAlerteById for RESPONSABLE and return mapped photos with blobUrl as signedUrl', async () => {
+  it('should reuse getAlerteById for RESPONSABLE and return mapped photos with blobUrl as imageUrl', async () => {
     vi.mocked(canManageAlertes).mockReturnValue(true);
     vi.mocked(getAlerteById).mockResolvedValue({
       success: true,
@@ -498,7 +501,7 @@ describe('[photo.service.listPhotosForAlerte]', () => {
         id: PHOTO_ID,
         mimeType: 'image/jpeg',
         uploadedByName: 'Lea',
-        signedUrl: 'https://blob.example/photos/x/k.jpg',
+        imageUrl: 'https://blob.example/photos/x/k.jpg',
       });
     }
     expect(getAlerteById).toHaveBeenCalledWith({

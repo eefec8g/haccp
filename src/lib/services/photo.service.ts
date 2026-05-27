@@ -314,7 +314,7 @@ async function finalizePhotoUpload(
     }
     return {
       success: true,
-      data: { id: persisted.data.id, signedUrl: args.blobUrl },
+      data: { id: persisted.data.id, imageUrl: args.blobUrl },
     };
   } catch (error) {
     await safeDeleteBlob(args.storageKey, 'upload-rollback');
@@ -332,13 +332,79 @@ const INTERNAL_ERROR: Result<never, PhotoError> = {
   error: 'INTERNAL',
 };
 
+interface ScopedPhoto {
+  readonly id: string;
+  readonly storageKey: string;
+  readonly alerteId: string;
+  readonly filename: string;
+  readonly mimeType: string;
+}
+
+interface LoadPhotoWithScopeArgs {
+  readonly viewer: SessionUser;
+  readonly photoId: string;
+}
+
+/**
+ * Charge une photo + verifie son scope boutique (anti-enum).
+ *
+ * Symetrique avec `resolveAlerteScopeForUpload` mais pour une `Photo` :
+ *   - `null` ou hors scope -> `PHOTO_NOT_FOUND` (jamais `FORBIDDEN`, pour
+ *     ne pas reveler l'existence de la ressource a un viewer non autorise).
+ *   - sinon, retourne le `ScopedPhoto` projete + son `boutiqueId`.
+ *
+ * Le select inclut `mimeType` pour permettre aux callers d'enrichir
+ * leur audit log sans round-trip DB supplementaire.
+ */
+async function loadPhotoWithScope({
+  viewer,
+  photoId,
+}: LoadPhotoWithScopeArgs): Promise<
+  Result<
+    { readonly photo: ScopedPhoto; readonly boutiqueId: string },
+    PhotoError
+  >
+> {
+  const row = await db.photo.findUnique({
+    where: { id: photoId },
+    select: {
+      id: true,
+      storageKey: true,
+      alerteId: true,
+      filename: true,
+      mimeType: true,
+      alerte: { select: { releve: { select: { boutiqueId: true } } } },
+    },
+  });
+  if (!row) {
+    return { success: false, error: 'PHOTO_NOT_FOUND' };
+  }
+  const accessible = await getAccessibleBoutiqueIds(viewer);
+  const boutiqueId = row.alerte.releve.boutiqueId;
+  if (!accessible.includes(boutiqueId)) {
+    return { success: false, error: 'PHOTO_NOT_FOUND' };
+  }
+  return {
+    success: true,
+    data: {
+      photo: {
+        id: row.id,
+        storageKey: row.storageKey,
+        alerteId: row.alerteId,
+        filename: row.filename,
+        mimeType: row.mimeType,
+      },
+      boutiqueId,
+    },
+  };
+}
+
 /**
  * Supprime une photo (US-PHO-001 - role RESPONSABLE/ADMIN uniquement).
  *
  * Pipeline :
  *   1. Guard role (`canManageAlertes` = RESPONSABLE/ADMIN).
- *   2. Charge la photo + scope (boutiqueId de l'alerte). NOT_FOUND si
- *      hors scope (anti-enum).
+ *   2. `loadPhotoWithScope` : NOT_FOUND si hors scope (anti-enum).
  *   3. DELETE Photo + logAudit en transaction (atomique).
  *   4. `del()` Vercel Blob apres commit (best-effort, blob orphelin
  *      tolere mais loggue si echec).
@@ -350,34 +416,16 @@ export async function deletePhotoFromAlerte({
   if (!canManageAlertes(viewer)) {
     return { success: false, error: 'FORBIDDEN' };
   }
-  const photo = await db.photo.findUnique({
-    where: { id: photoId },
-    select: {
-      id: true,
-      storageKey: true,
-      alerteId: true,
-      filename: true,
-      alerte: { select: { releve: { select: { boutiqueId: true } } } },
-    },
-  });
-  if (!photo) {
-    return { success: false, error: 'ALERTE_NOT_FOUND' };
+  const scoped = await loadPhotoWithScope({ viewer, photoId });
+  if (!scoped.success) {
+    return scoped;
   }
-  const accessible = await getAccessibleBoutiqueIds(viewer);
-  if (!accessible.includes(photo.alerte.releve.boutiqueId)) {
-    return { success: false, error: 'ALERTE_NOT_FOUND' };
-  }
-  return runDeleteTransaction({ viewer, photo });
+  return runDeleteTransaction({ viewer, photo: scoped.data.photo });
 }
 
 interface RunDeleteTransactionArgs {
   readonly viewer: SessionUser;
-  readonly photo: {
-    readonly id: string;
-    readonly storageKey: string;
-    readonly alerteId: string;
-    readonly filename: string;
-  };
+  readonly photo: ScopedPhoto;
 }
 
 async function runDeleteTransaction({
@@ -515,8 +563,9 @@ function mapPhotoRow(row: PhotoRow): PhotoListItem | null {
     uploadedByName: row.uploadedBy.name,
     uploadedByUserId: row.uploadedByUserId,
     createdAt: row.createdAt,
-    // Champ conserve `signedUrl` pour compat composants (PhotoListItem).
-    // Pre-cabling pour future migration vers `access: 'private'`.
-    signedUrl: row.blobUrl,
+    // Renomme `signedUrl -> imageUrl` (v1.1) : honnetete nominale (URL
+    // publique non-listable, pas signee). Pre-cabling preserve pour
+    // future migration vers `access: 'private'` + TTL.
+    imageUrl: row.blobUrl,
   };
 }

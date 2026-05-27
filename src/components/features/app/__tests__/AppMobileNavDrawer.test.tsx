@@ -55,6 +55,7 @@ describe('[AppMobileNavDrawer]', () => {
     expect(html).not.toContain('data-testid="app-nav-link-dashboard"');
     expect(html).not.toContain('data-testid="app-nav-link-exports"');
     expect(html).not.toContain('data-testid="app-nav-link-admin"');
+    expect(html).not.toContain('data-testid="app-nav-link-releves-listing"');
   });
 
   it('should show RESPONSABLE items (dashboard, exports, registre) without admin', () => {
@@ -67,6 +68,7 @@ describe('[AppMobileNavDrawer]', () => {
     );
 
     expect(html).toContain('data-testid="app-nav-link-releves"');
+    expect(html).toContain('data-testid="app-nav-link-releves-listing"');
     expect(html).toContain('data-testid="app-nav-link-alertes"');
     expect(html).toContain('data-testid="app-nav-link-dashboard"');
     expect(html).toContain('data-testid="app-nav-link-exports"');

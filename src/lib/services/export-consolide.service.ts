@@ -3,6 +3,7 @@ import { db } from '@/lib/prisma';
 import { canExport, getAccessibleBoutiqueIds } from '@/lib/permissions';
 import {
   MILLIS_PER_DAY,
+  daysInclusive,
   isoFromDate,
   parseISODateUtc,
   todayParisISO,
@@ -131,7 +132,7 @@ function validatePeriode(
   if (query.dateEnd < query.dateStart) {
     return { success: false, error: 'PERIODE_INVALID' };
   }
-  const days = countDaysInclusive(query.dateStart, query.dateEnd);
+  const days = daysInclusive(query.dateStart, query.dateEnd);
   if (days > MAX_PERIODE_DAYS) {
     return { success: false, error: 'PERIODE_TOO_LARGE' };
   }
@@ -139,12 +140,6 @@ function validatePeriode(
     return { success: false, error: 'PERIODE_IN_FUTURE' };
   }
   return { success: true, data: true };
-}
-
-function countDaysInclusive(dateStart: string, dateEnd: string): number {
-  const startMs = parseISODateUtc(dateStart).getTime();
-  const endMs = parseISODateUtc(dateEnd).getTime();
-  return Math.floor((endMs - startMs) / MILLIS_PER_DAY) + 1;
 }
 
 interface ResolveBoutiqueScopeArgs {

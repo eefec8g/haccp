@@ -41,6 +41,7 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<AuditAction, string>> = {
   PHOTO_UPLOAD: 'Photo ajoutee',
   PHOTO_DELETE: 'Photo supprimee',
   SIGNATURE_CREATE: 'Registre signe',
+  EXPORT_REGISTRE_CONSOLIDE: 'Registre consolide',
 };
 
 /**

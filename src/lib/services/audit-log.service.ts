@@ -1,6 +1,6 @@
 import { Prisma, type AuditAction, type AuditEntityType } from '@prisma/client';
 import { db } from '@/lib/prisma';
-import type { AuditLogListItem } from '@/types/audit';
+import type { AuditLogCompactItem, AuditLogListItem } from '@/types/audit';
 import type { PaginatedResult, PaginationQuery } from '@/types/admin';
 import { buildPaginated } from '@/lib/utils/pagination';
 
@@ -64,6 +64,21 @@ interface ListAuditLogsArgs {
   readonly performedById?: string;
 }
 
+interface ListAuditLogsCompactArgs {
+  readonly query: PaginationQuery;
+}
+
+interface AuditLogCompactRow {
+  readonly id: string;
+  readonly action: AuditAction;
+  readonly entityType: AuditEntityType;
+  readonly entityId: string;
+  readonly entityLabel: string | null;
+  readonly performedById: string;
+  readonly createdAt: Date;
+  readonly performedBy: { readonly name: string };
+}
+
 interface AuditLogWithPerformer {
   readonly id: string;
   readonly action: AuditAction;
@@ -86,6 +101,19 @@ function mapAuditLog(row: AuditLogWithPerformer): AuditLogListItem {
     motif: row.motif,
     performedById: row.performedById,
     performedByEmail: row.performedBy.email,
+    performedByName: row.performedBy.name,
+    createdAt: row.createdAt,
+  };
+}
+
+function mapAuditLogCompact(row: AuditLogCompactRow): AuditLogCompactItem {
+  return {
+    id: row.id,
+    action: row.action,
+    entityType: row.entityType,
+    entityId: row.entityId,
+    entityLabel: row.entityLabel,
+    performedById: row.performedById,
     performedByName: row.performedBy.name,
     createdAt: row.createdAt,
   };
@@ -175,6 +203,46 @@ export async function listAuditLogs({
     db.auditLog.count({ where }),
   ]);
   return buildPaginated(rows.map(mapAuditLog), total, query);
+}
+
+/**
+ * Liste paginee compactee pour le dashboard admin (US-DAS-002).
+ *
+ * Variante minimaliste de `listAuditLogs` : projette uniquement les
+ * champs necessaires a l'affichage compact (nom de l'acteur, action,
+ * entite, date). EXCLUT volontairement email et motif :
+ *
+ *   - RGPD : minimisation des donnees, l'email PII ne transite pas dans
+ *     le RSC payload du dashboard,
+ *   - Performance : payload reseau plus petit, `select` Prisma reduit.
+ *
+ * Pas de filtre exposes ici : c'est une vue "derniere activite" globale.
+ * Pour les filtres avances, utiliser `listAuditLogs` (page admin
+ * dediee).
+ */
+export async function listAuditLogsCompact({
+  query,
+}: ListAuditLogsCompactArgs): Promise<PaginatedResult<AuditLogCompactItem>> {
+  const skip = (query.page - 1) * query.pageSize;
+  const [rows, total] = await Promise.all([
+    db.auditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: query.pageSize,
+      select: {
+        id: true,
+        action: true,
+        entityType: true,
+        entityId: true,
+        entityLabel: true,
+        performedById: true,
+        createdAt: true,
+        performedBy: { select: { name: true } },
+      },
+    }),
+    db.auditLog.count(),
+  ]);
+  return buildPaginated(rows.map(mapAuditLogCompact), total, query);
 }
 
 /**

@@ -16,7 +16,7 @@ import {
  * timezone-aware necessaires, Intl est natif et sans dependance.
  */
 
-const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+export const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 
 interface ParisDateParts {
   readonly year: number;
@@ -139,6 +139,25 @@ export function getRecentDaysRange(
   const to = parseISODateUtc(todayISO);
   const from = new Date(to.getTime() - (days - 1) * MILLIS_PER_DAY);
   return { from, to };
+}
+
+/**
+ * Formate une `Date` en chaine ISO `YYYY-MM-DD` (slice UTC).
+ *
+ * Utilise pour bucketiser des series temporelles sur le jour calendaire
+ * UTC (cf. `Releve.date` stocke en UTC minuit).
+ */
+export function isoFromDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Retourne le dernier instant (`23:59:59.999`) du jour represente par
+ * `date`, dans le meme referentiel UTC. Pratique comme borne `lte` sur
+ * des champs `DateTime` quand on borne sur un jour calendaire.
+ */
+export function endOfDay(date: Date): Date {
+  return new Date(date.getTime() + MILLIS_PER_DAY - 1);
 }
 
 /**

@@ -7,7 +7,12 @@ import {
   type ReleveCreateActionFieldErrors,
   type ReleveCreateActionState,
 } from '@/app/actions/releve-create.types';
-import { CRENEAU_LABELS, COMMENTAIRE_MIN_CHARS } from '@/lib/constants/releve';
+import {
+  COMMENTAIRE_MIN_CHARS,
+  CRENEAU_LABELS,
+  TEMPERATURE_MAX,
+  TEMPERATURE_MIN,
+} from '@/lib/constants/releve';
 import { EQUIPEMENT_TYPE_LABELS } from '@/lib/constants/equipement-labels';
 import { buildRateLimitMessage } from '@/lib/utils/rate-limit-message';
 import type { SaisieContext } from '@/types/releve';
@@ -181,6 +186,8 @@ export function SaisieReleveForm({ context }: SaisieReleveFormProps) {
           name="temperature"
           type="number"
           step="0.1"
+          min={TEMPERATURE_MIN}
+          max={TEMPERATURE_MAX}
           required
           inputMode="decimal"
           autoFocus

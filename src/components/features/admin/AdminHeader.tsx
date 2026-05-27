@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { LogoutButton } from '@/components/features/auth/LogoutButton';
+import { AdminMobileMenu } from './AdminMobileMenu';
 
 const ROLE_LABEL_FR: Readonly<Record<string, string>> = {
   ADMIN: 'Administrateur',
@@ -26,7 +27,8 @@ export async function AdminHeader() {
       className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-mg-noir/10 bg-mg-ivoire px-6 lg:px-10"
       data-testid="admin-header"
     >
-      <div className="lg:hidden">
+      <div className="flex items-center gap-4 lg:hidden">
+        <AdminMobileMenu />
         <span className="text-sm font-semibold tracking-[0.3em] text-mg-noir uppercase">
           Maison Givre
         </span>

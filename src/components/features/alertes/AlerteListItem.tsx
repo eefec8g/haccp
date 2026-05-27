@@ -39,8 +39,14 @@ const META_CLASSES = 'text-[11px] uppercase tracking-[0.2em] text-mg-noir/50';
 const TEMP_CLASSES = 'font-medium tabular-nums text-mg-noir';
 const COMMENT_CLASSES =
   'border-l-2 border-mg-or/40 bg-mg-ivoire/40 px-4 py-2 text-xs font-light italic text-mg-noir/70';
+/**
+ * `w-full sm:w-auto` : full-width sur mobile (CTA dominant, evite la
+ * cible reduite a 50% sur viewport etroit), retour a la largeur du
+ * label sur sm+ pour s'aligner sur le titre + meta a droite.
+ * `min-h-touch` complete pour assurer la cible tactile WCAG.
+ */
 const ACTION_LINK_CLASSES =
-  'inline-flex items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+  'inline-flex min-h-touch w-full items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire sm:w-auto';
 
 export function AlerteListItem({ alerte }: AlerteListItemProps) {
   const { releve } = alerte;
@@ -95,7 +101,7 @@ export function AlerteListItem({ alerte }: AlerteListItemProps) {
           </p>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-start">
+      <div className="flex w-full shrink-0 items-start sm:w-auto">
         <Link
           href={detailHref}
           className={ACTION_LINK_CLASSES}

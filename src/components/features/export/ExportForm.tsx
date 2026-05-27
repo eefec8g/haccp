@@ -96,6 +96,7 @@ export function ExportForm({
               type="date"
               required
               aria-required="true"
+              max={defaultDateISO}
               defaultValue={defaultDateISO}
               className={INPUT_CLASSES}
               data-testid="export-form-date-from"
@@ -111,6 +112,7 @@ export function ExportForm({
               type="date"
               required
               aria-required="true"
+              max={defaultDateISO}
               defaultValue={defaultDateISO}
               className={INPUT_CLASSES}
               data-testid="export-form-date-to"
@@ -128,6 +130,7 @@ export function ExportForm({
             type="date"
             required
             aria-required="true"
+            max={defaultDateISO}
             defaultValue={defaultDateISO}
             className={INPUT_CLASSES}
             data-testid="export-form-date"

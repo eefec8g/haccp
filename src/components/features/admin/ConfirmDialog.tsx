@@ -37,7 +37,7 @@ interface ConfirmDialogProps {
 const OVERLAY_CLASSES =
   'fixed inset-0 z-50 flex items-center justify-center bg-mg-noir/60 backdrop-blur-sm';
 const DIALOG_CLASSES =
-  'w-full max-w-md border border-mg-noir/10 bg-mg-ivoire p-8';
+  'w-full max-w-md max-h-[90vh] overflow-y-auto border border-mg-noir/10 bg-mg-ivoire p-8';
 const TITLE_CLASSES =
   'text-lg font-light uppercase tracking-[0.2em] text-mg-noir';
 const DIVIDER_CLASSES = 'mt-3 inline-block h-px w-10 bg-mg-or';
@@ -45,9 +45,9 @@ const DESCRIPTION_CLASSES = 'mt-4 text-sm font-light text-mg-noir/70';
 const DANGER_HINT_CLASSES =
   'mt-4 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-or';
 const CANCEL_CLASSES =
-  'inline-flex items-center justify-center border border-mg-noir/30 bg-transparent px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.25em] text-mg-noir transition-colors hover:border-mg-noir hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex min-h-touch items-center justify-center border border-mg-noir/30 bg-transparent px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.25em] text-mg-noir transition-colors hover:border-mg-noir hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
 const CONFIRM_BASE =
-  'inline-flex items-center justify-center bg-mg-noir px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.25em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex min-h-touch items-center justify-center bg-mg-noir px-6 py-2.5 text-[11px] font-medium uppercase tracking-[0.25em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-50';
 const MOTIF_LABEL_CLASSES =
   'mt-6 block text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70';
 const MOTIF_TEXTAREA_CLASSES =

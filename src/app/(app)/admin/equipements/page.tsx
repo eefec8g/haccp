@@ -3,10 +3,8 @@ import type { Metadata } from 'next';
 import type { Route } from 'next';
 import type { TypeEquipement } from '@prisma/client';
 import { AdminPageHeader } from '@/components/features/admin/AdminPageHeader';
-import {
-  AdminDataTable,
-  type AdminDataTableColumn,
-} from '@/components/features/admin/AdminDataTable';
+import type { AdminDataTableColumn } from '@/components/features/admin/AdminDataTable';
+import { ResponsiveDataTable } from '@/components/features/admin/ResponsiveDataTable';
 import { Pagination } from '@/components/features/admin/Pagination';
 import { PrimaryLinkButton } from '@/components/features/admin/PrimaryLinkButton';
 import { EquipementBoutiqueFilter } from '@/components/features/admin/EquipementBoutiqueFilter';
@@ -238,7 +236,7 @@ export default async function AdminEquipementsPage({
         includeInactive={includeInactive}
       />
 
-      <AdminDataTable
+      <ResponsiveDataTable
         name="equipements"
         columns={EQUIPEMENT_COLUMNS}
         rows={result.items}

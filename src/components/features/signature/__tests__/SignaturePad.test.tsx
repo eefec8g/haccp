@@ -31,6 +31,15 @@ describe('[Signature] SignaturePad', () => {
     expect(html).toContain('aria-label="Zone de signature"');
   });
 
+  it('should constrain the canvas visual to the 5:2 native ratio on all viewports', () => {
+    // Sans aspect-ratio CSS, sur mobile etroit le canvas etait deforme
+    // visuellement (width=500 ecrasee, height=200 conservee). La regle
+    // CSS `aspect-[5/2]` corrige et `getCanvasPoint` recalibre toujours
+    // via `getBoundingClientRect`, donc la precision du trace est intacte.
+    const html = renderToStaticMarkup(<SignaturePad onSign={vi.fn()} />);
+    expect(html).toContain('aspect-[5/2]');
+  });
+
   it('should render both action buttons with French labels', () => {
     const html = renderToStaticMarkup(<SignaturePad onSign={vi.fn()} />);
     expect(html).toContain('data-testid="signature-pad-clear"');

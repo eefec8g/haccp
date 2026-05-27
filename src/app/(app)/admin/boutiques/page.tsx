@@ -2,10 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { Route } from 'next';
 import { AdminPageHeader } from '@/components/features/admin/AdminPageHeader';
-import {
-  AdminDataTable,
-  type AdminDataTableColumn,
-} from '@/components/features/admin/AdminDataTable';
+import type { AdminDataTableColumn } from '@/components/features/admin/AdminDataTable';
+import { ResponsiveDataTable } from '@/components/features/admin/ResponsiveDataTable';
 import { Pagination } from '@/components/features/admin/Pagination';
 import { PrimaryLinkButton } from '@/components/features/admin/PrimaryLinkButton';
 import { BoutiqueToggleActiveButton } from '@/components/features/admin/BoutiqueToggleActiveButton';
@@ -152,7 +150,7 @@ export default async function AdminBoutiquesPage({
         }
       />
 
-      <AdminDataTable
+      <ResponsiveDataTable
         name="boutiques"
         columns={BOUTIQUE_COLUMNS}
         rows={result.items}

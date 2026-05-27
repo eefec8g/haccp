@@ -48,7 +48,15 @@ const DIVIDER_CLASSES = 'mt-4 inline-block h-px w-12 bg-mg-or';
 const SUBTITLE_CLASSES = 'mt-4 text-sm font-light text-mg-noir/60';
 const BACK_LINK_CLASSES =
   'inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:text-mg-or focus:outline-none focus:text-mg-or';
-const ROW_CLASSES = 'flex flex-wrap items-end justify-between gap-6';
+/**
+ * Layout mobile-first : on empile le bloc titre + le bloc actions par
+ * defaut (gap-6) puis on revient sur la disposition desktop (row +
+ * wrap + justify-between) a partir de `sm:` (>= 640px). Sans ce
+ * fix, plusieurs actions a droite poussaient le bloc en dessous du
+ * titre avec un alignement central peu lisible sur viewport etroit.
+ */
+const ROW_CLASSES =
+  'flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between';
 
 export function AppPageHeader({
   title,

@@ -13,6 +13,16 @@
   --color-mg-or-dark: #9e834a;
 
   --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * Touch target HACCP : 44px minimum (norme WCAG 2.1 AA + Apple HIG +
+   * recommandation Material). Utilisation tactile en environnement froid
+   * (gants), donc cible >= 44px sur tous les controles interactifs.
+   *
+   * Disponible via les utilitaires `min-h-touch` et `min-w-touch` de
+   * Tailwind v4 (mapping automatique depuis les variables @theme).
+   */
+  --spacing-touch: 44px;
 }
 
 :root {

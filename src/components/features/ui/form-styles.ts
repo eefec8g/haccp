@@ -22,9 +22,14 @@
  * propres patterns dedies.
  */
 
-/** Input texte/number/textarea (taille standard, padding 4/3). */
+/**
+ * Input texte/number/textarea (taille standard, padding 4/3).
+ *
+ * `min-h-touch` (44px) garantit la cible tactile minimale WCAG 2.1 AA,
+ * essentielle en boutique avec gants. Le padding visuel reste inchange.
+ */
 export const INPUT_CLASSES =
-  'block w-full rounded-none border border-mg-noir/15 bg-mg-ivoire px-4 py-3 text-sm font-light text-mg-noir transition-colors placeholder:text-mg-noir/30 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:bg-mg-noir/5';
+  'block min-h-touch w-full rounded-none border border-mg-noir/15 bg-mg-ivoire px-4 py-3 text-sm font-light text-mg-noir transition-colors placeholder:text-mg-noir/30 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:bg-mg-noir/5';
 
 /** Input "imposant" pour saisie tactile en environnement froid (h-14, px-6). */
 export const INPUT_LARGE_CLASSES =
@@ -33,9 +38,14 @@ export const INPUT_LARGE_CLASSES =
 /** Textarea standard - reprend INPUT_CLASSES (les forms peuvent rajouter min-h via composition). */
 export const TEXTAREA_CLASSES = INPUT_CLASSES;
 
-/** Bouton submit primaire (fond noir, hover or). */
+/**
+ * Bouton submit primaire (fond noir, hover or).
+ *
+ * `min-h-touch` (44px) garantit la cible tactile minimale WCAG 2.1 AA.
+ * Sans cette regle, `py-3` produit ~38px (text 11px), insuffisant.
+ */
 export const SUBMIT_CLASSES =
-  'inline-flex items-center justify-center bg-mg-noir px-8 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex min-h-touch items-center justify-center bg-mg-noir px-8 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
 
 /** Bouton submit "imposant" pour formulaires tactiles (h-14, w-full). */
 export const SUBMIT_LARGE_CLASSES =
@@ -44,10 +54,10 @@ export const SUBMIT_LARGE_CLASSES =
 /**
  * Bouton "destructif" pour annulations (fond or, hover noir).
  * Pas de rouge : la charte Maison Givre utilise le mg-or sature pour
- * exprimer les actions sensibles.
+ * exprimer les actions sensibles. `min-h-touch` pour le tactile.
  */
 export const SUBMIT_DESTRUCTIVE_CLASSES =
-  'inline-flex items-center justify-center bg-mg-or px-8 py-3 text-[11px] font-medium uppercase tracking-[0.3em] text-mg-noir transition-colors hover:bg-mg-noir hover:text-mg-ivoire focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex min-h-touch items-center justify-center bg-mg-or px-8 py-3 text-[11px] font-medium uppercase tracking-[0.3em] text-mg-noir transition-colors hover:bg-mg-noir hover:text-mg-ivoire focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
 
 /** Boite d'erreur globale (role="alert" + aria-live polite). */
 export const ERROR_BOX_CLASSES =

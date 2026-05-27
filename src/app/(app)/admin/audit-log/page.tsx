@@ -40,6 +40,7 @@ const ACTION_BADGE: Readonly<Record<AuditAction, string>> = {
   DISABLE: `${BADGE_BASE} border-mg-noir/30 text-mg-noir`,
   ENABLE: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
   DELETE: `${BADGE_BASE} border-mg-noir/30 text-mg-noir`,
+  EXPORT: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
 };
 
 const ENTITY_LABEL: Readonly<Record<AuditEntityType, string>> = {
@@ -47,6 +48,7 @@ const ENTITY_LABEL: Readonly<Record<AuditEntityType, string>> = {
   EQUIPEMENT: 'Equipement',
   USER: 'Utilisateur',
   INVITATION: 'Invitation',
+  EXPORT: 'Export',
 };
 
 const ENTITY_TYPES: readonly AuditEntityType[] = [
@@ -54,6 +56,7 @@ const ENTITY_TYPES: readonly AuditEntityType[] = [
   'EQUIPEMENT',
   'USER',
   'INVITATION',
+  'EXPORT',
 ];
 
 const PARIS_DATE_FORMAT: Intl.DateTimeFormatOptions = {

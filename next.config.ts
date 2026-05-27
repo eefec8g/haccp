@@ -30,6 +30,14 @@ const nextConfig: NextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  /**
+   * `pdfmake` / `pdfkit` chargent des fichiers de fontes Helvetica via
+   * fs (CourierStd-Bold.afm, etc.) au moment de creer le `PdfPrinter`.
+   * Next.js essaie de bundler ces requires et echoue. On les classe en
+   * "external" pour que le serveur les resolve a runtime depuis
+   * `node_modules` (Vercel embarque le tree complet pour les fonctions).
+   */
+  serverExternalPackages: ['pdfmake'],
   async headers() {
     return [
       {

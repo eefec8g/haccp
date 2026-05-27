@@ -101,6 +101,8 @@ describe('[upstashProvider]', () => {
       'haccp:rl:RELEVE_CREATE',
       'haccp:rl:RELEVE_ANNULATION',
       'haccp:rl:ALERTE_RESOLVE',
+      'haccp:rl:EXPORT_CSV',
+      'haccp:rl:EXPORT_PDF',
     ]);
     expect(capturedOptions.every((o) => o.analytics === false)).toBe(true);
   });

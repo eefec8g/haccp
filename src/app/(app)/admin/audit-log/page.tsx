@@ -11,6 +11,7 @@ import { Pagination } from '@/components/features/admin/Pagination';
 import { listAuditLogs } from '@/lib/services/audit-log.service';
 import { auditQuerySchema } from '@/lib/validations/audit';
 import { ADMIN_PAGE_SIZE } from '@/lib/constants/admin';
+import { AUDIT_ENTITY_LABEL, PARIS_DATE_FORMAT } from '@/lib/constants/audit';
 import type { AuditLogListItem } from '@/types/audit';
 
 export const metadata: Metadata = {
@@ -43,14 +44,6 @@ const ACTION_BADGE: Readonly<Record<AuditAction, string>> = {
   EXPORT: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
 };
 
-const ENTITY_LABEL: Readonly<Record<AuditEntityType, string>> = {
-  BOUTIQUE: 'Boutique',
-  EQUIPEMENT: 'Equipement',
-  USER: 'Utilisateur',
-  INVITATION: 'Invitation',
-  EXPORT: 'Export',
-};
-
 const ENTITY_TYPES: readonly AuditEntityType[] = [
   'BOUTIQUE',
   'EQUIPEMENT',
@@ -58,15 +51,6 @@ const ENTITY_TYPES: readonly AuditEntityType[] = [
   'INVITATION',
   'EXPORT',
 ];
-
-const PARIS_DATE_FORMAT: Intl.DateTimeFormatOptions = {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'Europe/Paris',
-};
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('fr-FR', PARIS_DATE_FORMAT).format(date);
@@ -107,7 +91,7 @@ const AUDIT_COLUMNS: readonly AdminDataTableColumn<AuditLogListItem>[] = [
     render: (row) => (
       <span data-testid={`audit-row-${row.id}-entity`}>
         <span className="font-light text-mg-noir">
-          {ENTITY_LABEL[row.entityType]}
+          {AUDIT_ENTITY_LABEL[row.entityType]}
         </span>
         {row.entityLabel ? (
           <span className="ml-1 font-light text-mg-noir/60">
@@ -224,7 +208,7 @@ export default async function AdminAuditLogPage({
             }
             data-testid={`audit-filter-${type.toLowerCase()}`}
           >
-            {ENTITY_LABEL[type]}
+            {AUDIT_ENTITY_LABEL[type]}
           </Link>
         ))}
       </div>

@@ -11,7 +11,12 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import { db } from '@/lib/prisma';
-import { getEntityHistory, listAuditLogs, logAudit } from './audit-log.service';
+import {
+  getEntityHistory,
+  listAuditLogs,
+  listAuditLogsCompact,
+  logAudit,
+} from './audit-log.service';
 
 const ADMIN_ID = 'admin-1';
 const ENTITY_ID = '11111111-1111-4111-8111-111111111111';
@@ -174,6 +179,81 @@ describe('[audit-log.service]', () => {
 
       expect(result.items[0]?.performedByEmail).toBe('a@example.com');
       expect(result.items[0]?.performedByName).toBe('Alice');
+    });
+  });
+
+  describe('listAuditLogsCompact', () => {
+    it('should paginate ordered by createdAt desc and project name only', async () => {
+      vi.mocked(db.auditLog.findMany).mockResolvedValue([
+        {
+          id: 'audit-1',
+          action: 'CREATE',
+          entityType: 'BOUTIQUE',
+          entityId: ENTITY_ID,
+          entityLabel: 'MG Paris 11',
+          performedById: ADMIN_ID,
+          createdAt: new Date('2026-05-01T08:00:00Z'),
+          performedBy: { name: 'Alice' },
+        },
+      ] as never);
+      vi.mocked(db.auditLog.count).mockResolvedValue(1);
+
+      const result = await listAuditLogsCompact({
+        query: { page: 1, pageSize: 5 },
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(1);
+      const args = vi.mocked(db.auditLog.findMany).mock.calls[0]?.[0];
+      expect(args?.orderBy).toEqual({ createdAt: 'desc' });
+      expect(args?.take).toBe(5);
+      expect(args?.skip).toBe(0);
+      expect(result.items[0]?.performedByName).toBe('Alice');
+    });
+
+    it('should NOT include performedByEmail or motif in projected items', async () => {
+      vi.mocked(db.auditLog.findMany).mockResolvedValue([
+        {
+          id: 'audit-2',
+          action: 'UPDATE',
+          entityType: 'USER',
+          entityId: ENTITY_ID,
+          entityLabel: null,
+          performedById: ADMIN_ID,
+          createdAt: new Date('2026-05-02T08:00:00Z'),
+          performedBy: { name: 'Bob' },
+        },
+      ] as never);
+      vi.mocked(db.auditLog.count).mockResolvedValue(1);
+
+      const result = await listAuditLogsCompact({
+        query: { page: 1, pageSize: 5 },
+      });
+
+      const item = result.items[0] as unknown as Record<string, unknown>;
+      expect(item).toBeDefined();
+      expect(Object.keys(item)).not.toContain('performedByEmail');
+      expect(Object.keys(item)).not.toContain('motif');
+    });
+
+    it('should request a restricted Prisma select without performer email', async () => {
+      vi.mocked(db.auditLog.findMany).mockResolvedValue([] as never);
+      vi.mocked(db.auditLog.count).mockResolvedValue(0);
+
+      await listAuditLogsCompact({ query: { page: 2, pageSize: 10 } });
+
+      const args = vi.mocked(db.auditLog.findMany).mock.calls[0]?.[0];
+      // En mode compact on utilise un `select` (et non `include`).
+      expect(args?.select).toBeDefined();
+      expect(args?.include).toBeUndefined();
+      expect(args?.skip).toBe(10);
+      // Verifie que la projection performedBy se limite au nom.
+      const select = args?.select as {
+        readonly performedBy?: { readonly select?: Record<string, boolean> };
+        readonly motif?: boolean;
+      };
+      expect(select?.performedBy?.select).toEqual({ name: true });
+      expect(select?.motif).toBeUndefined();
     });
   });
 

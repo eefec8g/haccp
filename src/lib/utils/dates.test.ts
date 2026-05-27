@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  endOfDay,
   formatDateShort,
   getCurrentCreneau,
   getRecentDaysRange,
+  isoFromDate,
   isWithinRecentDays,
   parseISODateUtc,
   todayParisISO,
@@ -115,6 +117,26 @@ describe('[dates utils]', () => {
       const { from, to } = getRecentDaysRange(0, now);
       expect(from.toISOString()).toBe('2026-05-26T00:00:00.000Z');
       expect(to.toISOString()).toBe('2026-05-26T00:00:00.000Z');
+    });
+  });
+
+  describe('isoFromDate', () => {
+    it('should slice a UTC date down to YYYY-MM-DD', () => {
+      const date = new Date('2026-05-26T10:30:00.000Z');
+      expect(isoFromDate(date)).toBe('2026-05-26');
+    });
+
+    it('should use the UTC day boundary (no timezone shift)', () => {
+      // 23:30 UTC reste le 26 en UTC, meme si Paris est deja le 27.
+      const date = new Date('2026-05-26T23:30:00.000Z');
+      expect(isoFromDate(date)).toBe('2026-05-26');
+    });
+  });
+
+  describe('endOfDay', () => {
+    it('should return the last millisecond of the same UTC day', () => {
+      const midnight = parseISODateUtc('2026-05-26');
+      expect(endOfDay(midnight).toISOString()).toBe('2026-05-26T23:59:59.999Z');
     });
   });
 

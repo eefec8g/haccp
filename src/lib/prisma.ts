@@ -9,6 +9,14 @@ export const IMMUTABILITY_ERROR =
   "Operation interdite : la table Releve est immuable (HACCP). Creez un releve d'annulation.";
 
 /**
+ * Message d'erreur leve par le middleware d'immutabilite Signature
+ * (US-SIG-001 - audit DDPP). Exporte pour les tests : un registre
+ * signe ne peut PAS etre re-signe ni efface (premier verrouille).
+ */
+export const SIGNATURE_IMMUTABILITY_ERROR =
+  'Operation interdite : la table Signature est immuable (HACCP - audit DDPP). Une signature ne peut etre ni modifiee ni supprimee une fois posee.';
+
+/**
  * Liste blanche des champs autorises dans un UPDATE sur Releve.
  *
  * SEUL `annuleParId` peut etre modifie, et SEUL de `null` vers un uuid
@@ -60,6 +68,13 @@ function createPrismaClient() {
   // Immutabilite HACCP : aucun UPDATE/DELETE/UPSERT direct sur Releve.
   // Exception controlee : UPDATE { annuleParId: <uuid> } pour US-REL-004
   // (cf. ALLOWED_RELEVE_UPDATE_FIELDS et isAnnulationOnlyUpdate).
+  //
+  // Idem pour Signature (US-SIG-001 - audit DDPP) : seule l'operation
+  // CREATE est autorisee. La signature pose un verrou sur le tuple
+  // (boutiqueId, dateISO) et ne doit JAMAIS etre modifiee ni supprimee
+  // une fois posee. Pas d'exception annulation : un registre signe par
+  // erreur reste signe (la trace de l'erreur est elle-meme un fait
+  // d'audit). Aucune exception controlee n'est requise.
   return client.$extends({
     query: {
       releve: {
@@ -80,6 +95,23 @@ function createPrismaClient() {
         },
         upsert() {
           throw new Error(IMMUTABILITY_ERROR);
+        },
+      },
+      signature: {
+        update() {
+          throw new Error(SIGNATURE_IMMUTABILITY_ERROR);
+        },
+        updateMany() {
+          throw new Error(SIGNATURE_IMMUTABILITY_ERROR);
+        },
+        delete() {
+          throw new Error(SIGNATURE_IMMUTABILITY_ERROR);
+        },
+        deleteMany() {
+          throw new Error(SIGNATURE_IMMUTABILITY_ERROR);
+        },
+        upsert() {
+          throw new Error(SIGNATURE_IMMUTABILITY_ERROR);
         },
       },
     },

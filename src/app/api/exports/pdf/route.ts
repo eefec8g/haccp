@@ -4,7 +4,7 @@ import { canExport } from '@/lib/permissions';
 import { exportPdfQuerySchema } from '@/lib/validations/export';
 import { buildRegistreJournalierPdf } from '@/lib/utils/pdf-builder';
 import {
-  buildRegistreJournalier,
+  buildRegistreJournalierForExport,
   logExportSuccess,
 } from '@/lib/services/export.service';
 import { buildPdfFilename } from '@/lib/utils/export-filename';
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const performedByName = session.user.name ?? session.user.email ?? 'user';
-  const result = await buildRegistreJournalier({
+  const result = await buildRegistreJournalierForExport({
     viewer: { id: session.user.id, role: session.user.role },
     query: parsed.data,
     performedByName,

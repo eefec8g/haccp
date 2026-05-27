@@ -70,4 +70,11 @@ describe('[config.RATE_LIMITS]', () => {
       maxRequests: 20,
     });
   });
+
+  it('should configure SIGNATURE_UPLOAD to 10 requests per hour (Epic SIGNATURE anti-spam DDPP)', () => {
+    expect(RATE_LIMITS.SIGNATURE_UPLOAD).toEqual({
+      windowMs: 3_600_000,
+      maxRequests: 10,
+    });
+  });
 });

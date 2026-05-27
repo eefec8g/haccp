@@ -46,6 +46,7 @@ enum AuditAction {
   EXPORT
   PHOTO_UPLOAD
   PHOTO_DELETE
+  SIGNATURE_CREATE
 }
 
 enum AuditEntityType {
@@ -55,19 +56,20 @@ enum AuditEntityType {
   INVITATION
   EXPORT
   PHOTO
+  SIGNATURE
 }
 
 // ===== MODELS =====
 
 model User {
-  id                String    @id @default(uuid())
-  email             String    @unique
-  password          String
-  name              String
-  role              UserRole
-  actif             Boolean   @default(true)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   boutiqueSalarieId String?
   boutiqueSalarie   Boutique? @relation("SalarieBoutique", fields: [boutiqueSalarieId], references: [id])
@@ -78,6 +80,7 @@ model User {
   invitations          UserInvitation[] @relation("UserInvitations")
   auditLogsPerformed   AuditLog[]       @relation("AuditPerformed")
   photosUploaded       Photo[]          @relation("PhotoUploadedBy")
+  signatures           Signature[]      @relation("SignatureSignataire")
 
   @@index([email])
   @@index([role])
@@ -97,6 +100,7 @@ model Boutique {
   salaries     User[]         @relation("SalarieBoutique")
   responsables BoutiqueUser[]
   releves      Releve[]
+  signatures   Signature[]
 
   @@index([actif])
 }
@@ -212,6 +216,41 @@ model Photo {
 
   @@index([alerteId])
   @@index([uploadedByUserId])
+}
+
+// Signature manuscrite du registre journalier (Epic SIGNATURE).
+// Granularite : 1 signature par (boutiqueId, dateISO). La premiere signature
+// verrouille le registre du jour (re-signature interdite).
+//
+// Stockage Vercel Blob : `storageKey` = pathname canonique
+// (`signatures/<boutiqueId>/<dateISO>/<timestamp>-<uuid>.png`), `blobUrl`
+// est l'URL publique persistee par `put()` au moment de l'upload.
+//
+// Tracabilite immuable HACCP : aucun UPDATE/DELETE. `signataireRoleSnapshot`
+// fige le role au moment de la signature (memes garanties que les audit
+// logs : un changement de role posterieur ne reecrit pas l'historique).
+//
+// `ipAddress` et `userAgent` sont captes pour audit DDPP (preuve "qui a
+// signe, depuis ou, avec quel navigateur"). Le `RESTRICT` sur `User`
+// empeche la suppression "fantome" d'un signataire audite.
+model Signature {
+  id                     String   @id @default(cuid())
+  boutiqueId             String
+  boutique               Boutique @relation(fields: [boutiqueId], references: [id], onDelete: Restrict)
+  dateISO                String
+  signataireId           String
+  signataire             User     @relation("SignatureSignataire", fields: [signataireId], references: [id], onDelete: Restrict)
+  signataireRoleSnapshot UserRole
+  storageKey             String   @unique
+  blobUrl                String
+  ipAddress              String?
+  userAgent              String?
+  signedAt               DateTime @default(now())
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([boutiqueId, dateISO])
+  @@index([signataireId])
 }
 
 model PasswordResetToken {

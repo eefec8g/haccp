@@ -4,10 +4,12 @@ import { NextRequest } from 'next/server';
 const { auth } = vi.hoisted(() => ({ auth: vi.fn() }));
 const { canExport } = vi.hoisted(() => ({ canExport: vi.fn() }));
 const { checkRateLimit } = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
-const { buildRegistreJournalier, logExportSuccess } = vi.hoisted(() => ({
-  buildRegistreJournalier: vi.fn(),
-  logExportSuccess: vi.fn(),
-}));
+const { buildRegistreJournalierForExport, logExportSuccess } = vi.hoisted(
+  () => ({
+    buildRegistreJournalierForExport: vi.fn(),
+    logExportSuccess: vi.fn(),
+  })
+);
 const { buildRegistreJournalierPdf } = vi.hoisted(() => ({
   buildRegistreJournalierPdf: vi.fn(),
 }));
@@ -20,7 +22,7 @@ vi.mock('@/lib/services/rateLimit', () => ({
     `${Math.ceil(ms / 60_000)} minutes`,
 }));
 vi.mock('@/lib/services/export.service', () => ({
-  buildRegistreJournalier,
+  buildRegistreJournalierForExport,
   logExportSuccess,
 }));
 vi.mock('@/lib/utils/pdf-builder', () => ({ buildRegistreJournalierPdf }));
@@ -60,7 +62,7 @@ function mockRateAllowed(): void {
 }
 
 function mockRegistreSuccess(): void {
-  buildRegistreJournalier.mockResolvedValue({
+  buildRegistreJournalierForExport.mockResolvedValue({
     success: true,
     data: {
       dateISO: '2026-05-15',
@@ -96,7 +98,7 @@ describe('[GET /api/exports/pdf]', () => {
 
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toContain('/login');
-    expect(buildRegistreJournalier).not.toHaveBeenCalled();
+    expect(buildRegistreJournalierForExport).not.toHaveBeenCalled();
   });
 
   it('should redirect SALARIE to /login (canExport=false)', async () => {
@@ -135,11 +137,11 @@ describe('[GET /api/exports/pdf]', () => {
     expect(response.status).toBe(303);
     expect(location).toContain(FORM_PATH);
     expect(location).toContain('error=validation');
-    expect(buildRegistreJournalier).not.toHaveBeenCalled();
+    expect(buildRegistreJournalierForExport).not.toHaveBeenCalled();
   });
 
   it('should redirect with ?error=boutique_not_found when service returns BOUTIQUE_NOT_FOUND', async () => {
-    buildRegistreJournalier.mockResolvedValueOnce({
+    buildRegistreJournalierForExport.mockResolvedValueOnce({
       success: false,
       error: 'BOUTIQUE_NOT_FOUND',
     });
@@ -153,7 +155,7 @@ describe('[GET /api/exports/pdf]', () => {
   });
 
   it('should redirect with ?error=forbidden when service returns FORBIDDEN', async () => {
-    buildRegistreJournalier.mockResolvedValueOnce({
+    buildRegistreJournalierForExport.mockResolvedValueOnce({
       success: false,
       error: 'FORBIDDEN',
     });
@@ -215,6 +217,6 @@ describe('[GET /api/exports/pdf]', () => {
       buildRequest(`${VALID_QUERY}&error=rate_limited&retry=5%20minutes`)
     );
 
-    expect(buildRegistreJournalier).toHaveBeenCalledTimes(1);
+    expect(buildRegistreJournalierForExport).toHaveBeenCalledTimes(1);
   });
 });

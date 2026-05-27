@@ -29,6 +29,10 @@
  *                         anti-spam upload + cout storage Vercel Blob.
  *                         Avec 3 photos max par alerte, ~6 alertes max
  *                         documentees a la photo par heure (large marge).
+ * - `SIGNATURE_UPLOAD`   : 10 / 1h,   Epic SIGNATURE (US-SIG-001). Plus
+ *                         strict que PHOTO_UPLOAD : signature DDPP rare
+ *                         (1 par boutique/jour), garde-fou anti-spam
+ *                         renforce sur action critique.
  */
 export type RateLimitType =
   | 'LOGIN'
@@ -40,7 +44,8 @@ export type RateLimitType =
   | 'ALERTE_RESOLVE'
   | 'EXPORT_CSV'
   | 'EXPORT_PDF'
-  | 'PHOTO_UPLOAD';
+  | 'PHOTO_UPLOAD'
+  | 'SIGNATURE_UPLOAD';
 
 /**
  * Resultat normalise d'une verification rate-limit.

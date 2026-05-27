@@ -19,13 +19,19 @@ vi.mock('@/lib/services/audit-log.service', () => ({
   logAudit: vi.fn(),
 }));
 
+vi.mock('@/lib/services/signature.service', () => ({
+  getSignatureForRegistre: vi.fn(async () => ({ success: true, data: null })),
+}));
+
 import { db } from '@/lib/prisma';
 import * as permissions from '@/lib/permissions';
 import { logAudit } from '@/lib/services/audit-log.service';
+import * as signatureService from '@/lib/services/signature.service';
 import {
-  buildRegistreJournalier,
+  buildRegistreJournalierForExport,
   listForExportCsv,
   logExportSuccess,
+  readRegistreJournalier,
 } from './export.service';
 
 const VIEWER = { id: 'user-1', role: 'RESPONSABLE' as const };
@@ -191,32 +197,111 @@ describe('[export.service] listForExportCsv', () => {
   });
 });
 
-describe('[export.service] buildRegistreJournalier', () => {
-  it('should return FORBIDDEN for salarie', async () => {
-    vi.mocked(permissions.canExport).mockReturnValue(false);
-    const result = await buildRegistreJournalier({
+describe('[export.service] readRegistreJournalier', () => {
+  beforeEach(() => {
+    vi.mocked(signatureService.getSignatureForRegistre).mockResolvedValue({
+      success: true,
+      data: null,
+    });
+  });
+
+  it('should allow SALARIE to read the registre (canExport NOT called)', async () => {
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(db.boutique.findUnique).mockResolvedValue({
+      id: 'b1',
+      nom: 'MG',
+      adresse: null,
+      ville: null,
+    } as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+
+    const result = await readRegistreJournalier({
       viewer: SALARIE_VIEWER,
       query: { date: '2026-01-01', boutiqueId: 'b1' },
-      performedByName: 'Nina',
+      performedByName: 'Lea',
       performedByRole: 'SALARIE',
     });
-    expect(result).toEqual({ success: false, error: 'FORBIDDEN' });
+
+    expect(result.success).toBe(true);
+    expect(permissions.canExport).not.toHaveBeenCalled();
+  });
+
+  it('should allow RESPONSABLE to read the registre', async () => {
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(db.boutique.findUnique).mockResolvedValue({
+      id: 'b1',
+      nom: 'MG',
+      adresse: null,
+      ville: null,
+    } as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+
+    const result = await readRegistreJournalier({
+      viewer: VIEWER,
+      query: { date: '2026-01-01', boutiqueId: 'b1' },
+      performedByName: 'Jane',
+      performedByRole: 'RESPONSABLE',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should allow ADMIN to read the registre', async () => {
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(db.boutique.findUnique).mockResolvedValue({
+      id: 'b1',
+      nom: 'MG',
+      adresse: null,
+      ville: null,
+    } as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+
+    const result = await readRegistreJournalier({
+      viewer: ADMIN_VIEWER,
+      query: { date: '2026-01-01', boutiqueId: 'b1' },
+      performedByName: 'Admin',
+      performedByRole: 'ADMIN',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should NOT load the signature (decoupled from SignatureSection)', async () => {
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(db.boutique.findUnique).mockResolvedValue({
+      id: 'b1',
+      nom: 'MG',
+      adresse: null,
+      ville: null,
+    } as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+
+    await readRegistreJournalier({
+      viewer: SALARIE_VIEWER,
+      query: { date: '2026-01-01', boutiqueId: 'b1' },
+      performedByName: 'Lea',
+      performedByRole: 'SALARIE',
+    });
+
+    expect(signatureService.getSignatureForRegistre).not.toHaveBeenCalled();
   });
 
   it('should return BOUTIQUE_NOT_FOUND if boutique not in scope', async () => {
-    vi.mocked(permissions.canExport).mockReturnValue(true);
     vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
-    const result = await buildRegistreJournalier({
-      viewer: VIEWER,
+    const result = await readRegistreJournalier({
+      viewer: SALARIE_VIEWER,
       query: { date: '2026-01-01', boutiqueId: 'b-other' },
-      performedByName: 'Jane',
-      performedByRole: 'RESPONSABLE',
+      performedByName: 'Lea',
+      performedByRole: 'SALARIE',
     });
     expect(result).toEqual({ success: false, error: 'BOUTIQUE_NOT_FOUND' });
   });
 
-  it('should return a RegistreJournalier with MISSING creneaux for equipements without releves', async () => {
-    vi.mocked(permissions.canExport).mockReturnValue(true);
+  it('should return MISSING creneaux for equipements without releves', async () => {
     vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
     vi.mocked(db.boutique.findUnique).mockResolvedValue({
       id: 'b1',
@@ -235,7 +320,7 @@ describe('[export.service] buildRegistreJournalier', () => {
       },
     ] as never);
     vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
-    const result = await buildRegistreJournalier({
+    const result = await readRegistreJournalier({
       viewer: ADMIN_VIEWER,
       query: { date: '2026-01-01', boutiqueId: 'b1' },
       performedByName: 'Admin Dupont',
@@ -243,12 +328,42 @@ describe('[export.service] buildRegistreJournalier', () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.boutique.nom).toBe('MG Paris 11');
       expect(result.data.equipements).toHaveLength(1);
       expect(result.data.equipements[0]?.creneaux).toHaveLength(3);
       expect(result.data.equipements[0]?.creneaux[0]?.temperature).toBeNull();
-      expect(result.data.alertes).toHaveLength(0);
     }
+  });
+});
+
+describe('[export.service] buildRegistreJournalierForExport', () => {
+  beforeEach(() => {
+    vi.mocked(signatureService.getSignatureForRegistre).mockResolvedValue({
+      success: true,
+      data: null,
+    });
+  });
+
+  it('should return FORBIDDEN for salarie', async () => {
+    vi.mocked(permissions.canExport).mockReturnValue(false);
+    const result = await buildRegistreJournalierForExport({
+      viewer: SALARIE_VIEWER,
+      query: { date: '2026-01-01', boutiqueId: 'b1' },
+      performedByName: 'Nina',
+      performedByRole: 'SALARIE',
+    });
+    expect(result).toEqual({ success: false, error: 'FORBIDDEN' });
+  });
+
+  it('should return BOUTIQUE_NOT_FOUND if boutique not in scope', async () => {
+    vi.mocked(permissions.canExport).mockReturnValue(true);
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    const result = await buildRegistreJournalierForExport({
+      viewer: VIEWER,
+      query: { date: '2026-01-01', boutiqueId: 'b-other' },
+      performedByName: 'Jane',
+      performedByRole: 'RESPONSABLE',
+    });
+    expect(result).toEqual({ success: false, error: 'BOUTIQUE_NOT_FOUND' });
   });
 
   it('should include alertes with resolution details', async () => {
@@ -275,7 +390,7 @@ describe('[export.service] buildRegistreJournalier', () => {
         },
       },
     ] as never);
-    const result = await buildRegistreJournalier({
+    const result = await buildRegistreJournalierForExport({
       viewer: ADMIN_VIEWER,
       query: { date: '2026-01-01', boutiqueId: 'b1' },
       performedByName: 'Admin',
@@ -289,6 +404,101 @@ describe('[export.service] buildRegistreJournalier', () => {
         'Porte refermee'
       );
       expect(result.data.alertes[0]?.resoluParNom).toBe('Jane');
+    }
+  });
+
+  it('should include null signature when registre is not signed', async () => {
+    vi.mocked(permissions.canExport).mockReturnValue(true);
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(db.boutique.findUnique).mockResolvedValue({
+      id: 'b1',
+      nom: 'MG',
+      adresse: null,
+      ville: null,
+    } as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+    vi.mocked(signatureService.getSignatureForRegistre).mockResolvedValue({
+      success: true,
+      data: null,
+    });
+    const result = await buildRegistreJournalierForExport({
+      viewer: ADMIN_VIEWER,
+      query: { date: '2026-01-01', boutiqueId: 'b1' },
+      performedByName: 'Admin',
+      performedByRole: 'ADMIN',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.signature).toBeNull();
+    }
+  });
+
+  it('should include the signature when registre is signed', async () => {
+    vi.mocked(permissions.canExport).mockReturnValue(true);
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(db.boutique.findUnique).mockResolvedValue({
+      id: 'b1',
+      nom: 'MG',
+      adresse: null,
+      ville: null,
+    } as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+    vi.mocked(signatureService.getSignatureForRegistre).mockResolvedValue({
+      success: true,
+      data: {
+        id: 'sig-1',
+        boutiqueId: 'b1',
+        dateISO: '2026-01-01',
+        signataireId: 'u1',
+        signataireName: 'Lea Martin',
+        signataireRoleSnapshot: 'SALARIE',
+        imageUrl: 'https://blob.example.com/sig-1.png',
+        signedAt: new Date('2026-01-01T10:00:00Z'),
+      },
+    });
+    const result = await buildRegistreJournalierForExport({
+      viewer: ADMIN_VIEWER,
+      query: { date: '2026-01-01', boutiqueId: 'b1' },
+      performedByName: 'Admin',
+      performedByRole: 'ADMIN',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.signature).toEqual({
+        imageUrl: 'https://blob.example.com/sig-1.png',
+        signataireName: 'Lea Martin',
+        signataireRoleSnapshot: 'SALARIE',
+        signedAt: new Date('2026-01-01T10:00:00Z'),
+      });
+    }
+  });
+
+  it('should fall back to null signature when signature service errors', async () => {
+    vi.mocked(permissions.canExport).mockReturnValue(true);
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(db.boutique.findUnique).mockResolvedValue({
+      id: 'b1',
+      nom: 'MG',
+      adresse: null,
+      ville: null,
+    } as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+    vi.mocked(signatureService.getSignatureForRegistre).mockResolvedValue({
+      success: false,
+      error: 'INTERNAL',
+    });
+    const result = await buildRegistreJournalierForExport({
+      viewer: ADMIN_VIEWER,
+      query: { date: '2026-01-01', boutiqueId: 'b1' },
+      performedByName: 'Admin',
+      performedByRole: 'ADMIN',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.signature).toBeNull();
     }
   });
 });

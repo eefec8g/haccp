@@ -44,6 +44,7 @@ const ACTION_BADGE: Readonly<Record<AuditAction, string>> = {
   EXPORT: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
   PHOTO_UPLOAD: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
   PHOTO_DELETE: `${BADGE_BASE} border-mg-noir/30 text-mg-noir`,
+  SIGNATURE_CREATE: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
 };
 
 const ENTITY_TYPES: readonly AuditEntityType[] = [
@@ -53,6 +54,7 @@ const ENTITY_TYPES: readonly AuditEntityType[] = [
   'INVITATION',
   'EXPORT',
   'PHOTO',
+  'SIGNATURE',
 ];
 
 function formatDate(date: Date): string {

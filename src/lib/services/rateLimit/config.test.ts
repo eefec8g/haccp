@@ -49,4 +49,18 @@ describe('[config.RATE_LIMITS]', () => {
       maxRequests: 5,
     });
   });
+
+  it('should configure EXPORT_CSV to 5 requests per hour (audit DDPP budget)', () => {
+    expect(RATE_LIMITS.EXPORT_CSV).toEqual({
+      windowMs: 3_600_000,
+      maxRequests: 5,
+    });
+  });
+
+  it('should configure EXPORT_PDF to 2 requests per hour (pdfmake cost)', () => {
+    expect(RATE_LIMITS.EXPORT_PDF).toEqual({
+      windowMs: 3_600_000,
+      maxRequests: 2,
+    });
+  });
 });

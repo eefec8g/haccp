@@ -21,6 +21,10 @@
  *                         anti-script/replay, pas contrainte UX.
  * - `RELEVE_ANNULATION`  : 10 / 1h,   action rare (correction responsable).
  * - `ALERTE_RESOLVE`     : 30 / 1h,   responsable resout en pic d'activite.
+ * - `EXPORT_CSV`         : 5 / 1h,    Epic EXPORT (CSV streaming, cout DB
+ *                         + I/O moyen, garde-fou OOM serverless).
+ * - `EXPORT_PDF`         : 2 / 1h,    Epic EXPORT (PDF registre journalier,
+ *                         cout pdfmake/fonts plus eleve, audit DDPP rare).
  */
 export type RateLimitType =
   | 'LOGIN'
@@ -29,7 +33,9 @@ export type RateLimitType =
   | 'INVITATION_ACCEPT'
   | 'RELEVE_CREATE'
   | 'RELEVE_ANNULATION'
-  | 'ALERTE_RESOLVE';
+  | 'ALERTE_RESOLVE'
+  | 'EXPORT_CSV'
+  | 'EXPORT_PDF';
 
 /**
  * Resultat normalise d'une verification rate-limit.

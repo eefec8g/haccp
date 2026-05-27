@@ -23,6 +23,7 @@ export const AUDIT_ENTITY_LABEL: Readonly<Record<AuditEntityType, string>> = {
   INVITATION: 'Invitation',
   EXPORT: 'Export',
   PHOTO: 'Photo',
+  SIGNATURE: 'Signature',
 };
 
 /**
@@ -39,6 +40,7 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<AuditAction, string>> = {
   EXPORT: 'Export',
   PHOTO_UPLOAD: 'Photo ajoutee',
   PHOTO_DELETE: 'Photo supprimee',
+  SIGNATURE_CREATE: 'Registre signe',
 };
 
 /**

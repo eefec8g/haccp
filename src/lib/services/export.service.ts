@@ -8,6 +8,7 @@ import {
 import { parseISODateUtc, todayParisISO } from '@/lib/utils/dates';
 import { MAX_EXPORT_ROWS } from '@/lib/constants/export';
 import { logAudit } from '@/lib/services/audit-log.service';
+import { getSignatureForRegistre } from '@/lib/services/signature.service';
 import { logger } from '@/lib/logger';
 import type {
   ExportCsvRow,
@@ -16,8 +17,11 @@ import type {
   RegistreJournalier,
   RegistreJournalierAlerteEntry,
   RegistreJournalierCreneau,
+  RegistreJournalierForExport,
   RegistreJournalierRow,
+  RegistreJournalierSignature,
 } from '@/types/export';
+import type { SignatureRow } from '@/types/signature';
 import type { ExportCsvQuery, ExportPdfQuery } from '@/lib/validations/export';
 import type { Result } from '@/types/result';
 
@@ -136,113 +140,331 @@ interface BuildRegistreJournalierArgs {
   readonly performedByRole: string;
 }
 
-export async function buildRegistreJournalier({
-  viewer,
-  query,
-  performedByName,
-  performedByRole,
-}: BuildRegistreJournalierArgs): Promise<
-  Result<RegistreJournalier, ExportError>
-> {
-  if (!canExport(viewer)) {
+interface RegistreBaseArgs {
+  readonly viewer: SessionUser;
+  readonly query: ExportPdfQuery;
+  readonly performedByName: string;
+  readonly performedByRole: string;
+}
+
+/**
+ * Charge le registre journalier d'une boutique pour LECTURE (page detail).
+ *
+ * Ouvert aux 3 roles (SALARIE/RESPONSABLE/ADMIN) tant que la boutique
+ * est dans le scope multi-tenant du viewer. NE CONTIENT PAS la signature
+ * (chargee separement par `SignatureSection` pour decoupler le check
+ * d'export et eviter un double fetch).
+ *
+ * Utilisee par : page detail `/boutiques/[boutiqueId]/registre/[dateISO]`.
+ */
+export async function readRegistreJournalier(
+  args: RegistreBaseArgs
+): Promise<Result<RegistreJournalier, ExportError>> {
+  const scopeCheck = await ensureBoutiqueInScope(
+    args.viewer,
+    args.query.boutiqueId
+  );
+  if (!scopeCheck.success) {
+    return scopeCheck;
+  }
+  return loadRegistreBase(args);
+}
+
+/**
+ * Charge le registre journalier d'une boutique pour EXPORT PDF.
+ *
+ * Restreint aux roles autorises a exporter (RESPONSABLE + ADMIN) via
+ * `canExport`. EMBARQUE la signature manuscrite (1 fetch additionnel
+ * parallelise avec les autres queries).
+ *
+ * Utilisee par : route `/api/exports/pdf` uniquement.
+ */
+export async function buildRegistreJournalierForExport(
+  args: BuildRegistreJournalierArgs
+): Promise<Result<RegistreJournalierForExport, ExportError>> {
+  if (!canExport(args.viewer)) {
     return { success: false, error: 'FORBIDDEN' };
   }
+  const scopeCheck = await ensureBoutiqueInScope(
+    args.viewer,
+    args.query.boutiqueId
+  );
+  if (!scopeCheck.success) {
+    return scopeCheck;
+  }
+  return loadRegistreWithSignature(args);
+}
+
+/**
+ * Verifie le scope boutique du viewer. Retourne `BOUTIQUE_NOT_FOUND` si
+ * la boutique cible n'est pas dans le scope (anti-enum).
+ */
+async function ensureBoutiqueInScope(
+  viewer: SessionUser,
+  boutiqueId: string
+): Promise<Result<true, ExportError>> {
   const accessible = await getAccessibleBoutiqueIds(viewer);
-  if (!accessible.includes(query.boutiqueId)) {
+  if (!accessible.includes(boutiqueId)) {
     return { success: false, error: 'BOUTIQUE_NOT_FOUND' };
   }
-  const boutique = await db.boutique.findUnique({
-    where: { id: query.boutiqueId },
-    select: { id: true, nom: true, adresse: true, ville: true },
-  });
-  if (!boutique) {
-    return { success: false, error: 'BOUTIQUE_NOT_FOUND' };
-  }
+  return { success: true, data: true };
+}
+
+interface RegistreQueriesBase {
+  readonly boutique: BoutiqueRow | null;
+  readonly equipements: EquipementWithReleves[];
+  readonly alertesRows: AlerteRow[];
+}
+
+async function fetchRegistreBaseQueries(
+  query: ExportPdfQuery
+): Promise<RegistreQueriesBase> {
   const date = parseISODateUtc(query.date);
-  // Perf : les 2 queries sont independantes (l'equipement embarque ses
-  // releves du jour, alerte n'a pas besoin d'equipement). On parallelise
-  // apres le check boutique (qui reste sequentiel car c'est un gating).
-  const [equipements, alertesRows] = await Promise.all([
+  // Perf : les 3 queries sont independantes (la boutique est lue par PK,
+  // l'equipement embarque ses releves du jour, alerte n'a pas besoin
+  // d'equipement). On parallelise toutes les queries pour reduire la
+  // latence end-to-end (audit perf M-3).
+  const [boutique, equipements, alertesRows] = await Promise.all([
+    db.boutique.findUnique({
+      where: { id: query.boutiqueId },
+      select: { id: true, nom: true, adresse: true, ville: true },
+    }),
     db.equipement.findMany({
       where: { boutiqueId: query.boutiqueId, actif: true },
       orderBy: { nom: 'asc' },
-      select: {
-        id: true,
-        nom: true,
-        type: true,
-        seuilMin: true,
-        seuilMax: true,
-        releves: {
-          where: { date, annuleParId: null },
-          select: {
-            creneau: true,
-            temperature: true,
-            commentaire: true,
-            alerteHorsSeuils: true,
-            createdAt: true,
-            user: { select: { name: true } },
-          },
-        },
-      },
+      select: EQUIPEMENT_REGISTRE_SELECT(date),
     }),
     db.alerte.findMany({
       where: { releve: { boutiqueId: query.boutiqueId, date } },
       orderBy: { createdAt: 'asc' },
-      select: {
-        id: true,
-        status: true,
-        commentaireResolution: true,
-        resoluAt: true,
-        resoluPar: { select: { name: true } },
-        releve: {
-          select: {
-            creneau: true,
-            temperature: true,
-            equipement: {
-              select: { nom: true, seuilMin: true, seuilMax: true },
-            },
-          },
-        },
-      },
+      select: ALERTE_REGISTRE_SELECT,
     }),
   ]);
-  const equipementRows: RegistreJournalierRow[] = equipements.map((eq) => ({
+  return { boutique, equipements, alertesRows };
+}
+
+async function loadRegistreBase(
+  args: RegistreBaseArgs
+): Promise<Result<RegistreJournalier, ExportError>> {
+  const { boutique, equipements, alertesRows } = await fetchRegistreBaseQueries(
+    args.query
+  );
+  if (!boutique) {
+    return { success: false, error: 'BOUTIQUE_NOT_FOUND' };
+  }
+  return {
+    success: true,
+    data: assembleRegistre({
+      query: args.query,
+      performedByName: args.performedByName,
+      performedByRole: args.performedByRole,
+      queries: { boutique, equipements, alertesRows },
+    }),
+  };
+}
+
+async function loadRegistreWithSignature(
+  args: BuildRegistreJournalierArgs
+): Promise<Result<RegistreJournalierForExport, ExportError>> {
+  const date = parseISODateUtc(args.query.date);
+  const [boutique, equipements, alertesRows, signatureResult] =
+    await Promise.all([
+      db.boutique.findUnique({
+        where: { id: args.query.boutiqueId },
+        select: { id: true, nom: true, adresse: true, ville: true },
+      }),
+      db.equipement.findMany({
+        where: { boutiqueId: args.query.boutiqueId, actif: true },
+        orderBy: { nom: 'asc' },
+        select: EQUIPEMENT_REGISTRE_SELECT(date),
+      }),
+      db.alerte.findMany({
+        where: { releve: { boutiqueId: args.query.boutiqueId, date } },
+        orderBy: { createdAt: 'asc' },
+        select: ALERTE_REGISTRE_SELECT,
+      }),
+      getSignatureForRegistre({
+        viewer: args.viewer,
+        boutiqueId: args.query.boutiqueId,
+        dateISO: args.query.date,
+      }),
+    ]);
+  if (!boutique) {
+    return { success: false, error: 'BOUTIQUE_NOT_FOUND' };
+  }
+  const base = assembleRegistre({
+    query: args.query,
+    performedByName: args.performedByName,
+    performedByRole: args.performedByRole,
+    queries: { boutique, equipements, alertesRows },
+  });
+  return {
+    success: true,
+    data: { ...base, signature: projectSignatureForPdf(signatureResult) },
+  };
+}
+
+interface BoutiqueRow {
+  readonly id: string;
+  readonly nom: string;
+  readonly adresse: string | null;
+  readonly ville: string | null;
+}
+
+interface AssembleRegistreArgs {
+  readonly query: ExportPdfQuery;
+  readonly performedByName: string;
+  readonly performedByRole: string;
+  readonly queries: {
+    readonly boutique: BoutiqueRow;
+    readonly equipements: EquipementWithReleves[];
+    readonly alertesRows: AlerteRow[];
+  };
+}
+
+function assembleRegistre({
+  query,
+  performedByName,
+  performedByRole,
+  queries,
+}: AssembleRegistreArgs): RegistreJournalier {
+  return {
+    dateISO: query.date,
+    boutique: {
+      id: queries.boutique.id,
+      nom: queries.boutique.nom,
+      adresse: queries.boutique.adresse,
+      ville: queries.boutique.ville,
+    },
+    generatedBy: { nom: performedByName, role: performedByRole },
+    generatedAt: new Date(),
+    equipements: queries.equipements.map(toRegistreRow),
+    alertes: queries.alertesRows.map(toAlerteEntry),
+  };
+}
+
+function toRegistreRow(eq: EquipementWithReleves): RegistreJournalierRow {
+  return {
     equipementId: eq.id,
     equipementNom: eq.nom,
     equipementType: eq.type,
     seuilMin: eq.seuilMin,
     seuilMax: eq.seuilMax,
     creneaux: buildCreneauxForDay(eq.releves),
-  }));
-  const alerteEntries: RegistreJournalierAlerteEntry[] = alertesRows.map(
-    (alerte) => ({
-      alerteId: alerte.id,
-      equipementNom: alerte.releve.equipement.nom,
-      creneau: alerte.releve.creneau,
-      temperature: alerte.releve.temperature,
-      seuilMin: alerte.releve.equipement.seuilMin,
-      seuilMax: alerte.releve.equipement.seuilMax,
-      status: alerte.status,
-      commentaireResolution: alerte.commentaireResolution,
-      resoluParNom: alerte.resoluPar?.name ?? null,
-      resoluAt: alerte.resoluAt,
-    })
-  );
+  };
+}
+
+function toAlerteEntry(alerte: AlerteRow): RegistreJournalierAlerteEntry {
   return {
-    success: true,
-    data: {
-      dateISO: query.date,
-      boutique: {
-        id: boutique.id,
-        nom: boutique.nom,
-        adresse: boutique.adresse,
-        ville: boutique.ville,
+    alerteId: alerte.id,
+    equipementNom: alerte.releve.equipement.nom,
+    creneau: alerte.releve.creneau,
+    temperature: alerte.releve.temperature,
+    seuilMin: alerte.releve.equipement.seuilMin,
+    seuilMax: alerte.releve.equipement.seuilMax,
+    status: alerte.status,
+    commentaireResolution: alerte.commentaireResolution,
+    resoluParNom: alerte.resoluPar?.name ?? null,
+    resoluAt: alerte.resoluAt,
+  };
+}
+
+const EQUIPEMENT_REGISTRE_SELECT = (date: Date) =>
+  ({
+    id: true,
+    nom: true,
+    type: true,
+    seuilMin: true,
+    seuilMax: true,
+    releves: {
+      where: { date, annuleParId: null },
+      select: {
+        creneau: true,
+        temperature: true,
+        commentaire: true,
+        alerteHorsSeuils: true,
+        createdAt: true,
+        user: { select: { name: true } },
       },
-      generatedBy: { nom: performedByName, role: performedByRole },
-      generatedAt: new Date(),
-      equipements: equipementRows,
-      alertes: alerteEntries,
     },
+  }) as const;
+
+const ALERTE_REGISTRE_SELECT = {
+  id: true,
+  status: true,
+  commentaireResolution: true,
+  resoluAt: true,
+  resoluPar: { select: { name: true } },
+  releve: {
+    select: {
+      creneau: true,
+      temperature: true,
+      equipement: {
+        select: { nom: true, seuilMin: true, seuilMax: true },
+      },
+    },
+  },
+} as const;
+
+interface EquipementWithReleves {
+  readonly id: string;
+  readonly nom: string;
+  readonly type: 'CONGELATEUR' | 'VITRINE' | 'CHAMBRE_FROIDE' | 'AUTRE';
+  readonly seuilMin: number;
+  readonly seuilMax: number;
+  readonly releves: readonly {
+    readonly creneau: 'MATIN' | 'MIDI' | 'SOIR';
+    readonly temperature: number;
+    readonly commentaire: string | null;
+    readonly alerteHorsSeuils: boolean;
+    readonly createdAt: Date;
+    readonly user: { readonly name: string };
+  }[];
+}
+
+interface AlerteRow {
+  readonly id: string;
+  readonly status: 'OUVERTE' | 'RESOLUE' | 'IGNOREE';
+  readonly commentaireResolution: string | null;
+  readonly resoluAt: Date | null;
+  readonly resoluPar: { readonly name: string } | null;
+  readonly releve: {
+    readonly creneau: 'MATIN' | 'MIDI' | 'SOIR';
+    readonly temperature: number;
+    readonly equipement: {
+      readonly nom: string;
+      readonly seuilMin: number;
+      readonly seuilMax: number;
+    };
+  };
+}
+
+/**
+ * Projette le `Result<SignatureRow | null>` du service signature en
+ * `RegistreJournalierSignature | null` pour le PDF.
+ *
+ * Si la lecture signature echoue (scope hors perimetre ou exception
+ * inattendue), on renvoie `null` -> le PDF affichera "Registre non
+ * signe". On evite ainsi de faire echouer la generation du registre
+ * complet a cause de la signature (decoration optionnelle).
+ */
+function projectSignatureForPdf(
+  result: Awaited<ReturnType<typeof getSignatureForRegistre>>
+): RegistreJournalierSignature | null {
+  if (!result.success || !result.data) {
+    return null;
+  }
+  return signatureRowToPdfSignature(result.data);
+}
+
+function signatureRowToPdfSignature(
+  row: SignatureRow
+): RegistreJournalierSignature {
+  return {
+    imageUrl: row.imageUrl,
+    signataireName: row.signataireName,
+    signataireRoleSnapshot: row.signataireRoleSnapshot,
+    signedAt: row.signedAt,
   };
 }
 

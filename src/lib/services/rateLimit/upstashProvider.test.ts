@@ -104,6 +104,7 @@ describe('[upstashProvider]', () => {
       'haccp:rl:EXPORT_CSV',
       'haccp:rl:EXPORT_PDF',
       'haccp:rl:PHOTO_UPLOAD',
+      'haccp:rl:SIGNATURE_UPLOAD',
     ]);
     expect(capturedOptions.every((o) => o.analytics === false)).toBe(true);
   });

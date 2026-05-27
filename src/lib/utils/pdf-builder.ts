@@ -18,15 +18,29 @@ import {
   PDF_FOOTER_PREFIX,
   PDF_NO_ALERTES_LABEL,
   PDF_NO_RELEVES_LABEL,
+  PDF_SIGNATURE_NOT_SIGNED,
+  PDF_SIGNATURE_PREFIX,
+  PDF_SIGNATURE_SECTION_TITLE,
+  PDF_SIGNATURE_UNAVAILABLE,
   PDF_SUBTITLE,
   PDF_TITLE,
 } from '@/lib/constants/export';
 import { formatDateShort } from '@/lib/utils/dates';
+import { logger } from '@/lib/logger';
 import type {
   RegistreJournalier,
   RegistreJournalierAlerteEntry,
+  RegistreJournalierForExport,
   RegistreJournalierRow,
+  RegistreJournalierSignature,
 } from '@/types/export';
+import {
+  ALLOWED_SIGNATURE_BLOB_HOST_SUFFIX,
+  MAX_SIGNATURE_BYTES,
+  SIGNATURE_FETCH_TIMEOUT_MS,
+  SIGNATURE_MIME,
+} from '@/lib/constants/signature';
+import { verifyPngMagicBytes } from '@/lib/utils/signature';
 
 /**
  * Generateur PDF "Registre journalier HACCP" via pdfmake (server-side).
@@ -308,7 +322,286 @@ function buildFooter(data: RegistreJournalier): Content {
   };
 }
 
-function buildDocDefinition(data: RegistreJournalier): TDocumentDefinitions {
+const PNG_DATA_URL_PREFIX = 'data:image/png;base64,';
+const SIGNATURE_IMAGE_MAX_WIDTH = 220;
+
+/**
+ * Verifie que `url` cible le storage Vercel Blob via HTTPS (SSRF +
+ * downgrade protection). Refuse :
+ *   - tout protocol != `https:` (defense en profondeur : un blob HTTP
+ *     ne devrait jamais exister mais l'allowlist hostname seule
+ *     n'empecherait pas un MITM en clair) ;
+ *   - tout hostname dont le suffixe ne correspond pas au domaine
+ *     Vercel Blob attendu.
+ */
+function isAllowedBlobHost(url: URL): boolean {
+  return (
+    url.protocol === 'https:' &&
+    url.hostname.endsWith(ALLOWED_SIGNATURE_BLOB_HOST_SUFFIX)
+  );
+}
+
+/**
+ * Parse une URL utilisateur en toute securite. Retourne `null` si la
+ * chaine n'est pas une URL valide (caller affichera "Signature
+ * indisponible").
+ */
+function parseUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verifie les en-tetes HTTP avant de telecharger le payload :
+ *   - `Content-Type` doit commencer par `image/png` (accept charset).
+ *   - `Content-Length` doit etre present et <= MAX_SIGNATURE_BYTES (DoS).
+ *
+ * Defense en profondeur AVANT le `arrayBuffer()` pour ne pas charger en
+ * memoire un payload potentiellement abusif.
+ */
+function isValidSignatureResponse(response: Response): boolean {
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.startsWith(SIGNATURE_MIME)) {
+    return false;
+  }
+  const contentLength = response.headers.get('content-length');
+  if (!contentLength) {
+    return false;
+  }
+  const size = Number.parseInt(contentLength, 10);
+  return Number.isFinite(size) && size > 0 && size <= MAX_SIGNATURE_BYTES;
+}
+
+/**
+ * Filtre la `Response` : `ok` + en-tetes coherents (content-type PNG +
+ * content-length <= MAX). Tout echec -> `null` + warn log.
+ */
+function ensureValidResponse(response: Response): Response | null {
+  if (!response.ok) {
+    logger.warn('[pdf-builder] signature fetch non-200', {
+      status: response.status,
+    });
+    return null;
+  }
+  if (!isValidSignatureResponse(response)) {
+    logger.warn('[pdf-builder] signature response headers invalid');
+    return null;
+  }
+  return response;
+}
+
+/**
+ * Options fetch communes a tout `fetchWithTimeout` :
+ *   - `cache: 'force-cache'` : signatures immuables (premier verrouille).
+ *     Reduit la latence des re-exports PDF (audit perf Mi-1).
+ *   - `redirect: 'error'` : court-circuite l'allowlist hostname si le
+ *     serveur Blob retournait un `Location:` vers une origine arbitraire
+ *     (defense en profondeur SSRF).
+ */
+const SIGNATURE_FETCH_INIT: Pick<RequestInit, 'cache' | 'redirect'> = {
+  cache: 'force-cache',
+  redirect: 'error',
+};
+
+/**
+ * Wrapper SRP : exec d'un fetch protege par AbortController. Garantit
+ * que le timer est nettoye meme si `executor` rejette (`finally`).
+ */
+async function withFetchTimeout(
+  executor: (signal: AbortSignal) => Promise<Response>
+): Promise<Response | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    SIGNATURE_FETCH_TIMEOUT_MS
+  );
+  try {
+    return await executor(controller.signal);
+  } catch (error) {
+    logger.warn('[pdf-builder] signature fetch failed', {
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function fetchWithTimeout(url: string): Promise<Response | null> {
+  return withFetchTimeout((signal) =>
+    fetch(url, { signal, ...SIGNATURE_FETCH_INIT })
+  );
+}
+
+async function fetchSignaturePayload(url: string): Promise<Response | null> {
+  const parsed = parseUrl(url);
+  if (!parsed || !isAllowedBlobHost(parsed)) {
+    logger.warn('[pdf-builder] signature host not allowed');
+    return null;
+  }
+  const response = await fetchWithTimeout(url);
+  if (!response) {
+    return null;
+  }
+  return ensureValidResponse(response);
+}
+
+/**
+ * Charge l'image de signature en data URL base64 pour pdfmake.
+ *
+ * Defense en profondeur :
+ *   1. Allowlist hostname (`.public.blob.vercel-storage.com`) + protocol
+ *      `https:` obligatoire -- bloque tout SSRF / downgrade HTTP.
+ *   2. `redirect: 'error'` -- empeche l'allowlist d'etre court-circuitee
+ *      par un `Location:` du serveur Blob vers une origine arbitraire.
+ *   3. `Content-Type` declare doit etre `image/png` (rejet sinon).
+ *   4. `Content-Length` declare doit etre <= MAX_SIGNATURE_BYTES (rejet
+ *      sinon -- DoS memoire).
+ *   5. Magic bytes PNG verifies APRES telechargement (rejet sinon).
+ *   6. AbortController 5 s + try/catch global.
+ *
+ * Cache : `cache: 'force-cache'` -- signatures immuables (premier
+ * verrouille). Reduit la latence des re-exports PDF.
+ *
+ * Echec : retourne `null` (le caller affichera "Signature indisponible").
+ * Aucune exception ne fuit (le PDF doit toujours etre genere meme si la
+ * signature est inaccessible).
+ */
+export async function fetchSignatureImage(url: string): Promise<string | null> {
+  const response = await fetchSignaturePayload(url);
+  if (!response) {
+    return null;
+  }
+  try {
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    if (!verifyPngMagicBytes(new Uint8Array(buffer))) {
+      logger.warn('[pdf-builder] signature magic bytes invalid');
+      return null;
+    }
+    return `${PNG_DATA_URL_PREFIX}${buffer.toString('base64')}`;
+  } catch (error) {
+    logger.warn('[pdf-builder] signature decode failed', {
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+    return null;
+  }
+}
+
+interface SignatureFooterArgs {
+  readonly signature: RegistreJournalierSignature | null;
+  readonly imageDataUrl: string | null;
+}
+
+function buildSignatureCaption(signature: RegistreJournalierSignature): string {
+  const signedAt = PARIS_DATETIME.format(signature.signedAt);
+  return `${PDF_SIGNATURE_PREFIX} ${signature.signataireName} (${signature.signataireRoleSnapshot}) le ${signedAt} (Europe/Paris)`;
+}
+
+function buildNotSignedFooter(): Content {
+  return {
+    text: PDF_SIGNATURE_NOT_SIGNED,
+    fontSize: 9,
+    italics: true,
+    color: PDF_COLOR_NOIR_60,
+    alignment: CENTER,
+    margin: [0, 0, 0, 12],
+  };
+}
+
+function buildSectionTitle(): Content {
+  return {
+    text: PDF_SIGNATURE_SECTION_TITLE,
+    fontSize: 10,
+    bold: true,
+    color: PDF_COLOR_NOIR,
+    margin: [0, 0, 0, 4],
+  };
+}
+
+function buildCaptionLine(
+  signature: RegistreJournalierSignature,
+  marginTop = 0
+): Content {
+  return {
+    text: buildSignatureCaption(signature),
+    fontSize: 8,
+    color: PDF_COLOR_NOIR_60,
+    margin: [0, marginTop, 0, 0],
+  };
+}
+
+function buildUnavailableFooter(
+  signature: RegistreJournalierSignature
+): Content {
+  return {
+    stack: [
+      buildSectionTitle(),
+      {
+        text: PDF_SIGNATURE_UNAVAILABLE,
+        fontSize: 9,
+        italics: true,
+        color: PDF_COLOR_NOIR_60,
+      },
+      buildCaptionLine(signature, 4),
+    ],
+    margin: [0, 0, 0, 12],
+  };
+}
+
+function buildSignedFooter(
+  signature: RegistreJournalierSignature,
+  imageDataUrl: string
+): Content {
+  return {
+    stack: [
+      buildSectionTitle(),
+      {
+        image: imageDataUrl,
+        width: SIGNATURE_IMAGE_MAX_WIDTH,
+        margin: [0, 0, 0, 4],
+      },
+      buildCaptionLine(signature),
+    ],
+    margin: [0, 0, 0, 12],
+  };
+}
+
+/**
+ * Construit le bloc PDF de signature en pied du registre. Simple
+ * dispatcher entre 3 builders dedies (un par etat).
+ *
+ *   - Sans signature : pied de page italic "Registre non signe.".
+ *   - Avec signature mais fetch a echoue : mention "Signature
+ *     indisponible." (audit DDPP : on trace l'intention mais pas l'image).
+ *   - Avec image : titre + image (max 220 px de large) + caption
+ *     "Signe par X (ROLE) le DATE (Europe/Paris)".
+ */
+export function buildSignatureFooter({
+  signature,
+  imageDataUrl,
+}: SignatureFooterArgs): Content {
+  if (!signature) {
+    return buildNotSignedFooter();
+  }
+  if (!imageDataUrl) {
+    return buildUnavailableFooter(signature);
+  }
+  return buildSignedFooter(signature, imageDataUrl);
+}
+
+interface DocDefinitionArgs {
+  readonly data: RegistreJournalierForExport;
+  readonly signatureImageDataUrl: string | null;
+}
+
+function buildDocDefinition({
+  data,
+  signatureImageDataUrl,
+}: DocDefinitionArgs): TDocumentDefinitions {
   return {
     pageSize: 'A4',
     pageMargins: [40, 48, 40, 48],
@@ -319,15 +612,29 @@ function buildDocDefinition(data: RegistreJournalier): TDocumentDefinitions {
       buildBoutiqueBlock(data.boutique),
       buildEquipementsTable(data.equipements),
       buildAlertesSection(data.alertes),
+      buildSignatureFooter({
+        signature: data.signature,
+        imageDataUrl: signatureImageDataUrl,
+      }),
       buildFooter(data),
     ],
   };
 }
 
-export function buildRegistreJournalierPdf(
-  data: RegistreJournalier
+async function resolveSignatureImage(
+  signature: RegistreJournalierSignature | null
+): Promise<string | null> {
+  if (!signature) {
+    return null;
+  }
+  return fetchSignatureImage(signature.imageUrl);
+}
+
+export async function buildRegistreJournalierPdf(
+  data: RegistreJournalierForExport
 ): Promise<Buffer> {
-  const docDefinition = buildDocDefinition(data);
+  const signatureImageDataUrl = await resolveSignatureImage(data.signature);
+  const docDefinition = buildDocDefinition({ data, signatureImageDataUrl });
   const pdfDoc = getPrinter().createPdfKitDocument(docDefinition);
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];

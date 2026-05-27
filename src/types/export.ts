@@ -1,4 +1,4 @@
-import type { Creneau } from '@prisma/client';
+import type { Creneau, UserRole } from '@prisma/client';
 
 /**
  * Types de l'Epic EXPORT.
@@ -74,6 +74,29 @@ export interface RegistreJournalierAlerteEntry {
   readonly resoluAt: Date | null;
 }
 
+/**
+ * Signature embarquee dans le registre journalier (US-SIG-001).
+ *
+ * Type minimal projete par `export.service` pour decoupler le pdf-builder
+ * du shape complet `SignatureRow` (qui embarque id, boutiqueId, etc.,
+ * non utiles au rendu PDF).
+ */
+export interface RegistreJournalierSignature {
+  readonly imageUrl: string;
+  readonly signataireName: string;
+  readonly signataireRoleSnapshot: UserRole;
+  readonly signedAt: Date;
+}
+
+/**
+ * Forme "lecture" du registre journalier (page detail).
+ *
+ * Accessible aux 3 roles (SALARIE/RESPONSABLE/ADMIN) si la boutique est
+ * dans leur scope. NE CONTIENT PAS la signature : la page detail charge
+ * la signature separement via `SignatureSection` (decouplage qui evite
+ * un double fetch + permet le check `canExport` sur l'export PDF
+ * seulement).
+ */
 export interface RegistreJournalier {
   readonly dateISO: string;
   readonly boutique: {
@@ -86,6 +109,20 @@ export interface RegistreJournalier {
   readonly generatedAt: Date;
   readonly equipements: readonly RegistreJournalierRow[];
   readonly alertes: readonly RegistreJournalierAlerteEntry[];
+}
+
+/**
+ * Forme "export" du registre journalier (route PDF).
+ *
+ * Etend `RegistreJournalier` avec la signature manuscrite associee au
+ * registre. Restreinte aux roles autorises a exporter (RESPONSABLE +
+ * ADMIN) par `canExport`.
+ *
+ * `signature` est `null` si le registre n'est pas signe : le PDF
+ * affichera alors la mention "Registre non signe" en pied de page.
+ */
+export interface RegistreJournalierForExport extends RegistreJournalier {
+  readonly signature: RegistreJournalierSignature | null;
 }
 
 export type ExportError =

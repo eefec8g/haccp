@@ -64,6 +64,19 @@ export const PDF_NO_RELEVES_LABEL =
 export const PDF_FOOTER_PREFIX = 'Genere par';
 
 /**
+ * Labels FR pour le footer de signature manuscrite du registre (US-SIG-001).
+ *
+ *   - `PDF_SIGNATURE_SECTION_TITLE` : titre du bloc avant l'image.
+ *   - `PDF_SIGNATURE_PREFIX` : "Signe par X (ROLE) le DATE".
+ *   - `PDF_SIGNATURE_NOT_SIGNED` : pied de page si pas de signature.
+ *   - `PDF_SIGNATURE_UNAVAILABLE` : pied de page si fetch Blob a echoue.
+ */
+export const PDF_SIGNATURE_SECTION_TITLE = 'Signature du registre';
+export const PDF_SIGNATURE_PREFIX = 'Signe par';
+export const PDF_SIGNATURE_NOT_SIGNED = 'Registre non signe.';
+export const PDF_SIGNATURE_UNAVAILABLE = 'Signature indisponible.';
+
+/**
  * Couleurs de la charte Maison Givre, en hex valides pour pdfmake.
  */
 export const PDF_COLOR_NOIR = '#0D0D0D';

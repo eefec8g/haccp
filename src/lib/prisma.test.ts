@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { isAnnulationOnlyUpdate, IMMUTABILITY_ERROR } from './prisma';
+import {
+  isAnnulationOnlyUpdate,
+  IMMUTABILITY_ERROR,
+  SIGNATURE_IMMUTABILITY_ERROR,
+  db,
+} from './prisma';
 
 /**
  * Tests unitaires du middleware d'immutabilite Releve (RG-IMMU-001).
@@ -24,6 +29,77 @@ describe('[prisma] IMMUTABILITY_ERROR', () => {
     expect(IMMUTABILITY_ERROR.length).toBeGreaterThan(0);
     expect(IMMUTABILITY_ERROR).toContain('HACCP');
     expect(IMMUTABILITY_ERROR).toContain('annulation');
+  });
+});
+
+describe('[prisma] SIGNATURE_IMMUTABILITY_ERROR', () => {
+  it('should expose a non-empty French message referencing HACCP and the audit DDPP intent', () => {
+    expect(typeof SIGNATURE_IMMUTABILITY_ERROR).toBe('string');
+    expect(SIGNATURE_IMMUTABILITY_ERROR.length).toBeGreaterThan(0);
+    expect(SIGNATURE_IMMUTABILITY_ERROR).toContain('HACCP');
+    expect(SIGNATURE_IMMUTABILITY_ERROR).toContain('Signature');
+  });
+});
+
+/**
+ * Le `$extends.query.signature.*` doit throw AVANT toute requete DB
+ * (le throw est synchrone dans le hook). On peut donc verifier le
+ * contrat sans connexion Postgres : Prisma resout d'abord les hooks
+ * `query`, et notre code rejette immediatement le call.
+ *
+ * Pourquoi tester toutes les operations ? Le hook `update` Releve a
+ * une exception controlee (annulation), pas le hook Signature : on
+ * verifie explicitement que CHAQUE operation rejette, y compris
+ * `update` (pour empecher tout drift futur du contrat).
+ */
+describe('[prisma] Signature immutability hooks', () => {
+  const SIG_ID = 'sig-1';
+
+  it('should throw on signature.update', async () => {
+    await expect(
+      db.signature.update({
+        where: { id: SIG_ID },
+        data: { blobUrl: 'tamper' },
+      })
+    ).rejects.toThrow(SIGNATURE_IMMUTABILITY_ERROR);
+  });
+
+  it('should throw on signature.updateMany', async () => {
+    await expect(
+      db.signature.updateMany({
+        where: { boutiqueId: 'b1' },
+        data: { blobUrl: 'tamper' },
+      })
+    ).rejects.toThrow(SIGNATURE_IMMUTABILITY_ERROR);
+  });
+
+  it('should throw on signature.delete', async () => {
+    await expect(
+      db.signature.delete({ where: { id: SIG_ID } })
+    ).rejects.toThrow(SIGNATURE_IMMUTABILITY_ERROR);
+  });
+
+  it('should throw on signature.deleteMany', async () => {
+    await expect(
+      db.signature.deleteMany({ where: { boutiqueId: 'b1' } })
+    ).rejects.toThrow(SIGNATURE_IMMUTABILITY_ERROR);
+  });
+
+  it('should throw on signature.upsert', async () => {
+    await expect(
+      db.signature.upsert({
+        where: { id: SIG_ID },
+        create: {
+          boutiqueId: 'b1',
+          dateISO: '2026-05-27',
+          signataireId: 'u1',
+          signataireRoleSnapshot: 'SALARIE',
+          storageKey: 'k',
+          blobUrl: 'u',
+        },
+        update: { blobUrl: 'tamper' },
+      })
+    ).rejects.toThrow(SIGNATURE_IMMUTABILITY_ERROR);
   });
 });
 

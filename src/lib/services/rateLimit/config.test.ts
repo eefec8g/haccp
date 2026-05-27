@@ -63,4 +63,11 @@ describe('[config.RATE_LIMITS]', () => {
       maxRequests: 2,
     });
   });
+
+  it('should configure PHOTO_UPLOAD to 20 requests per hour (Epic PHOTOS anti-spam + storage cost)', () => {
+    expect(RATE_LIMITS.PHOTO_UPLOAD).toEqual({
+      windowMs: 3_600_000,
+      maxRequests: 20,
+    });
+  });
 });

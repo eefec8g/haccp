@@ -5,7 +5,7 @@ import {
   MAX_PERIODE_DAYS,
 } from '@/lib/constants/export-consolide';
 import { MILLIS_PER_DAY } from '@/lib/constants/time';
-import { todayParisISO } from '@/lib/utils/dates';
+import { daysInclusive, todayParisISO } from '@/lib/utils/dates';
 
 /**
  * Schemas Zod de l'Epic EXPORT.
@@ -88,19 +88,6 @@ export const exportPdfQuerySchema = z.object({
 });
 
 /**
- * Calcule la difference en jours calendaires entre deux dates ISO
- * `YYYY-MM-DD`. La regex Zod garantit en amont la forme parsable par
- * `new Date(...)` (interpretee UTC pour ISO date sans heure).
- *
- * Note : `Math.floor` retourne 0 pour un meme jour, ce qui est
- * intentionnel (jour de bornes incluses : 1..N est verifie en aval).
- */
-function diffInDays(dateStart: string, dateEnd: string): number {
-  const ms = new Date(dateEnd).getTime() - new Date(dateStart).getTime();
-  return Math.floor(ms / MILLIS_PER_DAY);
-}
-
-/**
  * Schema du registre journalier consolide (US-REG-001).
  *
  * Validation en chaine (les `superRefine` issuent des erreurs avec un
@@ -130,7 +117,7 @@ export const exportConsolideQuerySchema = z
       });
       return;
     }
-    const days = diffInDays(data.dateStart, data.dateEnd) + 1;
+    const days = daysInclusive(data.dateStart, data.dateEnd);
     if (days > MAX_PERIODE_DAYS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

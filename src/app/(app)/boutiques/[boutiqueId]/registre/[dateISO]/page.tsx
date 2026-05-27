@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { readRegistreJournalier } from '@/lib/services/export.service';
 import { formatDateShort } from '@/lib/utils/dates';
+import { formatTemperature } from '@/lib/utils/format-temperature';
 import { AppPageHeader } from '@/components/features/ui/AppPageHeader';
 import { SignatureSection } from '@/components/features/signature/SignatureSection';
 import type { SessionUser } from '@/lib/permissions';
@@ -90,10 +91,6 @@ interface RegistreDetailPageProps {
   }>;
 }
 
-function formatTemperature(value: number | null): string {
-  return value === null ? '-' : `${value.toFixed(1)} degC`;
-}
-
 function buildExportPdfHref(boutiqueId: string, dateISO: string): string {
   const params = new URLSearchParams({ boutiqueId, date: dateISO });
   return `/api/exports/pdf?${params.toString()}`;
@@ -142,7 +139,7 @@ function RelevesTable({
               </td>
               {row.creneaux.map((cell) => (
                 <td key={cell.creneau} className={TD_CLASSES}>
-                  {formatTemperature(cell.temperature)}
+                  {formatTemperature(cell.temperature, '-')}
                 </td>
               ))}
             </tr>

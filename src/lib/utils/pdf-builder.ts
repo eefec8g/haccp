@@ -21,6 +21,7 @@ import {
   PDF_TITLE,
 } from '@/lib/constants/export';
 import { formatDateShort } from '@/lib/utils/dates';
+import { formatTemperature } from '@/lib/utils/format-temperature';
 import { logger } from '@/lib/logger';
 import type {
   RegistreJournalier,
@@ -60,13 +61,6 @@ import {
  * equipements x 3 creneaux + alertes du jour, generation < 1 sec sur
  * Vercel Node 20).
  */
-
-function formatTemperatureCell(value: number | null): string {
-  if (value === null) {
-    return '-';
-  }
-  return `${value.toFixed(1)} degC`;
-}
 
 function buildTitleBlock(data: RegistreJournalier): Content {
   return {
@@ -133,7 +127,7 @@ function buildCreneauCell(
 ): TableCell {
   const entry = creneaux.find((c) => c.creneau === slot);
   return {
-    text: formatTemperatureCell(entry?.temperature ?? null),
+    text: formatTemperature(entry?.temperature ?? null, '-'),
     fontSize: 9,
     alignment: CENTER,
     color: entry?.alerteHorsSeuils ? PDF_COLOR_OR : PDF_COLOR_NOIR,

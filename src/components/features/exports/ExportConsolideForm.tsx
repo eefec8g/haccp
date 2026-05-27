@@ -10,7 +10,10 @@ import {
   SUBMIT_CLASSES,
   SUBMIT_DESTRUCTIVE_CLASSES,
 } from '@/components/features/ui/form-styles';
-import { MILLIS_PER_DAY } from '@/lib/constants/time';
+import {
+  computeDateRangeValidation,
+  isDateRangeFieldInvalid,
+} from '@/lib/utils/date-range-validation';
 
 /**
  * Formulaire d'export "Registre journalier consolide" (Epic REGISTRE
@@ -53,123 +56,6 @@ interface ExportConsolideFormProps {
 
 const RELEVES_PATH = '/releves' as Route;
 
-function diffInDaysInclusive(dateStart: string, dateEnd: string): number {
-  const startMs = new Date(dateStart).getTime();
-  const endMs = new Date(dateEnd).getTime();
-  if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
-    return 0;
-  }
-  return Math.floor((endMs - startMs) / MILLIS_PER_DAY) + 1;
-}
-
-/**
- * Sous-ensembles de champs concernes par une erreur de validation.
- *
- * Permet de marquer `aria-invalid` uniquement sur le ou les champs en
- * cause (CC-7) : pour "dateEnd > maxDate", seul `dateEnd` est en
- * cause ; pour "dateStart > dateEnd", les deux participent.
- */
-type InvalidField = 'dateStart' | 'dateEnd';
-
-interface ValidationState {
-  readonly valid: boolean;
-  readonly message: string | null;
-  readonly invalidFields: readonly InvalidField[];
-}
-
-const VALID_STATE: ValidationState = {
-  valid: true,
-  message: null,
-  invalidFields: [],
-};
-
-interface ValidationArgs {
-  readonly dateStart: string;
-  readonly dateEnd: string;
-  readonly maxDate: string;
-  readonly maxPeriodeDays: number;
-}
-
-function validateEmpty({
-  dateStart,
-  dateEnd,
-}: ValidationArgs): ValidationState | null {
-  if (dateStart && dateEnd) {
-    return null;
-  }
-  return {
-    valid: false,
-    message: 'Selectionnez une date de debut et de fin.',
-    invalidFields: dateStart ? ['dateEnd'] : ['dateStart'],
-  };
-}
-
-function validateDateOrder({
-  dateStart,
-  dateEnd,
-}: ValidationArgs): ValidationState | null {
-  if (dateEnd >= dateStart) {
-    return null;
-  }
-  return {
-    valid: false,
-    message: 'La date de fin doit etre superieure ou egale a la date de debut.',
-    invalidFields: ['dateStart', 'dateEnd'],
-  };
-}
-
-function validateFuture({
-  dateEnd,
-  maxDate,
-}: ValidationArgs): ValidationState | null {
-  if (dateEnd <= maxDate) {
-    return null;
-  }
-  return {
-    valid: false,
-    message: 'La date de fin ne peut pas etre dans le futur.',
-    invalidFields: ['dateEnd'],
-  };
-}
-
-function validatePeriodeLength(args: ValidationArgs): ValidationState | null {
-  const days = diffInDaysInclusive(args.dateStart, args.dateEnd);
-  if (days <= args.maxPeriodeDays) {
-    return null;
-  }
-  return {
-    valid: false,
-    message: `La periode doit etre inferieure ou egale a ${args.maxPeriodeDays} jours.`,
-    invalidFields: ['dateEnd'],
-  };
-}
-
-const VALIDATORS: readonly ((
-  args: ValidationArgs
-) => ValidationState | null)[] = [
-  validateEmpty,
-  validateDateOrder,
-  validateFuture,
-  validatePeriodeLength,
-];
-
-function computeValidation(args: ValidationArgs): ValidationState {
-  for (const validator of VALIDATORS) {
-    const result = validator(args);
-    if (result) {
-      return result;
-    }
-  }
-  return VALID_STATE;
-}
-
-function isFieldInvalid(
-  validation: ValidationState,
-  field: InvalidField
-): 'true' | undefined {
-  return validation.invalidFields.includes(field) ? 'true' : undefined;
-}
-
 export function ExportConsolideForm({
   actionUrl,
   boutiques,
@@ -184,7 +70,13 @@ export function ExportConsolideForm({
   const [dateEnd, setDateEnd] = useState<string>(defaultDateEnd);
 
   const validation = useMemo(
-    () => computeValidation({ dateStart, dateEnd, maxDate, maxPeriodeDays }),
+    () =>
+      computeDateRangeValidation({
+        dateStart,
+        dateEnd,
+        maxDate,
+        maxPeriodeDays,
+      }),
     [dateStart, dateEnd, maxDate, maxPeriodeDays]
   );
 
@@ -241,7 +133,7 @@ export function ExportConsolideForm({
             type="date"
             required
             aria-required="true"
-            aria-invalid={isFieldInvalid(validation, 'dateStart')}
+            aria-invalid={isDateRangeFieldInvalid(validation, 'dateStart')}
             max={maxDate}
             value={dateStart}
             onChange={(e) => setDateStart(e.target.value)}
@@ -259,7 +151,7 @@ export function ExportConsolideForm({
             type="date"
             required
             aria-required="true"
-            aria-invalid={isFieldInvalid(validation, 'dateEnd')}
+            aria-invalid={isDateRangeFieldInvalid(validation, 'dateEnd')}
             max={maxDate}
             value={dateEnd}
             onChange={(e) => setDateEnd(e.target.value)}

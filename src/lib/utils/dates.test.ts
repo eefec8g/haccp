@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  daysInclusive,
   endOfDay,
   formatDateShort,
   getCurrentCreneau,
@@ -155,6 +156,62 @@ describe('[dates utils]', () => {
 
     it('should reject a future date', () => {
       expect(isWithinRecentDays('2026-05-27', 7, parisInMay(10))).toBe(false);
+    });
+  });
+
+  describe('daysInclusive', () => {
+    it('should return 1 when start equals end (same day)', () => {
+      expect(daysInclusive('2026-05-10', '2026-05-10')).toBe(1);
+    });
+
+    it('should count both bounds for consecutive days', () => {
+      expect(daysInclusive('2026-05-10', '2026-05-11')).toBe(2);
+    });
+
+    it('should compute 31 for a 31-day month', () => {
+      expect(daysInclusive('2026-01-01', '2026-01-31')).toBe(31);
+    });
+
+    it('should compute 30 for a 30-day month', () => {
+      expect(daysInclusive('2026-04-01', '2026-04-30')).toBe(30);
+    });
+
+    it('should handle a leap year February correctly (29 days)', () => {
+      expect(daysInclusive('2024-02-01', '2024-02-29')).toBe(29);
+    });
+
+    it('should handle a non-leap year February correctly (28 days)', () => {
+      expect(daysInclusive('2025-02-01', '2025-02-28')).toBe(28);
+    });
+
+    it('should return 0 for invalid input (NaN)', () => {
+      expect(daysInclusive('not-a-date', '2026-05-10')).toBe(0);
+      expect(daysInclusive('2026-05-10', 'not-a-date')).toBe(0);
+    });
+
+    it('should return a non-positive value when end < start (caller must check)', () => {
+      // Convention : la fonction reste pure et ne juge pas l'ordre. La
+      // verification "end >= start" appartient au caller (Zod, service).
+      expect(daysInclusive('2026-05-11', '2026-05-10')).toBeLessThanOrEqual(0);
+    });
+
+    it('should accept Date objects with the same semantics as ISO strings', () => {
+      const start = new Date('2026-05-10T00:00:00.000Z');
+      const end = new Date('2026-05-12T00:00:00.000Z');
+      expect(daysInclusive(start, end)).toBe(3);
+    });
+
+    it('should align Date input with string input on identical day boundaries', () => {
+      const isoResult = daysInclusive('2026-05-01', '2026-05-31');
+      const dateResult = daysInclusive(
+        new Date('2026-05-01T00:00:00.000Z'),
+        new Date('2026-05-31T00:00:00.000Z')
+      );
+      expect(isoResult).toBe(dateResult);
+    });
+
+    it('should compute 92 for a roughly 3-month window (listing max)', () => {
+      expect(daysInclusive('2026-01-01', '2026-04-02')).toBe(92);
     });
   });
 });

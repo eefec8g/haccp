@@ -179,3 +179,45 @@ export function isWithinRecentDays(
   const target = parseISODateUtc(dateISO).getTime();
   return target >= from.getTime() && target <= to.getTime();
 }
+
+/**
+ * Calcule la difference inclusive en jours calendaires entre deux dates.
+ *
+ * Accepte indifferemment une chaine ISO `YYYY-MM-DD` ou un `Date`. Pour
+ * une chaine ISO, le calcul se fait en UTC pour eviter les drifts DST
+ * (cf. `parseISODateUtc`). Pour un `Date`, la comparaison utilise les
+ * timestamps bruts -- le caller doit s'assurer que les dates sont sur
+ * un meme referentiel temporel coherent.
+ *
+ * Convention "inclusive" : meme jour -> 1, j -> j+1 -> 2, etc. Aligne
+ * avec la semantique HACCP "periode du <date debut> au <date fin> inclus"
+ * utilisee partout dans le domaine (listing, exports, registres).
+ *
+ * Edge cases :
+ *   - Dates inversees (`end < start`) : retourne une valeur negative ou
+ *     <= 0 -- les callers verifient l'ordre en amont (ex. `dateEnd >=
+ *     dateStart` cote Zod / service).
+ *   - Entrees invalides (NaN apres parsing) : retourne `0`. Permet de ne
+ *     pas casser l'UI client en cas de saisie partielle, le caller doit
+ *     valider l'entree separement avant d'afficher le resultat.
+ *
+ * Helper pur (pas de dep Prisma) -- utilisable cote client.
+ */
+export function daysInclusive(
+  dateStart: string | Date,
+  dateEnd: string | Date
+): number {
+  const startMs = toEpochMs(dateStart);
+  const endMs = toEpochMs(dateEnd);
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+    return 0;
+  }
+  return Math.floor((endMs - startMs) / MILLIS_PER_DAY) + 1;
+}
+
+function toEpochMs(value: string | Date): number {
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+  return parseISODateUtc(value).getTime();
+}

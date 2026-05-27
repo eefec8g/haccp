@@ -1,6 +1,7 @@
 import { escapeHtml } from '@/lib/utils/escape-html';
 import { CRENEAU_LABELS } from '@/lib/constants/releve';
 import { formatDateShort } from '@/lib/utils/dates';
+import { formatTemperature } from '@/lib/utils/format-temperature';
 import type { Creneau } from '@prisma/client';
 import { sendEmail } from './emailService';
 
@@ -34,10 +35,6 @@ interface AlerteEmailFields {
 
 interface SendAlerteEmailArgs extends AlerteEmailFields {
   readonly recipients: readonly string[];
-}
-
-function formatTemperature(value: number): string {
-  return `${value.toFixed(1)} degC`;
 }
 
 function buildAlerteEmailHtml(fields: AlerteEmailFields): string {

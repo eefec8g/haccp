@@ -12,7 +12,9 @@ import { PhotoCard } from './PhotoCard';
  * Structure :
  *   - Section title avec eyebrow + compteur (X / MAX) pour donner le
  *     contexte de quota au lecteur.
- *   - Grille `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`.
+ *   - Grille `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4` : 2 vignettes
+ *     par ligne en mobile (cards aspect-square restent lisibles) pour
+ *     reduire le scroll quand l'alerte comporte plusieurs photos.
  *
  * a11y :
  *   - <section aria-labelledby> pour la semantique.
@@ -28,7 +30,7 @@ const TITLE_CLASSES =
   'mt-1 text-lg font-light uppercase tracking-[0.2em] text-mg-noir';
 const COUNT_CLASSES =
   'text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/60';
-const GRID_CLASSES = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3';
+const GRID_CLASSES = 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4';
 const EMPTY_CLASSES =
   'border border-dashed border-mg-noir/15 bg-mg-ivoire/40 px-5 py-8 text-center text-sm font-light text-mg-noir/60';
 

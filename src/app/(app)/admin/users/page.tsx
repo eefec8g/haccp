@@ -3,10 +3,8 @@ import type { Metadata } from 'next';
 import type { Route } from 'next';
 import { UserRole } from '@prisma/client';
 import { AdminPageHeader } from '@/components/features/admin/AdminPageHeader';
-import {
-  AdminDataTable,
-  type AdminDataTableColumn,
-} from '@/components/features/admin/AdminDataTable';
+import type { AdminDataTableColumn } from '@/components/features/admin/AdminDataTable';
+import { ResponsiveDataTable } from '@/components/features/admin/ResponsiveDataTable';
 import { Pagination } from '@/components/features/admin/Pagination';
 import { UserToggleActiveButton } from '@/components/features/admin/UserToggleActiveButton';
 import { PrimaryLinkButton } from '@/components/features/admin/PrimaryLinkButton';
@@ -36,8 +34,13 @@ const ROLE_BADGE_BASE =
   'inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em]';
 const FILTER_FORM_CLASSES =
   'mb-6 flex flex-wrap items-center gap-3 border border-mg-noir/10 bg-mg-ivoire px-4 py-3';
+/**
+ * `min-h-touch` (44px) garantit la cible tactile minimale WCAG 2.1 AA
+ * pour la selection au doigt en boutique. Le padding visuel reste
+ * inchange ; seule la hauteur minimale est garantie.
+ */
 const FILTER_SELECT_CLASSES =
-  'rounded-none border border-mg-noir/15 bg-mg-ivoire px-3 py-2 text-sm font-light text-mg-noir focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or';
+  'min-h-touch rounded-none border border-mg-noir/15 bg-mg-ivoire px-3 py-2 text-sm font-light text-mg-noir focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or';
 
 const ROLE_BADGE_CLASSES: Readonly<Record<UserRole, string>> = {
   SALARIE: 'border-mg-noir/30 text-mg-noir/70',
@@ -267,7 +270,7 @@ export default async function AdminUsersPage({ searchParams }: UsersPageProps) {
         </button>
       </form>
 
-      <AdminDataTable
+      <ResponsiveDataTable
         name="users"
         columns={USER_COLUMNS}
         rows={result.items}

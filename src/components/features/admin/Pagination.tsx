@@ -13,8 +13,13 @@ interface PaginationProps {
 }
 
 const NAV_CLASSES = 'mt-8 flex items-center justify-between';
+/**
+ * `min-h-touch` (44px) garantit la cible tactile minimale WCAG 2.1 AA.
+ * Sans ce min-height, `py-1.5` + text-[10px] produisait ~26px (trop fin
+ * pour un usage en boutique avec gants).
+ */
 const LINK_BASE =
-  'inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:text-mg-or focus:outline-none focus:text-mg-or';
+  'inline-flex min-h-touch items-center justify-center px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:text-mg-or focus:outline-none focus:text-mg-or focus:ring-2 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 const LINK_DISABLED =
   'pointer-events-none cursor-not-allowed text-mg-noir/30 select-none';
 const STATUS_CLASSES =

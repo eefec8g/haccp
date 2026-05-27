@@ -1,18 +1,5 @@
-import type { Route } from 'next';
+import { ADMIN_NAV_ITEMS } from '@/lib/constants/admin-nav';
 import { AdminSidebarLink } from './AdminSidebarLink';
-
-interface NavItem {
-  readonly href: Route;
-  readonly label: string;
-}
-
-const NAV_ITEMS: readonly NavItem[] = [
-  { href: '/admin' as Route, label: 'Tableau de bord' },
-  { href: '/admin/boutiques' as Route, label: 'Boutiques' },
-  { href: '/admin/equipements' as Route, label: 'Equipements' },
-  { href: '/admin/users' as Route, label: 'Utilisateurs' },
-  { href: '/admin/audit-log' as Route, label: "Journal d'audit" },
-] as const;
 
 /**
  * Sidebar de la zone admin (Server Component).
@@ -42,7 +29,7 @@ export function AdminSidebar() {
         </p>
       </div>
       <nav className="mt-2 flex flex-col" aria-label="Sections administration">
-        {NAV_ITEMS.map((item) => (
+        {ADMIN_NAV_ITEMS.map((item) => (
           <AdminSidebarLink
             key={item.href}
             href={item.href}

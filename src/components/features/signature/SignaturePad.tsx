@@ -40,8 +40,16 @@ const STROKE_COLOR = '#0D0D0D';
 
 const CONTAINER_CLASSES =
   'flex flex-col gap-3 border border-mg-noir/15 bg-mg-ivoire p-4 shadow-sm';
+/**
+ * `aspect-[5/2]` aligne la zone visuelle (CSS) sur le ratio natif du
+ * canvas (500x200 = 5:2). Sans ca, sur un viewport etroit l'image etait
+ * etiree verticalement par le `width=500 height=200` natif, donnant
+ * l'illusion d'une signature deformee. `getCanvasPoint` recalcule deja
+ * les coordonnees via `getBoundingClientRect`, donc la precision du
+ * trace reste fidele meme avec un ratio CSS distinct du natif.
+ */
 const CANVAS_CLASSES =
-  'w-full max-w-full touch-none cursor-crosshair border border-mg-noir/15 bg-white';
+  'aspect-[5/2] w-full max-w-full touch-none cursor-crosshair border border-mg-noir/15 bg-white';
 const INSTRUCTIONS_CLASSES =
   'text-[11px] font-light uppercase tracking-[0.2em] text-mg-noir/60';
 const ACTIONS_ROW_CLASSES = 'flex flex-wrap items-center justify-end gap-3';

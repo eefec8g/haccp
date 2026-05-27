@@ -9,6 +9,11 @@ import {
   type UserInviteActionState,
 } from '@/app/actions/admin-user.types';
 import { USER_NOM_MAX, EMAIL_MAX } from '@/lib/constants/admin';
+import {
+  INPUT_CLASSES,
+  SUBMIT_CLASSES,
+  ERROR_BOX_CLASSES,
+} from '@/components/features/ui/form-styles';
 import { FormField } from './FormField';
 
 export interface UserInviteBoutiqueOption {
@@ -21,12 +26,6 @@ interface UserInviteFormProps {
   readonly boutiques: readonly UserInviteBoutiqueOption[];
 }
 
-const INPUT_CLASSES =
-  'block w-full rounded-none border border-mg-noir/15 bg-mg-ivoire px-4 py-3 text-sm font-light text-mg-noir transition-colors placeholder:text-mg-noir/30 focus:border-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or disabled:cursor-not-allowed disabled:bg-mg-noir/5';
-const SUBMIT_CLASSES =
-  'inline-flex items-center justify-center bg-mg-noir px-8 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire disabled:cursor-not-allowed disabled:opacity-60';
-const ERROR_BOX_CLASSES =
-  'border border-mg-or/40 bg-mg-or/5 px-4 py-3 text-xs font-light uppercase tracking-[0.15em] text-mg-or';
 const CHECKBOX_GROUP_CLASSES =
   'space-y-2 border border-mg-noir/15 bg-mg-ivoire p-4';
 

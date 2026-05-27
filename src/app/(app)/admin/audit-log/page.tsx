@@ -3,10 +3,8 @@ import type { Metadata } from 'next';
 import type { Route } from 'next';
 import { AuditAction, AuditEntityType } from '@prisma/client';
 import { AdminPageHeader } from '@/components/features/admin/AdminPageHeader';
-import {
-  AdminDataTable,
-  type AdminDataTableColumn,
-} from '@/components/features/admin/AdminDataTable';
+import type { AdminDataTableColumn } from '@/components/features/admin/AdminDataTable';
+import { ResponsiveDataTable } from '@/components/features/admin/ResponsiveDataTable';
 import { Pagination } from '@/components/features/admin/Pagination';
 import { listAuditLogs } from '@/lib/services/audit-log.service';
 import { auditQuerySchema } from '@/lib/validations/audit';
@@ -27,10 +25,14 @@ interface AuditLogPageProps {
   }>;
 }
 
+/**
+ * `min-h-touch` (44px) garantit la cible tactile minimale WCAG 2.1 AA
+ * pour ces liens-pillules de filtrage. Sans cela, `py-1.5` produit ~26px.
+ */
 const FILTER_LINK_CLASSES =
-  'inline-flex items-center justify-center border border-mg-noir/20 bg-transparent px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+  'inline-flex min-h-touch items-center justify-center border border-mg-noir/20 bg-transparent px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir/70 transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 const FILTER_LINK_ACTIVE =
-  'inline-flex items-center justify-center border border-mg-or bg-mg-or px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+  'inline-flex min-h-touch items-center justify-center border border-mg-or bg-mg-or px-4 py-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 
 const BADGE_BASE =
   'inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-light uppercase tracking-[0.2em]';
@@ -219,7 +221,7 @@ export default async function AdminAuditLogPage({
         ))}
       </div>
 
-      <AdminDataTable
+      <ResponsiveDataTable
         name="audit-log"
         columns={AUDIT_COLUMNS}
         rows={result.items}

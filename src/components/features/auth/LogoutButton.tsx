@@ -7,8 +7,12 @@ interface LogoutButtonProps {
 
 const DEFAULT_LABEL = 'Se deconnecter';
 
+/**
+ * `min-h-touch` (44px) garantit la cible tactile minimale WCAG 2.1 AA :
+ * sans ce min-height, `py-2` + text-[11px] produit ~32px (insuffisant).
+ */
 const DEFAULT_CLASSNAME =
-  'inline-flex items-center justify-center border border-mg-or/40 bg-transparent px-4 py-2 text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir transition-colors hover:border-mg-or hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+  'inline-flex min-h-touch items-center justify-center border border-mg-or/40 bg-transparent px-4 py-2 text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir transition-colors hover:border-mg-or hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 
 /**
  * Bouton de deconnexion (Server Component), style Maison Givre.

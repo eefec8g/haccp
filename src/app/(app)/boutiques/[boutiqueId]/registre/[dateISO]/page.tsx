@@ -61,7 +61,13 @@ const NO_RELEVES = 'Aucun releve enregistre pour cette journee.';
 const NO_ALERTES = 'Aucune alerte enregistree pour cette journee.';
 const EXPORT_BUTTON_LABEL = 'Exporter le PDF';
 
-const TABLE_CLASSES = 'w-full text-sm text-left border-collapse';
+/**
+ * `min-w-[600px]` empeche les colonnes (5 creneaux + equipement + seuils)
+ * de s'ecraser ; combine au wrapper `overflow-x-auto`, on garde la
+ * lisibilite sur mobile en autorisant un swipe horizontal localise.
+ */
+const TABLE_CLASSES = 'w-full min-w-[600px] text-sm text-left border-collapse';
+const TABLE_WRAPPER_CLASSES = '-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0';
 const TH_CLASSES =
   'border-b border-mg-noir/10 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir/70';
 const TD_CLASSES =
@@ -110,35 +116,40 @@ function RelevesTable({
     );
   }
   return (
-    <table
-      className={TABLE_CLASSES}
-      data-testid="registre-detail-releves-table"
+    <div
+      className={TABLE_WRAPPER_CLASSES}
+      data-testid="registre-detail-releves-wrapper"
     >
-      <thead>
-        <tr>
-          <th className={TH_CLASSES}>Equipement</th>
-          <th className={TH_CLASSES}>Seuils (degC)</th>
-          <th className={TH_CLASSES}>{CRENEAU_PDF_LABELS.MATIN}</th>
-          <th className={TH_CLASSES}>{CRENEAU_PDF_LABELS.MIDI}</th>
-          <th className={TH_CLASSES}>{CRENEAU_PDF_LABELS.SOIR}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.equipementId}>
-            <td className={TD_CLASSES}>{row.equipementNom}</td>
-            <td className={TD_CLASSES}>
-              {row.seuilMin.toFixed(1)} / {row.seuilMax.toFixed(1)}
-            </td>
-            {row.creneaux.map((cell) => (
-              <td key={cell.creneau} className={TD_CLASSES}>
-                {formatTemperature(cell.temperature)}
-              </td>
-            ))}
+      <table
+        className={TABLE_CLASSES}
+        data-testid="registre-detail-releves-table"
+      >
+        <thead>
+          <tr>
+            <th className={TH_CLASSES}>Equipement</th>
+            <th className={TH_CLASSES}>Seuils (degC)</th>
+            <th className={TH_CLASSES}>{CRENEAU_PDF_LABELS.MATIN}</th>
+            <th className={TH_CLASSES}>{CRENEAU_PDF_LABELS.MIDI}</th>
+            <th className={TH_CLASSES}>{CRENEAU_PDF_LABELS.SOIR}</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.equipementId}>
+              <td className={TD_CLASSES}>{row.equipementNom}</td>
+              <td className={TD_CLASSES}>
+                {row.seuilMin.toFixed(1)} / {row.seuilMax.toFixed(1)}
+              </td>
+              {row.creneaux.map((cell) => (
+                <td key={cell.creneau} className={TD_CLASSES}>
+                  {formatTemperature(cell.temperature)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

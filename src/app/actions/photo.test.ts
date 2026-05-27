@@ -272,11 +272,11 @@ describe('[uploadPhotoAction]', () => {
     expect(result).toEqual({ status: 'error', code: 'INVALID_MIME' });
   });
 
-  it('should call the service, revalidate and return success with photoId+signedUrl', async () => {
+  it('should call the service, revalidate and return success with photoId+imageUrl', async () => {
     vi.mocked(auth).mockResolvedValue(responsableSession());
     vi.mocked(uploadPhotoToAlerte).mockResolvedValue({
       success: true,
-      data: { id: PHOTO_ID, signedUrl: 'https://blob/x.jpg' },
+      data: { id: PHOTO_ID, imageUrl: 'https://blob/x.jpg' },
     });
 
     const result = await uploadPhotoAction(
@@ -294,7 +294,7 @@ describe('[uploadPhotoAction]', () => {
     expect(result).toEqual({
       status: 'success',
       photoId: PHOTO_ID,
-      signedUrl: 'https://blob/x.jpg',
+      imageUrl: 'https://blob/x.jpg',
     });
   });
 });

@@ -10,7 +10,7 @@ import { PhotoDeleteButton } from './PhotoDeleteButton';
  * inclus conditionnellement). On utilise un `<img>` plat plutot que
  * `next/image` car les URLs Vercel Blob ne sont pas listees dans la
  * config `images.remotePatterns` du projet et nous voulons garder
- * `signedUrl` opaque (pre-cabling pour migration future vers
+ * `imageUrl` opaque (pre-cabling pour migration future vers
  * `access: 'private'`).
  *
  * Affichage :
@@ -58,7 +58,7 @@ export function PhotoCard({ photo, canDelete, alerteId }: PhotoCardProps) {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={photo.signedUrl}
+        src={photo.imageUrl}
         alt={altText}
         loading="lazy"
         decoding="async"

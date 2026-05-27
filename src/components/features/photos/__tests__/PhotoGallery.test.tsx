@@ -34,7 +34,7 @@ function buildPhoto(overrides: Partial<PhotoListItem> = {}): PhotoListItem {
     uploadedByName: 'Lea',
     uploadedByUserId: 'u1',
     createdAt: new Date('2026-05-27T08:30:00.000Z'),
-    signedUrl: 'https://blob.example.com/photos/abc.jpg',
+    imageUrl: 'https://blob.example.com/photos/abc.jpg',
     ...overrides,
   };
 }

@@ -27,7 +27,7 @@ export interface PhotoUploadFieldErrors {
 /**
  * Etat de l'action `uploadPhotoAction` :
  *   - idle    : pas encore soumis.
- *   - success : retour de la photo creee (id + signedUrl), utile pour
+ *   - success : retour de la photo creee (id + imageUrl), utile pour
  *     l'UI optimistic update.
  *   - error   : code (+ fieldErrors si VALIDATION, retryAfterSeconds
  *     si RATE_LIMITED).
@@ -37,7 +37,7 @@ export type PhotoUploadActionState =
   | {
       readonly status: 'success';
       readonly photoId: string;
-      readonly signedUrl: string;
+      readonly imageUrl: string;
     }
   | {
       readonly status: 'error';

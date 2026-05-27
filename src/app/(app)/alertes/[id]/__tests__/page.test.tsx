@@ -139,7 +139,7 @@ function buildPhoto(id: string) {
     uploadedByName: 'Lea',
     uploadedByUserId: 'u1',
     createdAt: new Date('2026-05-27T09:00:00.000Z'),
-    signedUrl: `https://blob.example.com/${id}.jpg`,
+    imageUrl: `https://blob.example.com/${id}.jpg`,
   };
 }
 

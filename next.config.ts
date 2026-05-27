@@ -9,8 +9,11 @@ import type { NextConfig } from 'next';
  *     payloads. A re-evaluer si une nonce strategy est introduite.
  *   - `style-src 'unsafe-inline'` est requis par Tailwind injecte cote
  *     serveur + styles inline des composants.
- *   - `img-src https:` autorise les images Next/Image distantes + les
- *     data: URIs (icons inline emails).
+ *   - `img-src 'self' data: https://*.public.blob.vercel-storage.com`
+ *     restreint les images HTTPS au seul domaine Vercel Blob (US-PHO-001 :
+ *     sec finding M-1). `data:` conserve pour les previews canvas client
+ *     (compression photo) + icons inline. Les emails Resend sont externes
+ *     et ne sont pas soumis a la CSP de l'app web.
  *   - `font-src https://fonts.gstatic.com` couvre Google Fonts (charte
  *     Maison Givre) ; `data:` pour les fonts inline emails.
  *   - `connect-src 'self'` : pas d'appel cross-origin frontend pour
@@ -18,7 +21,7 @@ import type { NextConfig } from 'next';
  */
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "img-src 'self' data: https:",
+  "img-src 'self' data: https://*.public.blob.vercel-storage.com",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' https://fonts.gstatic.com data:",

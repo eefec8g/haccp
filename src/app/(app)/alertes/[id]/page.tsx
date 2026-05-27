@@ -4,12 +4,15 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { canManageAlertes } from '@/lib/permissions';
 import { getAlerteById } from '@/lib/services/alerte.service';
+import { listPhotosForAlerte } from '@/lib/services/photo.service';
 import { CRENEAU_LABELS } from '@/lib/constants/releve';
 import { EQUIPEMENT_TYPE_LABELS } from '@/lib/constants/equipement-labels';
 import { DateCourte } from '@/components/features/releves/DateCourte';
 import { CreneauBadge } from '@/components/features/releves/CreneauBadge';
 import { ResolutionForm } from '@/components/features/alertes/ResolutionForm';
 import { AppPageHeader } from '@/components/features/ui/AppPageHeader';
+import { PhotoGallery } from '@/components/features/photos/PhotoGallery';
+import { PhotoUploadForm } from '@/components/features/photos/PhotoUploadForm';
 
 export const metadata: Metadata = {
   title: 'Resoudre une alerte - HACCP Maison Givre',
@@ -53,12 +56,17 @@ export default async function AlerteDetailPage({
   }
 
   const { id } = await params;
-  const result = await getAlerteById({ viewer, alerteId: id });
+  const [result, photosResult] = await Promise.all([
+    getAlerteById({ viewer, alerteId: id }),
+    listPhotosForAlerte({ viewer, alerteId: id }),
+  ]);
   if (!result.success) {
     notFound();
   }
   const alerte = result.data;
   const { releve } = alerte;
+  const photos = photosResult.success ? photosResult.data : [];
+  const canDeletePhotos = canManageAlertes(viewer);
 
   return (
     <main
@@ -92,6 +100,19 @@ export default async function AlerteDetailPage({
           <span className="font-medium tabular-nums text-mg-noir">
             {releve.temperature.toFixed(1)} degC
           </span>
+        </div>
+        <div className="mb-10 space-y-6">
+          <PhotoGallery
+            photos={photos}
+            canDelete={canDeletePhotos}
+            alerteId={alerte.id}
+            testId="alerte-photo-gallery"
+          />
+          <PhotoUploadForm
+            alerteId={alerte.id}
+            currentCount={photos.length}
+            testId="alerte-photo-upload"
+          />
         </div>
         <ResolutionForm
           alerteId={alerte.id}

@@ -28,6 +28,7 @@ export const RATE_LIMITS: Readonly<Record<RateLimitType, RateLimitTypeConfig>> =
     ALERTE_RESOLVE: { windowMs: 3_600_000, maxRequests: 30 }, // 1 h, 30 resolutions
     EXPORT_CSV: { windowMs: 3_600_000, maxRequests: 5 }, // 1 h, 5 exports CSV (cf. epic-state #6)
     EXPORT_PDF: { windowMs: 3_600_000, maxRequests: 2 }, // 1 h, 2 exports PDF (cout pdfmake)
+    PHOTO_UPLOAD: { windowMs: 3_600_000, maxRequests: 20 }, // 1 h, 20 uploads (Epic PHOTOS, anti-spam + cout storage)
   } as const;
 
 /**

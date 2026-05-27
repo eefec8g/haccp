@@ -25,6 +25,10 @@
  *                         + I/O moyen, garde-fou OOM serverless).
  * - `EXPORT_PDF`         : 2 / 1h,    Epic EXPORT (PDF registre journalier,
  *                         cout pdfmake/fonts plus eleve, audit DDPP rare).
+ * - `PHOTO_UPLOAD`       : 20 / 1h,   Epic PHOTOS (US-PHO-001). Garde-fou
+ *                         anti-spam upload + cout storage Vercel Blob.
+ *                         Avec 3 photos max par alerte, ~6 alertes max
+ *                         documentees a la photo par heure (large marge).
  */
 export type RateLimitType =
   | 'LOGIN'
@@ -35,7 +39,8 @@ export type RateLimitType =
   | 'RELEVE_ANNULATION'
   | 'ALERTE_RESOLVE'
   | 'EXPORT_CSV'
-  | 'EXPORT_PDF';
+  | 'EXPORT_PDF'
+  | 'PHOTO_UPLOAD';
 
 /**
  * Resultat normalise d'une verification rate-limit.

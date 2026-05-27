@@ -44,6 +44,8 @@ enum AuditAction {
   ENABLE
   DELETE
   EXPORT
+  PHOTO_UPLOAD
+  PHOTO_DELETE
 }
 
 enum AuditEntityType {
@@ -52,6 +54,7 @@ enum AuditEntityType {
   USER
   INVITATION
   EXPORT
+  PHOTO
 }
 
 // ===== MODELS =====
@@ -74,6 +77,7 @@ model User {
   alertesResolues      Alerte[]         @relation("ResoluPar")
   invitations          UserInvitation[] @relation("UserInvitations")
   auditLogsPerformed   AuditLog[]       @relation("AuditPerformed")
+  photosUploaded       Photo[]          @relation("PhotoUploadedBy")
 
   @@index([email])
   @@index([role])
@@ -178,7 +182,36 @@ model Alerte {
   resoluParId String?
   resoluPar   User?   @relation("ResoluPar", fields: [resoluParId], references: [id])
 
+  photos Photo[]
+
   @@index([status, createdAt])
+}
+
+// Photo justificative attachee a une Alerte (US-PHO-001).
+// Stockage Vercel Blob : `storageKey` = pathname dans le blob store
+// (`photos/<alerteId>/<timestamp>-<uuid>.<ext>`). `blobUrl` est l'URL
+// publique retournee par `put()` (Vercel Blob) au moment de l'upload,
+// persistee pour decoupler la lecture de toute variable d'environnement
+// reconstruisant l'URL.
+//
+// Cascade delete sur Alerte volontaire : en cas de suppression
+// theorique d'une alerte (jamais en pratique cote metier HACCP), les
+// blobs orphelins seraient supprimes en cascade.
+model Photo {
+  id               String   @id @default(uuid())
+  alerteId         String
+  alerte           Alerte   @relation(fields: [alerteId], references: [id], onDelete: Cascade)
+  storageKey       String   @unique
+  blobUrl          String
+  filename         String
+  mimeType         String
+  sizeBytes        Int
+  uploadedByUserId String
+  uploadedBy       User     @relation("PhotoUploadedBy", fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime @default(now())
+
+  @@index([alerteId])
+  @@index([uploadedByUserId])
 }
 
 model PasswordResetToken {

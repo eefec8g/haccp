@@ -22,6 +22,7 @@ export const AUDIT_ENTITY_LABEL: Readonly<Record<AuditEntityType, string>> = {
   USER: 'Utilisateur',
   INVITATION: 'Invitation',
   EXPORT: 'Export',
+  PHOTO: 'Photo',
 };
 
 /**
@@ -36,6 +37,8 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<AuditAction, string>> = {
   ENABLE: 'Reactivation',
   DELETE: 'Suppression',
   EXPORT: 'Export',
+  PHOTO_UPLOAD: 'Photo ajoutee',
+  PHOTO_DELETE: 'Photo supprimee',
 };
 
 /**

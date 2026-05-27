@@ -47,6 +47,7 @@ enum AuditAction {
   PHOTO_UPLOAD
   PHOTO_DELETE
   SIGNATURE_CREATE
+  EXPORT_REGISTRE_CONSOLIDE
 }
 
 enum AuditEntityType {

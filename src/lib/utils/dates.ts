@@ -4,6 +4,7 @@ import {
   CRENEAU_ORDER,
   TIMEZONE,
 } from '@/lib/constants/releve';
+import { MILLIS_PER_DAY as TIME_MILLIS_PER_DAY } from '@/lib/constants/time';
 
 /**
  * Utilitaires de dates Europe/Paris pour l'Epic RELEVE.
@@ -16,7 +17,12 @@ import {
  * timezone-aware necessaires, Intl est natif et sans dependance.
  */
 
-export const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+/**
+ * Re-export de `MILLIS_PER_DAY` depuis `@/lib/constants/time` (CC-8 :
+ * source de verite unique cote serveur + client). Conserve a `dates.ts`
+ * pour preserver l'API publique consommee par d'autres modules.
+ */
+export const MILLIS_PER_DAY = TIME_MILLIS_PER_DAY;
 
 interface ParisDateParts {
   readonly year: number;

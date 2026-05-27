@@ -77,4 +77,11 @@ describe('[config.RATE_LIMITS]', () => {
       maxRequests: 10,
     });
   });
+
+  it('should configure EXPORT_REGISTRE_CONSOLIDE to 5 requests per hour (Epic REGISTRE pdfmake 31 j max)', () => {
+    expect(RATE_LIMITS.EXPORT_REGISTRE_CONSOLIDE).toEqual({
+      windowMs: 3_600_000,
+      maxRequests: 5,
+    });
+  });
 });

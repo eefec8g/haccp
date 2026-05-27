@@ -1,17 +1,12 @@
-import PdfPrinter from 'pdfmake/src/printer';
 import type {
-  Alignment,
   Content,
   TableCell,
   TDocumentDefinitions,
-  TFontDictionary,
 } from 'pdfmake/interfaces';
 import {
   ALERTE_STATUS_PDF_LABELS,
   CRENEAU_PDF_LABELS,
   PDF_ALERTES_SECTION_TITLE,
-  PDF_BRAND_NAME,
-  PDF_BRAND_TAGLINE,
   PDF_COLOR_NOIR,
   PDF_COLOR_NOIR_60,
   PDF_COLOR_OR,
@@ -41,6 +36,12 @@ import {
   SIGNATURE_MIME,
 } from '@/lib/constants/signature';
 import { verifyPngMagicBytes } from '@/lib/utils/signature';
+import {
+  CENTER,
+  PARIS_DATETIME,
+  buildBrandHeader,
+  getPrinter,
+} from '@/lib/utils/pdf-utils';
 
 /**
  * Generateur PDF "Registre journalier HACCP" via pdfmake (server-side).
@@ -60,80 +61,11 @@ import { verifyPngMagicBytes } from '@/lib/utils/signature';
  * Vercel Node 20).
  */
 
-const FONTS: TFontDictionary = {
-  Helvetica: {
-    normal: 'Helvetica',
-    bold: 'Helvetica-Bold',
-    italics: 'Helvetica-Oblique',
-    bolditalics: 'Helvetica-BoldOblique',
-  },
-};
-
-/**
- * `PdfPrinter` lazifie (audit perf C2) : son constructeur charge les
- * fichiers AFM Helvetica via `fs.readFileSync` au top-level, ce qui
- * penalise le cold start serverless de TOUTE route important ce module
- * (meme indirectement, ex. service unit-test) sans jamais l'utiliser.
- * En differant l'instanciation au premier appel reel, seules les
- * requetes PDF payent le cout d'init.
- */
-let cachedPrinter: PdfPrinter | null = null;
-function getPrinter(): PdfPrinter {
-  if (cachedPrinter === null) {
-    cachedPrinter = new PdfPrinter(FONTS);
-  }
-  return cachedPrinter;
-}
-
-const CENTER: Alignment = 'center';
-
-const PARIS_DATETIME = new Intl.DateTimeFormat('fr-FR', {
-  dateStyle: 'short',
-  timeStyle: 'short',
-  timeZone: 'Europe/Paris',
-});
-
 function formatTemperatureCell(value: number | null): string {
   if (value === null) {
     return '-';
   }
   return `${value.toFixed(1)} degC`;
-}
-
-function buildBrandHeader(): Content {
-  return {
-    stack: [
-      {
-        text: PDF_BRAND_NAME,
-        fontSize: 16,
-        characterSpacing: 4,
-        color: PDF_COLOR_NOIR,
-        alignment: CENTER,
-      },
-      {
-        canvas: [
-          {
-            type: 'line',
-            x1: 250,
-            y1: 4,
-            x2: 290,
-            y2: 4,
-            lineWidth: 1,
-            lineColor: PDF_COLOR_OR,
-          },
-        ],
-      },
-      {
-        text: PDF_BRAND_TAGLINE,
-        fontSize: 8,
-        characterSpacing: 3,
-        color: PDF_COLOR_OR,
-        alignment: CENTER,
-        margin: [0, 4, 0, 0],
-      },
-    ],
-    margin: [0, 0, 0, 24],
-  };
 }
 
 function buildTitleBlock(data: RegistreJournalier): Content {
@@ -635,7 +567,8 @@ export async function buildRegistreJournalierPdf(
 ): Promise<Buffer> {
   const signatureImageDataUrl = await resolveSignatureImage(data.signature);
   const docDefinition = buildDocDefinition({ data, signatureImageDataUrl });
-  const pdfDoc = getPrinter().createPdfKitDocument(docDefinition);
+  const printer = await getPrinter();
+  const pdfDoc = printer.createPdfKitDocument(docDefinition);
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));

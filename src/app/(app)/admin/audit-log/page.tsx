@@ -45,6 +45,7 @@ const ACTION_BADGE: Readonly<Record<AuditAction, string>> = {
   PHOTO_UPLOAD: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
   PHOTO_DELETE: `${BADGE_BASE} border-mg-noir/30 text-mg-noir`,
   SIGNATURE_CREATE: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
+  EXPORT_REGISTRE_CONSOLIDE: `${BADGE_BASE} border-mg-or/40 text-mg-or`,
 };
 
 const ENTITY_TYPES: readonly AuditEntityType[] = [

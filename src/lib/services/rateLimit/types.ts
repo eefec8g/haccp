@@ -33,6 +33,10 @@
  *                         strict que PHOTO_UPLOAD : signature DDPP rare
  *                         (1 par boutique/jour), garde-fou anti-spam
  *                         renforce sur action critique.
+ * - `EXPORT_REGISTRE_CONSOLIDE` : 5 / 1h, Epic REGISTRE (US-REG-001). PDF
+ *                         consolide multi-jours (jusqu'a 31 j x N boutiques),
+ *                         cout pdfmake + I/O Vercel Blob signatures + audit
+ *                         DDPP rare. Meme budget que EXPORT_CSV.
  */
 export type RateLimitType =
   | 'LOGIN'
@@ -45,7 +49,8 @@ export type RateLimitType =
   | 'EXPORT_CSV'
   | 'EXPORT_PDF'
   | 'PHOTO_UPLOAD'
-  | 'SIGNATURE_UPLOAD';
+  | 'SIGNATURE_UPLOAD'
+  | 'EXPORT_REGISTRE_CONSOLIDE';
 
 /**
  * Resultat normalise d'une verification rate-limit.

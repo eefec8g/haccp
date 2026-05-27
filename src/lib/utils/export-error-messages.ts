@@ -1,3 +1,5 @@
+import { resolveErrorFromTable } from '@/lib/utils/error-messages-resolver';
+
 /**
  * Messages d'erreur partages entre les pages d'export (Epic EXPORT).
  *
@@ -15,24 +17,35 @@
  * Code source d'erreur : ces strings sont les codes URL `?error=<code>`
  * emis par les Route Handlers `/api/exports/{csv,pdf}`. Ajouter une
  * nouvelle erreur Route Handler -> ajouter sa traduction ici.
+ *
+ * Resolution : delegue a `resolveErrorFromTable` (DRY avec
+ * `export-consolide-error-messages.ts`).
  */
 
 const RATE_LIMITED_CODE = 'rate_limited';
 
-export const EXPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
-  validation:
-    'Les parametres sont invalides. Verifiez le format des dates et la periode (90 jours max).',
-  boutique_not_found:
-    'La boutique selectionnee est introuvable ou hors de votre perimetre.',
-  range_too_large:
-    'La periode contient trop de releves (> 10 000). Reduisez la plage de dates.',
-  rate_limited: "Trop d'exports recents. Reessayez dans quelques minutes.",
-  forbidden: "Vous n'avez pas la permission de declencher cet export.",
-  no_data: 'Aucun releve disponible sur la periode demandee.',
-  internal: 'Une erreur interne est survenue. Reessayez plus tard.',
-};
+type ExportErrorCode =
+  | 'validation'
+  | 'boutique_not_found'
+  | 'range_too_large'
+  | 'rate_limited'
+  | 'forbidden'
+  | 'no_data'
+  | 'internal';
 
-const FALLBACK_KEY = 'internal';
+export const EXPORT_ERROR_MESSAGES: Readonly<Record<ExportErrorCode, string>> =
+  {
+    validation:
+      'Les parametres sont invalides. Verifiez le format des dates et la periode (90 jours max).',
+    boutique_not_found:
+      'La boutique selectionnee est introuvable ou hors de votre perimetre.',
+    range_too_large:
+      'La periode contient trop de releves (> 10 000). Reduisez la plage de dates.',
+    rate_limited: "Trop d'exports recents. Reessayez dans quelques minutes.",
+    forbidden: "Vous n'avez pas la permission de declencher cet export.",
+    no_data: 'Aucun releve disponible sur la periode demandee.',
+    internal: 'Une erreur interne est survenue. Reessayez plus tard.',
+  };
 
 /**
  * Resout le message a afficher pour un code d'erreur URL.
@@ -45,13 +58,10 @@ export function resolveExportErrorMessage(
   error: string | undefined,
   retry: string | undefined
 ): string | undefined {
-  if (!error) {
-    return undefined;
-  }
-  const baseMessage =
-    EXPORT_ERROR_MESSAGES[error] ?? EXPORT_ERROR_MESSAGES[FALLBACK_KEY];
-  if (error === RATE_LIMITED_CODE && retry) {
-    return `${baseMessage} Patientez ${retry}.`;
-  }
-  return baseMessage;
+  return resolveErrorFromTable(
+    EXPORT_ERROR_MESSAGES,
+    error,
+    retry,
+    RATE_LIMITED_CODE
+  );
 }

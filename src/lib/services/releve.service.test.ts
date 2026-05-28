@@ -296,11 +296,14 @@ describe('[releve.service]', () => {
 
     it('should create a clean releve (in seuils) without alerte', async () => {
       setupValidEquipement();
+      const createdAt = new Date('2026-05-27T06:42:00.000Z');
       vi.mocked(db.$transaction).mockImplementation(
         async (cb: unknown) =>
           await (cb as (tx: unknown) => Promise<unknown>)({
             releve: {
-              create: vi.fn().mockResolvedValue({ id: NEW_RELEVE_ID }),
+              create: vi
+                .fn()
+                .mockResolvedValue({ id: NEW_RELEVE_ID, createdAt }),
             },
             alerte: { create: vi.fn() },
           })
@@ -321,17 +324,21 @@ describe('[releve.service]', () => {
         expect(result.data.releveId).toBe(NEW_RELEVE_ID);
         expect(result.data.alerteCreated).toBe(false);
         expect(result.data.alerteId).toBeNull();
+        expect(result.data.createdAt).toEqual(createdAt);
       }
     });
 
     it('should create an alerte when hors seuils with a valid commentaire', async () => {
       setupValidEquipement();
       const alerteCreate = vi.fn().mockResolvedValue({ id: 'alerte-1' });
+      const createdAt = new Date('2026-05-27T11:05:00.000Z');
       vi.mocked(db.$transaction).mockImplementation(
         async (cb: unknown) =>
           await (cb as (tx: unknown) => Promise<unknown>)({
             releve: {
-              create: vi.fn().mockResolvedValue({ id: NEW_RELEVE_ID }),
+              create: vi
+                .fn()
+                .mockResolvedValue({ id: NEW_RELEVE_ID, createdAt }),
             },
             alerte: { create: alerteCreate },
           })
@@ -352,6 +359,7 @@ describe('[releve.service]', () => {
       if (result.success) {
         expect(result.data.alerteCreated).toBe(true);
         expect(result.data.alerteId).toBe('alerte-1');
+        expect(result.data.createdAt).toEqual(createdAt);
       }
       expect(alerteCreate).toHaveBeenCalledTimes(1);
     });

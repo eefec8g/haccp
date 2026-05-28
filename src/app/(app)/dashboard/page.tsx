@@ -35,6 +35,7 @@ import { AppPageHeader } from '@/components/features/ui/AppPageHeader';
 import { KpisGrid } from '@/components/features/dashboard/KpisGrid';
 import { KpiCard } from '@/components/features/dashboard/KpiCard';
 import { EquipementsTodayTable } from '@/components/features/dashboard/EquipementsTodayTable';
+import { TourneeButtons } from '@/components/features/dashboard/TourneeButtons';
 import { RefreshButton } from '@/components/features/dashboard/RefreshButton';
 import { TrendChart } from '@/components/features/dashboard/TrendChart';
 import { DashboardAlertesSection } from '@/components/features/dashboard/DashboardAlertesSection';
@@ -245,6 +246,7 @@ function SalarieDashboardView({
         <RefreshButton href={currentHref} testId="dashboard-refresh" />
       </AppPageHeader>
       <section className={SECTION_CLASSES}>
+        <TourneeButtons testId="dashboard-tournee-buttons" />
         <section
           className="flex flex-col gap-4"
           data-testid="dashboard-board-section"
@@ -367,6 +369,11 @@ export default async function DashboardPage({
             testId="kpi-boutiques"
           />
         </KpisGrid>
+
+        <TourneeButtons
+          testId="dashboard-tournee-buttons"
+          boutiqueId={filter}
+        />
 
         <section
           id="board"

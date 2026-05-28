@@ -286,6 +286,7 @@ interface InsertReleveArgs {
 interface InsertReleveResult {
   readonly id: string;
   readonly alerteHorsSeuils: boolean;
+  readonly createdAt: Date;
 }
 
 async function insertReleve({
@@ -324,9 +325,9 @@ async function insertReleve({
       boutiqueId: equipement.boutiqueId,
       userId: viewerId,
     },
-    select: { id: true },
+    select: { id: true, createdAt: true },
   });
-  return { id: releve.id, alerteHorsSeuils };
+  return { id: releve.id, alerteHorsSeuils, createdAt: releve.createdAt };
 }
 
 interface CreateReleveArgs {
@@ -408,6 +409,7 @@ export async function createReleve({
           releveId: inserted.id,
           alerteCreated: false,
           alerteId: null,
+          createdAt: inserted.createdAt,
         } satisfies ReleveCreatedResult;
       }
       const alerte = await createAlerte({
@@ -418,6 +420,7 @@ export async function createReleve({
         releveId: inserted.id,
         alerteCreated: true,
         alerteId: alerte.id,
+        createdAt: inserted.createdAt,
       } satisfies ReleveCreatedResult;
     });
     return { success: true, data: result };

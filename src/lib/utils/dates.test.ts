@@ -3,6 +3,7 @@ import {
   daysInclusive,
   endOfDay,
   formatDateShort,
+  formatTimeShort,
   getCurrentCreneau,
   getRecentDaysRange,
   isoFromDate,
@@ -156,6 +157,24 @@ describe('[dates utils]', () => {
 
     it('should reject a future date', () => {
       expect(isWithinRecentDays('2026-05-27', 7, parisInMay(10))).toBe(false);
+    });
+  });
+
+  describe('formatTimeShort', () => {
+    it('should format a UTC instant in Paris HH:mm (DST aware)', () => {
+      // 06:42 UTC = 08:42 Paris en mai (UTC+2)
+      const instant = new Date('2026-05-26T06:42:00.000Z');
+      expect(formatTimeShort(instant)).toBe('08:42');
+    });
+
+    it('should pad single-digit hour and minute with leading zeros', () => {
+      // 03:09 UTC = 05:09 Paris en mai (UTC+2)
+      const instant = new Date('2026-05-26T03:09:00.000Z');
+      expect(formatTimeShort(instant)).toBe('05:09');
+    });
+
+    it('should return "--:--" for an invalid date', () => {
+      expect(formatTimeShort(new Date('not-a-date'))).toBe('--:--');
     });
   });
 

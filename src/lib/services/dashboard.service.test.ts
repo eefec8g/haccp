@@ -482,6 +482,9 @@ describe('[dashboard.service] loadEquipementsTodayBoard', () => {
       equipementDbRow({ id: 'eq-1', nom: 'Congelateur A' }),
       equipementDbRow({ id: 'eq-2', nom: 'Congelateur B' }),
     ] as never);
+    const matinCreatedAt = new Date('2026-05-26T06:42:00.000Z');
+    const midiCreatedAt = new Date('2026-05-26T11:05:00.000Z');
+    const soirCreatedAt = new Date('2026-05-26T17:30:00.000Z');
     vi.mocked(db.releve.findMany).mockResolvedValue([
       {
         id: 'r-1',
@@ -489,6 +492,7 @@ describe('[dashboard.service] loadEquipementsTodayBoard', () => {
         creneau: 'MATIN',
         temperature: -20,
         alerteHorsSeuils: false,
+        createdAt: matinCreatedAt,
       },
       {
         id: 'r-2',
@@ -496,6 +500,7 @@ describe('[dashboard.service] loadEquipementsTodayBoard', () => {
         creneau: 'MIDI',
         temperature: -10,
         alerteHorsSeuils: true,
+        createdAt: midiCreatedAt,
       },
       {
         id: 'r-3',
@@ -503,6 +508,7 @@ describe('[dashboard.service] loadEquipementsTodayBoard', () => {
         creneau: 'SOIR',
         temperature: -19,
         alerteHorsSeuils: false,
+        createdAt: soirCreatedAt,
       },
     ] as never);
 
@@ -522,16 +528,21 @@ describe('[dashboard.service] loadEquipementsTodayBoard', () => {
       temperature: -20,
       releveId: 'r-1',
       creneau: 'MATIN',
+      saisiAt: matinCreatedAt,
     });
     expect(eq1?.cells.MIDI.statut).toBe('ALERTE');
     expect(eq1?.cells.MIDI.releveId).toBe('r-2');
+    expect(eq1?.cells.MIDI.saisiAt).toEqual(midiCreatedAt);
     expect(eq1?.cells.SOIR.statut).toBe('MANQUANT');
     expect(eq1?.cells.SOIR.temperature).toBeNull();
     expect(eq1?.cells.SOIR.releveId).toBeNull();
+    expect(eq1?.cells.SOIR.saisiAt).toBeNull();
     const eq2 = result.data.rows[1];
     expect(eq2?.cells.MATIN.statut).toBe('MANQUANT');
+    expect(eq2?.cells.MATIN.saisiAt).toBeNull();
     expect(eq2?.cells.MIDI.statut).toBe('MANQUANT');
     expect(eq2?.cells.SOIR.statut).toBe('SAISI');
+    expect(eq2?.cells.SOIR.saisiAt).toEqual(soirCreatedAt);
   });
 
   it('should narrow the equipement query to a single boutique when boutiqueId is provided', async () => {

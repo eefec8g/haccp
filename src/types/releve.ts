@@ -111,3 +111,24 @@ export interface ReleveAnnulationResult {
   readonly replacementReleveId: string | null;
   readonly replacementAlerteId: string | null;
 }
+
+/**
+ * Resultat d'une correction inline par l'auteur depuis la tournee guidee
+ * (`corrigerPropreReleveDuJour`).
+ *
+ * La correction enchaine, dans une seule transaction, l'annulation tracee
+ * de l'ancien releve (motif auto) et la creation du nouveau releve actif.
+ *
+ * - `annulationReleveId` : id du releve d'annulation cree (tracabilite).
+ * - `releveId` : id du NOUVEAU releve actif (celui qui remplace).
+ * - `alerteCreated` / `alerteId` : alerte declenchee si la nouvelle valeur
+ *   est hors seuils (RG-ALER-001). Le caller dispatch l'email.
+ * - `createdAt` : instant exact de saisie du nouveau releve (UI optimiste).
+ */
+export interface ReleveCorrectionResult {
+  readonly annulationReleveId: string;
+  readonly releveId: string;
+  readonly alerteCreated: boolean;
+  readonly alerteId: string | null;
+  readonly createdAt: Date;
+}

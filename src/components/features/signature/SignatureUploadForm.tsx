@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useId, useState } from 'react';
+import { startTransition, useActionState, useId, useState } from 'react';
 import { signatureUploadAction } from '@/app/actions/signature';
 import {
   INITIAL_SIGNATURE_UPLOAD_STATE,
@@ -105,7 +105,9 @@ export function SignatureUploadForm({
 
   function handleSign(blob: Blob): void {
     setHasSubmitted(true);
-    formAction(buildFormData({ boutiqueId, dateISO, blob }));
+    startTransition(() => {
+      formAction(buildFormData({ boutiqueId, dateISO, blob }));
+    });
   }
 
   return (

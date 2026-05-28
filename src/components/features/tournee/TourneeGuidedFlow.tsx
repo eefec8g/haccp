@@ -1,6 +1,13 @@
 'use client';
 
-import { useActionState, useEffect, useId, useRef, useState } from 'react';
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import type { Creneau } from '@prisma/client';
 import { tourneeSaisieAction } from '@/app/actions/tournee-saisie';
@@ -9,6 +16,12 @@ import {
   type TourneeSaisieActionState,
   type TourneeSaisieFieldErrors,
 } from '@/app/actions/tournee-saisie.types';
+import { tourneeCorrigeAction } from '@/app/actions/tournee-correction';
+import {
+  INITIAL_TOURNEE_CORRECTION_STATE,
+  type TourneeCorrectionActionState,
+  type TourneeCorrectionFieldErrors,
+} from '@/app/actions/tournee-correction.types';
 import { signatureUploadAction } from '@/app/actions/signature';
 import {
   INITIAL_SIGNATURE_UPLOAD_STATE,
@@ -24,10 +37,7 @@ import { buildRateLimitMessage } from '@/lib/utils/rate-limit-message';
 import { resolveSignatureErrorMessage } from '@/lib/utils/signature-error-messages';
 import { formatTemperature } from '@/lib/utils/format-temperature';
 import { formatDateShort, formatTimeShort } from '@/lib/utils/dates';
-import {
-  MG_EYEBROW_CLASSES,
-  MG_GHOST_BUTTON_CLASSES,
-} from '@/lib/constants/styles';
+import { MG_EYEBROW_CLASSES } from '@/lib/constants/styles';
 import {
   ERROR_BOX_CLASSES,
   INPUT_LARGE_CLASSES,
@@ -45,17 +55,20 @@ import type {
  * Flow guide de tournee (feat/tournee-guidee).
  *
  * Le salarie clique "Tournee matin/midi/soir" sur le dashboard et est
- * guide equipement par equipement :
- *   - Step `< equipements.length` : saisie inline (ou lecture seule si
- *     deja saisi sur ce creneau, avec bouton "Suivant").
- *   - Step `=== equipements.length` : ecran signature OBLIGATOIRE
+ * guide equipement par equipement, sans aucun clic superflu :
+ *   - Step `< equipements.length` : saisie inline. Les equipements DEJA
+ *     saisis sur ce creneau sont SKIPPES automatiquement (pas d'ecran de
+ *     lecture seule a confirmer -> fini le "double clic").
+ *   - Step `=== equipements.length` : RECAP de toutes les saisies, avec
+ *     un bouton "Modifier" par ligne et un bouton "Signer la tournee".
+ *   - Step `=== equipements.length + 1` : ecran signature OBLIGATOIRE
  *     (canvas + upload). Apres signature, retour dashboard.
  *
  * Decisions metier (validees user) :
  *   - Signature finale obligatoire (pas de skip).
- *   - Equipements deja saisis : affiches en lecture seule (pas auto-skip).
- *   - Apres saisie ok : auto-advance step++.
- *   - Boutons Precedent / Suivant pour naviguer dans la tournee.
+ *   - Equipements deja saisis : SKIPPES automatiquement (UX fluide).
+ *   - Apres saisie ok : auto-advance vers le prochain manquant, ou recap.
+ *   - Recap final listant toutes les saisies avant la signature.
  *
  * Architecture interne :
  *   - 1 seul `'use client'` (toute l'interactivite ici).
@@ -63,6 +76,8 @@ import type {
  *   - localReleves stocke en memoire les releves saisis pendant la
  *     session (les props.releves ne changent pas car le RSC ne se
  *     re-render pas sans navigation).
+ *   - stepIndex initial calcule paresseusement = premier equipement
+ *     manquant (ou recap si tout est deja saisi).
  *
  * a11y :
  *   - `aria-live="polite"` sur le compteur de progression.
@@ -82,22 +97,39 @@ const COMMENTAIRE_REQUIRED_MESSAGE =
   'Le commentaire est obligatoire pour une temperature hors seuils.';
 const GENERIC_ERROR_MESSAGE =
   'Une erreur est survenue. Merci de reessayer dans quelques instants.';
+const CORRECTION_NOT_FOUND_MESSAGE = 'Releve introuvable.';
+const CORRECTION_FORBIDDEN_MESSAGE =
+  'Vous ne pouvez corriger que vos propres releves.';
+const CORRECTION_NOT_TODAY_MESSAGE =
+  'Seul un releve du jour peut etre corrige ici.';
+const CORRECTION_CRENEAU_MISMATCH_MESSAGE =
+  'Ce releve ne correspond pas a cet equipement ou ce creneau.';
+const CORRECTION_ALREADY_CANCELLED_MESSAGE = 'Ce releve est deja annule.';
+const CORRECTION_SIGNED_MESSAGE =
+  'La tournee est deja signee : correction impossible.';
 
 const TEMPERATURE_INPUT_CLASSES = `${INPUT_LARGE_CLASSES} text-center text-3xl font-light tracking-wider`;
-const NEXT_BUTTON_CLASSES = `${SUBMIT_LARGE_CLASSES}`;
 const ALERTE_HINT_CLASSES =
   'border-l-2 border-mg-or bg-mg-or/5 px-4 py-3 text-xs font-medium uppercase tracking-[0.15em] text-mg-or';
-const READONLY_CARD_CLASSES =
-  'flex flex-col gap-3 border border-mg-noir/10 bg-white p-6';
 const SUMMARY_CARD_CLASSES =
   'border border-mg-noir/10 bg-white px-6 py-5 flex flex-col gap-1';
 const PROGRESS_CLASSES =
   'text-[10px] font-medium uppercase tracking-[0.3em] text-mg-or';
-const ACTIONS_ROW_CLASSES = 'flex flex-wrap items-center justify-between gap-3';
 const SIGNATURE_FRAME_CLASSES =
   'flex flex-col gap-4 border border-mg-noir/10 bg-mg-ivoire/40 p-5';
 const SIGNATURE_NOTICE_CLASSES =
   'border border-mg-noir/15 bg-mg-ivoire px-4 py-3 text-xs font-light uppercase tracking-[0.15em] text-mg-noir';
+const RECAP_FRAME_CLASSES = 'flex flex-col gap-5';
+const RECAP_ROW_CLASSES =
+  'flex flex-col gap-3 border border-mg-noir/10 bg-white p-5 sm:flex-row sm:items-center sm:justify-between';
+const RECAP_MODIFIER_CLASSES =
+  'inline-flex min-h-touch items-center justify-center border border-mg-noir/20 bg-transparent px-5 text-[10px] font-medium uppercase tracking-[0.3em] text-mg-noir transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
+const RECAP_STATUS_OK_CLASSES =
+  'inline-flex w-fit border border-mg-or/40 bg-transparent px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-mg-or';
+const RECAP_STATUS_ALERTE_CLASSES =
+  'inline-flex w-fit border border-mg-or bg-mg-or px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-mg-noir';
+const CANCEL_BUTTON_CLASSES =
+  'inline-flex min-h-touch items-center justify-center border border-mg-noir/20 bg-transparent px-5 text-[11px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:border-mg-noir hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 
 const DASHBOARD_PATH = '/dashboard';
 
@@ -139,6 +171,49 @@ function firstFieldError(
   return fieldErrors?.[key]?.[0];
 }
 
+function deriveCorrectionError(
+  state: TourneeCorrectionActionState
+): string | null {
+  if (state.status !== 'error') {
+    return null;
+  }
+  return mapCorrectionErrorCode(state);
+}
+
+function mapCorrectionErrorCode(
+  state: Extract<TourneeCorrectionActionState, { status: 'error' }>
+): string {
+  switch (state.code) {
+    case 'VALIDATION':
+      return VALIDATION_MESSAGE;
+    case 'RATE_LIMITED':
+      return buildRateLimitMessage(state.retryAfterSeconds ?? 0);
+    case 'NOT_FOUND':
+      return CORRECTION_NOT_FOUND_MESSAGE;
+    case 'FORBIDDEN':
+      return CORRECTION_FORBIDDEN_MESSAGE;
+    case 'NOT_TODAY':
+      return CORRECTION_NOT_TODAY_MESSAGE;
+    case 'CRENEAU_MISMATCH':
+      return CORRECTION_CRENEAU_MISMATCH_MESSAGE;
+    case 'ALREADY_CANCELLED':
+      return CORRECTION_ALREADY_CANCELLED_MESSAGE;
+    case 'TOURNEE_DEJA_SIGNEE':
+      return CORRECTION_SIGNED_MESSAGE;
+    case 'COMMENTAIRE_REQUIRED':
+      return COMMENTAIRE_REQUIRED_MESSAGE;
+    default:
+      return GENERIC_ERROR_MESSAGE;
+  }
+}
+
+function correctionFieldError(
+  fieldErrors: TourneeCorrectionFieldErrors | undefined,
+  key: keyof TourneeCorrectionFieldErrors
+): string | undefined {
+  return fieldErrors?.[key]?.[0];
+}
+
 function parseTemperatureInput(raw: string): number | null {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
@@ -159,21 +234,34 @@ function isHorsSeuils(
   return value < seuilMin || value > seuilMax;
 }
 
+type TourneePhase = 'SAISIE' | 'RECAP' | 'CORRECTION' | 'SIGNATURE';
+
 interface ProgressIndicatorProps {
+  readonly phase: TourneePhase;
   readonly stepIndex: number;
   readonly total: number;
   readonly equipementNom: string | null;
 }
 
-function ProgressIndicator({
+function buildProgressLabel({
+  phase,
   stepIndex,
   total,
   equipementNom,
-}: ProgressIndicatorProps) {
-  const label =
-    equipementNom !== null
-      ? `Equipement ${stepIndex + 1} sur ${total} - ${equipementNom}`
-      : `Signature - ${total} sur ${total}`;
+}: ProgressIndicatorProps): string {
+  if (phase === 'CORRECTION') {
+    return `Correction - ${equipementNom ?? ''}`;
+  }
+  if (phase === 'RECAP') {
+    return `Recapitulatif - ${total} sur ${total}`;
+  }
+  if (phase === 'SIGNATURE') {
+    return `Signature - ${total} sur ${total}`;
+  }
+  return `Equipement ${stepIndex + 1} sur ${total} - ${equipementNom ?? ''}`;
+}
+
+function ProgressIndicator(props: ProgressIndicatorProps) {
   return (
     <p
       className={PROGRESS_CLASSES}
@@ -181,95 +269,8 @@ function ProgressIndicator({
       role="status"
       aria-live="polite"
     >
-      {label}
+      {buildProgressLabel(props)}
     </p>
-  );
-}
-
-interface NavigationButtonsProps {
-  readonly canGoPrevious: boolean;
-  readonly canGoNext: boolean;
-  readonly onPrevious: () => void;
-  readonly onNext: () => void;
-  readonly nextLabel?: string;
-}
-
-function NavigationButtons({
-  canGoPrevious,
-  canGoNext,
-  onPrevious,
-  onNext,
-  nextLabel,
-}: NavigationButtonsProps) {
-  return (
-    <div className={ACTIONS_ROW_CLASSES}>
-      <button
-        type="button"
-        onClick={onPrevious}
-        disabled={!canGoPrevious}
-        className={MG_GHOST_BUTTON_CLASSES}
-        data-testid="tournee-previous"
-      >
-        Precedent
-      </button>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={!canGoNext}
-        className={NEXT_BUTTON_CLASSES}
-        data-testid="tournee-next"
-      >
-        {nextLabel ?? 'Suivant'}
-      </button>
-    </div>
-  );
-}
-
-interface ReadOnlyStepProps {
-  readonly equipement: TourneeEquipement;
-  readonly releve: TourneeReleve;
-}
-
-function ReadOnlyStep({ equipement, releve }: ReadOnlyStepProps) {
-  const statusLabel = releve.alerteHorsSeuils ? 'Alerte' : 'Saisi';
-  const heureLabel = formatTimeShort(releve.saisiAt);
-  return (
-    <div
-      className={READONLY_CARD_CLASSES}
-      data-testid={`tournee-cell-${equipement.id}`}
-    >
-      <p className={MG_EYEBROW_CLASSES}>Deja saisi</p>
-      <h2 className="text-xl font-light tracking-wide text-mg-noir">
-        {equipement.nom}
-      </h2>
-      <p className="text-[11px] uppercase tracking-[0.2em] text-mg-noir/60">
-        Seuils {equipement.seuilMin.toFixed(1)} /{' '}
-        {equipement.seuilMax.toFixed(1)} degC
-      </p>
-      <p
-        className="text-3xl font-light tracking-wider text-mg-noir"
-        data-testid={`tournee-cell-${equipement.id}-temperature`}
-      >
-        {formatTemperature(releve.temperature)}
-      </p>
-      <p
-        className="text-[10px] tracking-wide text-mg-noir/50"
-        data-testid={`tournee-cell-${equipement.id}-time`}
-      >
-        Saisi a {heureLabel}
-      </p>
-      <p
-        className={
-          releve.alerteHorsSeuils
-            ? 'inline-flex w-fit border border-mg-or bg-mg-or px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-mg-noir'
-            : 'inline-flex w-fit border border-mg-or/40 bg-transparent px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-mg-or'
-        }
-        role="status"
-        data-testid={`tournee-cell-${equipement.id}-status`}
-      >
-        {statusLabel}
-      </p>
-    </div>
   );
 }
 
@@ -446,6 +447,313 @@ function SaisieStep({ equipement, creneau, onSubmitted }: SaisieStepProps) {
   );
 }
 
+export interface CorrectionStepProps {
+  readonly equipement: TourneeEquipement;
+  readonly creneau: Creneau;
+  readonly releve: TourneeReleve;
+  readonly onCorrected: (releve: TourneeReleve) => void;
+  readonly onCancel: () => void;
+}
+
+/**
+ * Step de CORRECTION inline d'un releve depuis le recap
+ * (fix/signature-action-context).
+ *
+ * Distinct de `SaisieStep` (SRP) : utilise `tourneeCorrigeAction` (et non
+ * `tourneeSaisieAction`), pre-remplit l'input avec la valeur actuelle, et
+ * apres succes REVIENT au recap (via `onCorrected`) au lieu d'avancer vers
+ * le prochain manquant. Le motif d'annulation est auto-genere cote service
+ * (le salarie n'a rien a saisir de plus que la nouvelle valeur).
+ *
+ * Exporte pour permettre un test SSR cible (rendu pre-rempli + indication
+ * "Correction de ..."), la sous-phase n'etant pas atteignable via
+ * `renderToStaticMarkup` sur le flow complet (etat interne).
+ */
+export function CorrectionStep({
+  equipement,
+  creneau,
+  releve,
+  onCorrected,
+  onCancel,
+}: CorrectionStepProps) {
+  const [state, formAction, isPending] = useActionState(
+    tourneeCorrigeAction,
+    INITIAL_TOURNEE_CORRECTION_STATE
+  );
+  const [temperatureRaw, setTemperatureRaw] = useState(() =>
+    String(releve.temperature)
+  );
+  const [commentaire, setCommentaire] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const globalErrorId = useId();
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [equipement.id]);
+
+  useEffect(() => {
+    if (state.status === 'success' && state.equipementId === equipement.id) {
+      onCorrected({
+        id: state.releve.id,
+        temperature: state.releve.temperature,
+        alerteHorsSeuils: state.releve.alerteHorsSeuils,
+        saisiAt: new Date(state.releve.saisiAt),
+      });
+    }
+  }, [state, equipement.id, onCorrected]);
+
+  const globalError = deriveCorrectionError(state);
+  const fieldErrors = state.status === 'error' ? state.fieldErrors : undefined;
+  const temperatureError = correctionFieldError(fieldErrors, 'temperature');
+  const commentaireError = correctionFieldError(fieldErrors, 'commentaire');
+  const temperatureValue = parseTemperatureInput(temperatureRaw);
+  const horsSeuilsClient = isHorsSeuils(
+    temperatureValue,
+    equipement.seuilMin,
+    equipement.seuilMax
+  );
+  const commentaireTooShort =
+    horsSeuilsClient && commentaire.trim().length < COMMENTAIRE_MIN_CHARS;
+  const submitDisabled =
+    isPending || temperatureValue === null || commentaireTooShort;
+
+  return (
+    <form
+      action={formAction}
+      aria-label={`Correction du releve ${equipement.nom} ${CRENEAU_LABELS[creneau]}`}
+      className="flex flex-col gap-5"
+      data-testid="tournee-correction-form"
+      noValidate
+    >
+      <input type="hidden" name="releveId" value={releve.id} />
+      <input type="hidden" name="equipementId" value={equipement.id} />
+      <input type="hidden" name="creneau" value={creneau} />
+
+      <section
+        className={SUMMARY_CARD_CLASSES}
+        data-testid="tournee-correction-summary"
+      >
+        <p
+          className={MG_EYEBROW_CLASSES}
+          data-testid="tournee-correction-title"
+        >
+          Correction de {equipement.nom}
+        </p>
+        <h2 className="text-xl font-light tracking-wide text-mg-noir">
+          {equipement.nom}
+        </h2>
+        <p className="text-[11px] uppercase tracking-[0.2em] text-mg-noir/50">
+          Seuils {equipement.seuilMin.toFixed(1)} /{' '}
+          {equipement.seuilMax.toFixed(1)} degC
+        </p>
+      </section>
+
+      <label className="flex flex-col gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir/70">
+          Temperature (degC)
+        </span>
+        <input
+          ref={inputRef}
+          id={`correction-temperature-${equipement.id}`}
+          name="temperature"
+          type="number"
+          step="0.1"
+          min={TEMPERATURE_MIN}
+          max={TEMPERATURE_MAX}
+          required
+          inputMode="decimal"
+          value={temperatureRaw}
+          onChange={(event) => setTemperatureRaw(event.target.value)}
+          aria-invalid={!!temperatureError}
+          aria-describedby={
+            temperatureError
+              ? `correction-temperature-error-${equipement.id}`
+              : undefined
+          }
+          className={TEMPERATURE_INPUT_CLASSES}
+          data-testid="tournee-correction-temperature"
+        />
+        {temperatureError ? (
+          <span
+            id={`correction-temperature-error-${equipement.id}`}
+            role="alert"
+            aria-live="polite"
+            className="text-xs text-mg-or"
+          >
+            {temperatureError}
+          </span>
+        ) : null}
+      </label>
+
+      {horsSeuilsClient ? (
+        <p
+          className={ALERTE_HINT_CLASSES}
+          role="status"
+          aria-live="polite"
+          data-testid="tournee-correction-alerte-hint"
+        >
+          Temperature hors seuils &middot; commentaire obligatoire (min{' '}
+          {COMMENTAIRE_MIN_CHARS} caracteres)
+        </p>
+      ) : null}
+
+      <label className="flex flex-col gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir/70">
+          Commentaire {horsSeuilsClient ? '(obligatoire)' : '(optionnel)'}
+        </span>
+        <textarea
+          id={`correction-commentaire-${equipement.id}`}
+          name="commentaire"
+          rows={3}
+          required={horsSeuilsClient}
+          value={commentaire}
+          onChange={(event) => setCommentaire(event.target.value)}
+          aria-invalid={!!commentaireError}
+          className={TEXTAREA_CLASSES}
+          data-testid="tournee-correction-commentaire"
+        />
+        {commentaireError ? (
+          <span role="alert" aria-live="polite" className="text-xs text-mg-or">
+            {commentaireError}
+          </span>
+        ) : null}
+      </label>
+
+      <div
+        id={globalErrorId}
+        role="alert"
+        aria-live="polite"
+        aria-atomic="true"
+        className={globalError ? ERROR_BOX_CLASSES : 'sr-only'}
+        data-testid="tournee-correction-error"
+      >
+        {globalError}
+      </div>
+
+      <button
+        type="submit"
+        disabled={submitDisabled}
+        aria-busy={isPending}
+        className={SUBMIT_LARGE_CLASSES}
+        data-testid="tournee-correction-submit"
+      >
+        {isPending ? 'Correction...' : 'Corriger et revenir au recap'}
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className={CANCEL_BUTTON_CLASSES}
+        data-testid="tournee-correction-cancel"
+      >
+        Annuler la correction
+      </button>
+    </form>
+  );
+}
+
+interface RecapEntry {
+  readonly equipement: TourneeEquipement;
+  readonly releve: TourneeReleve;
+}
+
+interface RecapRowProps {
+  readonly entry: RecapEntry;
+  readonly onModifier: (equipementId: string) => void;
+}
+
+/**
+ * Ligne de recap avec bouton "Modifier".
+ *
+ * Le bouton ne pointe PLUS vers la page externe `/releves/{id}/annuler`
+ * (reservee RESPONSABLE/ADMIN -> 404 pour le salarie). Il rouvre le step
+ * de correction inline dans le flow (`onModifier`), permettant a l'auteur
+ * de corriger sa propre saisie du jour avant la signature.
+ */
+function RecapRow({ entry, onModifier }: RecapRowProps) {
+  const { equipement, releve } = entry;
+  const statusLabel = releve.alerteHorsSeuils ? 'Alerte' : 'OK';
+  return (
+    <div
+      className={RECAP_ROW_CLASSES}
+      data-testid={`tournee-recap-row-${equipement.id}`}
+    >
+      <div className="flex flex-col gap-1">
+        <h3 className="text-base font-light tracking-wide text-mg-noir">
+          {equipement.nom}
+        </h3>
+        <p className="text-2xl font-light tracking-wider text-mg-noir">
+          {formatTemperature(releve.temperature)}
+        </p>
+        <p className="text-[10px] tracking-wide text-mg-noir/50">
+          Saisi a {formatTimeShort(releve.saisiAt)}
+        </p>
+      </div>
+      <div className="flex items-center gap-4">
+        <span
+          className={
+            releve.alerteHorsSeuils
+              ? RECAP_STATUS_ALERTE_CLASSES
+              : RECAP_STATUS_OK_CLASSES
+          }
+          role="status"
+          data-testid={`tournee-recap-status-${equipement.id}`}
+        >
+          {statusLabel}
+        </span>
+        <button
+          type="button"
+          onClick={() => onModifier(equipement.id)}
+          className={RECAP_MODIFIER_CLASSES}
+          aria-label={`Modifier le releve de ${equipement.nom}`}
+          data-testid={`tournee-recap-modifier-${equipement.id}`}
+        >
+          Modifier
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface RecapStepProps {
+  readonly creneau: Creneau;
+  readonly entries: readonly RecapEntry[];
+  readonly onSign: () => void;
+  readonly onModifier: (equipementId: string) => void;
+}
+
+function RecapStep({ creneau, entries, onSign, onModifier }: RecapStepProps) {
+  return (
+    <section
+      className={RECAP_FRAME_CLASSES}
+      data-testid="tournee-recap-step"
+      aria-label={`Recapitulatif de la tournee ${CRENEAU_LABELS[creneau]}`}
+    >
+      <header className="flex flex-col gap-1">
+        <p className={MG_EYEBROW_CLASSES}>Verification finale</p>
+        <h2 className="text-xl font-light tracking-wide text-mg-noir">
+          Recapitulatif de votre tournee {CRENEAU_LABELS[creneau]}
+        </h2>
+      </header>
+      <ul className="flex flex-col gap-3">
+        {entries.map((entry) => (
+          <li key={entry.equipement.id}>
+            <RecapRow entry={entry} onModifier={onModifier} />
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={onSign}
+        className={SUBMIT_LARGE_CLASSES}
+        data-testid="tournee-recap-signer"
+      >
+        Signer la tournee
+      </button>
+    </section>
+  );
+}
+
 interface SignatureStepProps {
   readonly boutiqueId: string;
   readonly dateISO: string;
@@ -533,7 +841,9 @@ function SignatureStep({
 
   function handleSign(blob: Blob): void {
     setHasSubmitted(true);
-    formAction(buildSignatureFormData({ boutiqueId, dateISO, blob }));
+    startTransition(() => {
+      formAction(buildSignatureFormData({ boutiqueId, dateISO, blob }));
+    });
   }
 
   return (
@@ -579,31 +889,88 @@ export interface TourneeGuidedFlowProps {
   readonly signature: TourneeSignature | null;
 }
 
-interface ResolvedReleve {
-  readonly equipement: TourneeEquipement;
-  readonly releve: TourneeReleve | null;
+type ReleveLookup = Readonly<Record<string, TourneeReleve | null>>;
+type LocalReleves = Readonly<Record<string, TourneeReleve>>;
+
+/**
+ * Resout le releve actif d'un equipement (local prioritaire sur props).
+ * Renvoie `null` si l'equipement n'a pas encore ete saisi.
+ */
+function resolveReleve(
+  equipement: TourneeEquipement,
+  releves: ReleveLookup,
+  localReleves: LocalReleves
+): TourneeReleve | null {
+  return localReleves[equipement.id] ?? releves[equipement.id] ?? null;
 }
 
-function resolveStep({
+/**
+ * Index du premier equipement MANQUANT a partir de `fromIndex`.
+ * Renvoie `equipements.length` (= step recap) si tout est saisi.
+ */
+function findNextMissingIndex({
   equipements,
-  stepIndex,
   releves,
   localReleves,
+  fromIndex,
 }: {
   readonly equipements: readonly TourneeEquipement[];
-  readonly stepIndex: number;
-  readonly releves: Readonly<Record<string, TourneeReleve | null>>;
-  readonly localReleves: Readonly<Record<string, TourneeReleve>>;
-}): ResolvedReleve | null {
-  const equipement = equipements[stepIndex];
+  readonly releves: ReleveLookup;
+  readonly localReleves: LocalReleves;
+  readonly fromIndex: number;
+}): number {
+  for (let index = fromIndex; index < equipements.length; index += 1) {
+    const equipement = equipements[index];
+    if (
+      equipement &&
+      resolveReleve(equipement, releves, localReleves) === null
+    ) {
+      return index;
+    }
+  }
+  return equipements.length;
+}
+
+/** Lignes du recap : tous les equipements saisis, dans l'ordre du parc. */
+function buildRecapEntries(
+  equipements: readonly TourneeEquipement[],
+  releves: ReleveLookup,
+  localReleves: LocalReleves
+): readonly RecapEntry[] {
+  return equipements.flatMap((equipement) => {
+    const releve = resolveReleve(equipement, releves, localReleves);
+    return releve ? [{ equipement, releve }] : [];
+  });
+}
+
+/**
+ * Resout l'entree de correction (equipement + releve actif) pour un
+ * equipementId donne. Renvoie `null` si l'equipement n'existe pas ou n'a
+ * pas (ou plus) de releve actif a corriger.
+ */
+function findCorrectionEntry(
+  equipementId: string,
+  equipements: readonly TourneeEquipement[],
+  releves: ReleveLookup,
+  localReleves: LocalReleves
+): RecapEntry | null {
+  const equipement = equipements.find((eq) => eq.id === equipementId);
   if (!equipement) {
     return null;
   }
-  const local = localReleves[equipement.id];
-  if (local) {
-    return { equipement, releve: local };
+  const releve = resolveReleve(equipement, releves, localReleves);
+  return releve ? { equipement, releve } : null;
+}
+
+/** Phase derivee de l'index de step courant. */
+function derivePhase(stepIndex: number, totalSteps: number): TourneePhase {
+  if (stepIndex < totalSteps) {
+    return 'SAISIE';
   }
-  return { equipement, releve: releves[equipement.id] ?? null };
+  if (stepIndex === totalSteps) {
+    return 'RECAP';
+  }
+  return 'SIGNATURE';
 }
 
 export function TourneeGuidedFlow({
@@ -617,38 +984,70 @@ export function TourneeGuidedFlow({
 }: TourneeGuidedFlowProps) {
   const router = useRouter();
   const totalSteps = equipements.length;
-  const [stepIndex, setStepIndex] = useState(0);
-  const [localReleves, setLocalReleves] = useState<
-    Readonly<Record<string, TourneeReleve>>
-  >({});
+  const [stepIndex, setStepIndex] = useState(() =>
+    findNextMissingIndex({
+      equipements,
+      releves,
+      localReleves: {},
+      fromIndex: 0,
+    })
+  );
+  const [localReleves, setLocalReleves] = useState<LocalReleves>({});
+  // Equipement en cours de correction depuis le recap (null = pas de
+  // correction active). Prioritaire sur la phase derivee du stepIndex :
+  // la correction est une "sous-phase" du recap (on y revient apres).
+  const [correctionEquipementId, setCorrectionEquipementId] = useState<
+    string | null
+  >(null);
 
-  const resolved = resolveStep({
-    equipements,
-    stepIndex,
-    releves,
-    localReleves,
-  });
-  const isSignatureStep = stepIndex >= totalSteps;
-  const canGoPrevious = stepIndex > 0;
-  const canGoNext = stepIndex < totalSteps;
-
-  function handlePrevious(): void {
-    setStepIndex((value) => Math.max(0, value - 1));
-  }
-
-  function handleNext(): void {
-    setStepIndex((value) => Math.min(totalSteps, value + 1));
-  }
+  const correctionEntry = correctionEquipementId
+    ? findCorrectionEntry(
+        correctionEquipementId,
+        equipements,
+        releves,
+        localReleves
+      )
+    : null;
+  const phase: TourneePhase = correctionEntry
+    ? 'CORRECTION'
+    : derivePhase(stepIndex, totalSteps);
+  const activeEquipement =
+    phase === 'SAISIE' ? (equipements[stepIndex] ?? null) : null;
 
   function handleSubmitted(releve: TourneeReleve): void {
-    if (!resolved) {
+    if (!activeEquipement) {
       return;
     }
-    setLocalReleves((current) => ({
-      ...current,
-      [resolved.equipement.id]: releve,
-    }));
-    setStepIndex((value) => Math.min(totalSteps, value + 1));
+    const nextLocalReleves: LocalReleves = {
+      ...localReleves,
+      [activeEquipement.id]: releve,
+    };
+    setLocalReleves(nextLocalReleves);
+    setStepIndex(
+      findNextMissingIndex({
+        equipements,
+        releves,
+        localReleves: nextLocalReleves,
+        fromIndex: stepIndex + 1,
+      })
+    );
+  }
+
+  function handleModifier(equipementId: string): void {
+    setCorrectionEquipementId(equipementId);
+  }
+
+  function handleCorrected(equipementId: string, releve: TourneeReleve): void {
+    setLocalReleves({ ...localReleves, [equipementId]: releve });
+    setCorrectionEquipementId(null);
+  }
+
+  function handleCancelCorrection(): void {
+    setCorrectionEquipementId(null);
+  }
+
+  function handleSign(): void {
+    setStepIndex(totalSteps + 1);
   }
 
   function handleDone(): void {
@@ -676,54 +1075,46 @@ export function TourneeGuidedFlow({
       aria-label={`Tournee ${CRENEAU_LABELS[creneau]} ${boutiqueNom}`}
     >
       <ProgressIndicator
-        stepIndex={isSignatureStep ? totalSteps - 1 : stepIndex}
+        phase={phase}
+        stepIndex={stepIndex}
         total={totalSteps}
         equipementNom={
-          isSignatureStep ? null : (resolved?.equipement.nom ?? null)
+          correctionEntry?.equipement.nom ?? activeEquipement?.nom ?? null
         }
       />
 
-      {isSignatureStep ? (
+      {phase === 'CORRECTION' && correctionEntry ? (
+        <CorrectionStep
+          key={correctionEntry.equipement.id}
+          equipement={correctionEntry.equipement}
+          creneau={creneau}
+          releve={correctionEntry.releve}
+          onCorrected={(releve) =>
+            handleCorrected(correctionEntry.equipement.id, releve)
+          }
+          onCancel={handleCancelCorrection}
+        />
+      ) : phase === 'SIGNATURE' ? (
         <SignatureStep
           boutiqueId={boutiqueId}
           dateISO={dateISO}
           signature={signature}
           onDone={handleDone}
         />
-      ) : resolved && resolved.releve ? (
-        <>
-          <ReadOnlyStep
-            equipement={resolved.equipement}
-            releve={resolved.releve}
-          />
-          <NavigationButtons
-            canGoPrevious={canGoPrevious}
-            canGoNext={canGoNext}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
-          />
-        </>
-      ) : resolved ? (
-        <>
-          <SaisieStep
-            key={resolved.equipement.id}
-            equipement={resolved.equipement}
-            creneau={creneau}
-            onSubmitted={handleSubmitted}
-          />
-          {canGoPrevious ? (
-            <div className={ACTIONS_ROW_CLASSES}>
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className={MG_GHOST_BUTTON_CLASSES}
-                data-testid="tournee-previous"
-              >
-                Precedent
-              </button>
-            </div>
-          ) : null}
-        </>
+      ) : phase === 'RECAP' ? (
+        <RecapStep
+          creneau={creneau}
+          entries={buildRecapEntries(equipements, releves, localReleves)}
+          onSign={handleSign}
+          onModifier={handleModifier}
+        />
+      ) : activeEquipement ? (
+        <SaisieStep
+          key={activeEquipement.id}
+          equipement={activeEquipement}
+          creneau={creneau}
+          onSubmitted={handleSubmitted}
+        />
       ) : null}
 
       <p className="text-[11px] uppercase tracking-[0.2em] text-mg-noir/40">

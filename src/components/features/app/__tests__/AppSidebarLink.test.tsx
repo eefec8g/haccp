@@ -7,22 +7,24 @@ vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/releves'),
 }));
 
-import { AppDesktopNavLink } from '../AppDesktopNavLink';
+import { AppSidebarLink } from '../AppSidebarLink';
 
 const usePathnameMock = vi.mocked(usePathname);
 
 /**
- * Tests `AppDesktopNavLink` (Epic RESPONSIVE, fix/desktop-nav).
+ * Tests `AppSidebarLink` (fix/app-sidebar).
  *
  * Couvre :
  *   - `aria-current="page"` quand la route courante correspond exactement.
  *   - `aria-current="page"` quand la route courante est fille (prefix /).
  *   - Pas d'`aria-current` quand pathname different.
- *   - Classes actives (`text-mg-or border-b-2 border-mg-or`) quand actif.
- *   - Classes inactives (`text-mg-noir/70`) sinon.
+ *   - Pas d'`aria-current` quand le pathname partage seulement un prefixe
+ *     sans frontiere de segment (`/relevesAutre` ne matche pas `/releves`).
+ *   - Classes actives (`text-mg-or`) quand actif.
+ *   - Classes inactives (`text-mg-ivoire/70`) sinon.
  *   - `data-testid` propage tel quel (cle de selection du nav parent).
  */
-describe('[AppDesktopNavLink]', () => {
+describe('[AppSidebarLink]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -30,25 +32,24 @@ describe('[AppDesktopNavLink]', () => {
   it('should mark itself aria-current=page when pathname matches href exactly', () => {
     usePathnameMock.mockReturnValue('/alertes');
     const html = renderToStaticMarkup(
-      <AppDesktopNavLink
+      <AppSidebarLink
         href={'/alertes' as Route}
         label="Alertes"
-        testId="app-desktop-nav-link-alertes"
+        testId="app-sidebar-link-alertes"
       />
     );
 
     expect(html).toContain('aria-current="page"');
     expect(html).toContain('text-mg-or');
-    expect(html).toContain('border-b-2 border-mg-or');
   });
 
   it('should mark itself aria-current=page when pathname is a child route', () => {
     usePathnameMock.mockReturnValue('/releves/listing');
     const html = renderToStaticMarkup(
-      <AppDesktopNavLink
+      <AppSidebarLink
         href={'/releves' as Route}
         label="Mes releves"
-        testId="app-desktop-nav-link-releves"
+        testId="app-sidebar-link-releves"
       />
     );
 
@@ -58,27 +59,26 @@ describe('[AppDesktopNavLink]', () => {
   it('should NOT mark itself active when pathname differs', () => {
     usePathnameMock.mockReturnValue('/dashboard');
     const html = renderToStaticMarkup(
-      <AppDesktopNavLink
+      <AppSidebarLink
         href={'/alertes' as Route}
         label="Alertes"
-        testId="app-desktop-nav-link-alertes"
+        testId="app-sidebar-link-alertes"
       />
     );
 
     expect(html).not.toContain('aria-current="page"');
-    expect(html).toContain('text-mg-noir/70');
-    expect(html).not.toContain('border-b-2 border-mg-or');
+    expect(html).toContain('text-mg-ivoire/70');
   });
 
   it('should NOT mark itself active when pathname only shares a prefix without slash', () => {
-    // /relevesXYZ ne doit PAS matcher /releves : on respecte la frontiere
-    // de segment via `pathname.startsWith(`${href}/`)`.
+    // /relevesAutre ne doit PAS matcher /releves : on respecte la
+    // frontiere de segment via `pathname.startsWith(`${href}/`)`.
     usePathnameMock.mockReturnValue('/releves-autre');
     const html = renderToStaticMarkup(
-      <AppDesktopNavLink
+      <AppSidebarLink
         href={'/releves' as Route}
         label="Mes releves"
-        testId="app-desktop-nav-link-releves"
+        testId="app-sidebar-link-releves"
       />
     );
 
@@ -88,14 +88,27 @@ describe('[AppDesktopNavLink]', () => {
   it('should expose the data-testid passed in props', () => {
     usePathnameMock.mockReturnValue('/');
     const html = renderToStaticMarkup(
-      <AppDesktopNavLink
+      <AppSidebarLink
         href={'/exports' as Route}
         label="Exports CSV"
-        testId="app-desktop-nav-link-exports"
+        testId="app-sidebar-link-exports"
       />
     );
 
-    expect(html).toContain('data-testid="app-desktop-nav-link-exports"');
+    expect(html).toContain('data-testid="app-sidebar-link-exports"');
     expect(html).toContain('Exports CSV');
+  });
+
+  it('should respect WCAG touch target via `min-h-touch`', () => {
+    usePathnameMock.mockReturnValue('/');
+    const html = renderToStaticMarkup(
+      <AppSidebarLink
+        href={'/releves' as Route}
+        label="Mes releves"
+        testId="app-sidebar-link-releves"
+      />
+    );
+
+    expect(html).toContain('min-h-touch');
   });
 });

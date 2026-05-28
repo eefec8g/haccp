@@ -370,10 +370,16 @@ export default async function DashboardPage({
           />
         </KpisGrid>
 
-        <TourneeButtons
-          testId="dashboard-tournee-buttons"
-          boutiqueId={filter}
-        />
+        {/* L'ADMIN gere la configuration : il n'effectue pas de tournee
+            de saisie (pas de boutique operationnelle rattachee). Les
+            boutons tournee restent reserves au RESPONSABLE (et au
+            SALARIE via sa vue allegee). */}
+        {viewer.role === 'RESPONSABLE' ? (
+          <TourneeButtons
+            testId="dashboard-tournee-buttons"
+            boutiqueId={filter}
+          />
+        ) : null}
 
         <section
           id="board"

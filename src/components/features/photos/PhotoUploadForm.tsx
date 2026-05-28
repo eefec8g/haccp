@@ -15,6 +15,7 @@ import {
 import { buildRateLimitMessage } from '@/lib/utils/rate-limit-message';
 import { formatBytes } from '@/lib/utils/format-bytes';
 import { resolvePhotoErrorMessage } from '@/lib/utils/photo-error-messages';
+import { detectImageFormatError } from '@/lib/utils/photo-format';
 import {
   ERROR_BOX_CLASSES,
   LABEL_CLASSES,
@@ -216,6 +217,12 @@ export function PhotoUploadForm({
       return;
     }
     setClientError(null);
+    const formatError = detectImageFormatError(file);
+    if (formatError) {
+      setCompressed(null);
+      setClientError(formatError);
+      return;
+    }
     setIsCompressing(true);
     try {
       const blob = await compressImage(file);

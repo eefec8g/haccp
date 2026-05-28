@@ -49,14 +49,12 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     roles: [UserRole.RESPONSABLE, UserRole.ADMIN],
   },
   {
-    href: '/exports' as Route,
-    label: 'Exports CSV',
-    slug: 'exports',
-    roles: [UserRole.RESPONSABLE, UserRole.ADMIN],
-  },
-  {
+    // Page d'export unifiee : PDF + CSV depuis le meme formulaire
+    // (cf. fix/csv-in-consolide). Le slug reste `registre-consolide`
+    // pour preserver la stabilite des testids existants ; seul le
+    // label change pour refleter le perimetre fonctionnel etendu.
     href: '/exports/registre-consolide' as Route,
-    label: 'Registre consolide',
+    label: 'Exports',
     slug: 'registre-consolide',
     roles: [UserRole.RESPONSABLE, UserRole.ADMIN],
   },

@@ -17,11 +17,12 @@ import { AppSidebar } from '../AppSidebar';
 import { APP_NAV_ITEMS } from '@/lib/constants/app-nav';
 
 /**
- * Tests `AppSidebar` (fix/app-sidebar).
+ * Tests `AppSidebar` (fix/app-sidebar + fix/csv-in-consolide).
  *
  * Couvre :
  *   - Filtrage par role : SALARIE voit 2 items (releves + alertes).
- *   - Filtrage par role : RESPONSABLE voit 6 items metier sans l'admin.
+ *   - Filtrage par role : RESPONSABLE voit 5 items metier sans l'admin
+ *     (releves, releves-listing, alertes, dashboard, exports unifies).
  *   - Filtrage par role : ADMIN voit tous les items.
  *   - data-testid `app-sidebar` + un testid par lien.
  *   - LogoutButton present en pied.
@@ -42,21 +43,19 @@ describe('[AppSidebar]', () => {
       'data-testid="app-sidebar-link-releves-listing"'
     );
     expect(html).not.toContain('data-testid="app-sidebar-link-dashboard"');
-    expect(html).not.toContain('data-testid="app-sidebar-link-exports"');
     expect(html).not.toContain(
       'data-testid="app-sidebar-link-registre-consolide"'
     );
     expect(html).not.toContain('data-testid="app-sidebar-link-admin"');
   });
 
-  it('should render 6 business links for RESPONSABLE without the admin link', () => {
+  it('should render 5 business links for RESPONSABLE without the admin link', () => {
     const html = renderToStaticMarkup(<AppSidebar viewerRole="RESPONSABLE" />);
 
     expect(html).toContain('data-testid="app-sidebar-link-releves"');
     expect(html).toContain('data-testid="app-sidebar-link-releves-listing"');
     expect(html).toContain('data-testid="app-sidebar-link-alertes"');
     expect(html).toContain('data-testid="app-sidebar-link-dashboard"');
-    expect(html).toContain('data-testid="app-sidebar-link-exports"');
     expect(html).toContain('data-testid="app-sidebar-link-registre-consolide"');
     expect(html).not.toContain('data-testid="app-sidebar-link-admin"');
   });

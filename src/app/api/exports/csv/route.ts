@@ -23,21 +23,22 @@ import {
 /**
  * Route Handler GET `/api/exports/csv`.
  *
- * Pattern : le formulaire `ExportForm` mode CSV (page `/releves/export`)
- * soumet en GET ici avec ses parametres en query string. On verifie
- * auth + role + rate-limit + Zod, on appelle le service, on serialise
- * en CSV `;`-separated (BOM UTF-8 inclus par `encodeCsv`) puis on
- * renvoie un `Response` avec `Content-Disposition: attachment` pour
- * que le browser declenche un download natif.
+ * Pattern : le formulaire `ExportConsolideForm` (page
+ * `/exports/registre-consolide`) soumet en GET ici via son bouton
+ * "Telecharger le CSV" (HTML5 `formAction`). On verifie auth + role +
+ * rate-limit + Zod, on appelle le service, on serialise en CSV
+ * `;`-separated (BOM UTF-8 inclus par `encodeCsv`) puis on renvoie un
+ * `Response` avec `Content-Disposition: attachment` pour que le
+ * browser declenche un download natif.
  *
- * En cas d'erreur metier, redirect 303 vers la page form avec un
+ * En cas d'erreur metier, redirect 303 vers la page consolidee avec un
  * parametre `?error=<code>` que le composant page traduit en message
  * visible. Pas de JSON de retour : la response cible un download de
  * fichier ; un body JSON casserait l'UX (le browser proposerait de
  * sauver `csv?...json`).
  */
 
-const FORM_PATH = '/releves/export';
+const FORM_PATH = '/exports/registre-consolide';
 
 /**
  * Route dynamique : depend de la session + searchParams et regenere

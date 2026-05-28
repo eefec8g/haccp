@@ -29,7 +29,7 @@ vi.mock('@/lib/logger', () => ({
 import { GET } from './route';
 
 const VALID_QUERY = 'dateFrom=2026-05-01&dateTo=2026-05-15';
-const FORM_PATH = '/releves/export';
+const FORM_PATH = '/exports/registre-consolide';
 
 function buildRequest(query: string = VALID_QUERY): NextRequest {
   return new NextRequest(new URL(`http://localhost/api/exports/csv?${query}`));

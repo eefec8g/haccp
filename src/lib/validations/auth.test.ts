@@ -1,8 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { loginSchema, forgotPasswordSchema, resetPasswordSchema } from './auth';
+import {
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
+} from './auth';
 
 const VALID_STRONG_PASSWORD = 'StrongPass1!aZ';
 const VALID_TOKEN = 'a'.repeat(43);
+const CURRENT_PASSWORD = 'CurrentPass1!aZ';
 
 describe('[auth validations]', () => {
   describe('loginSchema', () => {
@@ -128,6 +134,71 @@ describe('[auth validations]', () => {
       });
 
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('changePasswordSchema', () => {
+    it('should accept a non-empty current + strong new + matching confirm', () => {
+      const result = changePasswordSchema.safeParse({
+        currentPassword: CURRENT_PASSWORD,
+        newPassword: VALID_STRONG_PASSWORD,
+        confirmPassword: VALID_STRONG_PASSWORD,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject when the current password is empty', () => {
+      const result = changePasswordSchema.safeParse({
+        currentPassword: '',
+        newPassword: VALID_STRONG_PASSWORD,
+        confirmPassword: VALID_STRONG_PASSWORD,
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should not enforce complexity on the current password (legacy allowed)', () => {
+      const result = changePasswordSchema.safeParse({
+        currentPassword: 'weak',
+        newPassword: VALID_STRONG_PASSWORD,
+        confirmPassword: VALID_STRONG_PASSWORD,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject when the new password is too short', () => {
+      const result = changePasswordSchema.safeParse({
+        currentPassword: CURRENT_PASSWORD,
+        newPassword: 'Short1!',
+        confirmPassword: 'Short1!',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject when the new password lacks a special character', () => {
+      const result = changePasswordSchema.safeParse({
+        currentPassword: CURRENT_PASSWORD,
+        newPassword: 'NoSpecialChar1',
+        confirmPassword: 'NoSpecialChar1',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject when confirmation does not match the new password', () => {
+      const result = changePasswordSchema.safeParse({
+        currentPassword: CURRENT_PASSWORD,
+        newPassword: VALID_STRONG_PASSWORD,
+        confirmPassword: `${VALID_STRONG_PASSWORD}X`,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.path).toEqual(['confirmPassword']);
+      }
     });
   });
 });

@@ -22,6 +22,28 @@ export type AuthError =
   | 'TOKEN_ALREADY_USED'
   | 'INTERNAL_ERROR';
 
+/**
+ * Erreurs du changement de mot de passe par l'utilisateur connecte.
+ *
+ * - `USER_NOT_FOUND` : compte introuvable ou desactive entre la creation
+ *   de session et la requete (defense en profondeur).
+ * - `INVALID_CURRENT_PASSWORD` : le mot de passe actuel est faux
+ *   (anti-hijack : on exige la preuve de connaissance du secret courant).
+ * - `SAME_PASSWORD` : le nouveau mot de passe est identique a l'actuel.
+ * - `INTERNAL` : echec inattendu (DB).
+ */
+export type ChangePasswordError =
+  | 'USER_NOT_FOUND'
+  | 'INVALID_CURRENT_PASSWORD'
+  | 'SAME_PASSWORD'
+  | 'INTERNAL';
+
+interface ChangePasswordInput {
+  readonly userId: string;
+  readonly currentPassword: string;
+  readonly newPassword: string;
+}
+
 export type Result<T, E = AuthError> =
   | { readonly success: true; readonly data: T }
   | { readonly success: false; readonly error: E };
@@ -231,4 +253,55 @@ export async function resetPassword(
   }
 
   return { success: true, data: { userId: validation.data.userId } };
+}
+
+/**
+ * Change le mot de passe d'un utilisateur connecte.
+ *
+ * Securite :
+ *   - `userId` provient de la session serveur (jamais du formulaire) :
+ *     un user ne peut changer QUE son propre mot de passe.
+ *   - Verification OBLIGATOIRE du mot de passe ACTUEL : anti-hijack si
+ *     une session est volee, l'attaquant ne connait pas le secret courant.
+ *   - Refuse un compte introuvable ou inactif (`USER_NOT_FOUND`).
+ *   - Refuse un nouveau mot de passe identique a l'actuel (`SAME_PASSWORD`).
+ *   - Le nouveau hash bcrypt (12 rounds) remplace l'ancien.
+ *
+ * La force du nouveau mot de passe est validee EN AMONT (Zod), pas ici :
+ * le service suppose un `newPassword` deja conforme aux regles de complexite.
+ */
+export async function changePassword({
+  userId,
+  currentPassword,
+  newPassword,
+}: ChangePasswordInput): Promise<Result<void, ChangePasswordError>> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, password: true, actif: true },
+  });
+
+  if (!user || !user.actif) {
+    return { success: false, error: 'USER_NOT_FOUND' };
+  }
+
+  const currentOk = await verifyPassword(currentPassword, user.password);
+  if (!currentOk) {
+    return { success: false, error: 'INVALID_CURRENT_PASSWORD' };
+  }
+
+  if (currentPassword === newPassword) {
+    return { success: false, error: 'SAME_PASSWORD' };
+  }
+
+  try {
+    const newPasswordHash = await hashPassword(newPassword);
+    await db.user.update({
+      where: { id: user.id },
+      data: { password: newPasswordHash },
+    });
+  } catch {
+    return { success: false, error: 'INTERNAL' };
+  }
+
+  return { success: true, data: undefined };
 }

@@ -1,3 +1,5 @@
+import type { Route } from 'next';
+import Link from 'next/link';
 import type { UserRole } from '@prisma/client';
 import { getAppNavGroupsForRole } from '@/lib/constants/app-nav';
 import { LogoutButton } from '@/components/features/auth/LogoutButton';
@@ -38,7 +40,10 @@ const HEADER_CLASSES = 'px-8 pt-10 pb-8';
 const NAV_CLASSES = 'mt-2 flex flex-col gap-6';
 const GROUP_TITLE_CLASSES =
   'px-8 pb-2 text-[10px] font-light uppercase tracking-[0.3em] text-mg-or/70';
-const FOOTER_CLASSES = 'mt-auto px-8 py-8';
+const FOOTER_CLASSES = 'mt-auto flex flex-col gap-3 px-8 py-8';
+const ACCOUNT_LINK_HREF = '/compte/mot-de-passe' as Route;
+const ACCOUNT_LINK_CLASSES =
+  'inline-flex min-h-touch items-center justify-center text-[11px] font-medium uppercase tracking-[0.2em] text-mg-ivoire/70 transition-colors hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-noir';
 const LOGOUT_CLASSES =
   'inline-flex min-h-touch items-center justify-center border border-mg-or/40 bg-transparent px-4 py-2 text-[11px] font-medium uppercase tracking-[0.2em] text-mg-ivoire transition-colors hover:border-mg-or hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-noir';
 
@@ -85,6 +90,13 @@ export function AppSidebar({ viewerRole }: AppSidebarProps) {
         ))}
       </nav>
       <div className={FOOTER_CLASSES}>
+        <Link
+          href={ACCOUNT_LINK_HREF}
+          className={ACCOUNT_LINK_CLASSES}
+          data-testid="app-sidebar-link-account-password"
+        >
+          Mon mot de passe
+        </Link>
         <LogoutButton className={LOGOUT_CLASSES} />
       </div>
     </aside>

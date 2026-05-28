@@ -43,6 +43,37 @@ export const resetPasswordSchema = z
     path: ['confirmPassword'],
   });
 
+/**
+ * Changement de mot de passe par l'utilisateur connecte.
+ *
+ * - `currentPassword` : non vide (la verification effective a lieu cote
+ *   service via bcrypt ; on ne valide PAS sa complexite, un legacy peut
+ *   etre faible).
+ * - `newPassword` : reutilise `PASSWORD_REGEX` (memes regles de complexite
+ *   que reset/invite). Source unique de verite.
+ * - `confirmPassword` : doit etre identique a `newPassword`.
+ *
+ * `superRefine` plutot que `refine` : permet d'emettre des messages
+ * cibles sur le bon champ (non-correspondance) sans masquer une erreur
+ * de complexite deja signalee sur `newPassword`.
+ */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Le mot de passe actuel est requis'),
+    newPassword: z.string().regex(PASSWORD_REGEX, PASSWORD_TOO_WEAK),
+    confirmPassword: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.newPassword !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: PASSWORDS_DO_NOT_MATCH,
+        path: ['confirmPassword'],
+      });
+    }
+  });
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

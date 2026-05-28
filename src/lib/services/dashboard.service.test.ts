@@ -41,6 +41,7 @@ import {
   computeAdminKpis,
   computeResponsableKpis,
   listMissingReleves,
+  loadEquipementsTodayBoard,
 } from './dashboard.service';
 
 const BOUTIQUE_ID = 'b-1';
@@ -403,5 +404,182 @@ describe('[dashboard.service] buildAlertesTrend', () => {
     expect(findManyCall?.where).toMatchObject({
       releve: { boutiqueId: { in: [BOUTIQUE_ID] } },
     });
+  });
+});
+
+describe('[dashboard.service] loadEquipementsTodayBoard', () => {
+  function equipementDbRow(
+    overrides: Partial<{
+      id: string;
+      nom: string;
+      seuilMin: number;
+      seuilMax: number;
+      boutiqueId: string;
+      boutiqueNom: string;
+    }> = {}
+  ) {
+    return {
+      id: overrides.id ?? 'eq-1',
+      nom: overrides.nom ?? 'Congelateur A',
+      seuilMin: overrides.seuilMin ?? -25,
+      seuilMax: overrides.seuilMax ?? -18,
+      boutiqueId: overrides.boutiqueId ?? BOUTIQUE_ID,
+      boutique: { nom: overrides.boutiqueNom ?? 'MG Paris 11' },
+    };
+  }
+
+  it('should return an empty board when the viewer has no accessible boutiques', async () => {
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([]);
+
+    const result = await loadEquipementsTodayBoard({
+      viewer: salarieUser(),
+      dateISO: TODAY_ISO,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dateISO).toBe(TODAY_ISO);
+      expect(result.data.rows).toEqual([]);
+    }
+    expect(db.equipement.findMany).not.toHaveBeenCalled();
+  });
+
+  it('should return FORBIDDEN when boutiqueId filter is out of scope', async () => {
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([OTHER_BOUTIQUE_ID]);
+
+    const result = await loadEquipementsTodayBoard({
+      viewer: responsableUser(),
+      boutiqueId: BOUTIQUE_ID,
+      dateISO: TODAY_ISO,
+    });
+
+    expect(result).toEqual({ success: false, error: 'FORBIDDEN' });
+    expect(db.equipement.findMany).not.toHaveBeenCalled();
+  });
+
+  it('should be accessible to a SALARIE on his own boutique', async () => {
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      equipementDbRow({ id: 'eq-1', nom: 'Congelateur A' }),
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+
+    const result = await loadEquipementsTodayBoard({
+      viewer: salarieUser(),
+      dateISO: TODAY_ISO,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.rows).toHaveLength(1);
+      expect(result.data.rows[0]?.cells.MATIN.statut).toBe('MANQUANT');
+    }
+  });
+
+  it('should build SAISI / ALERTE / MANQUANT cells from active releves', async () => {
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      equipementDbRow({ id: 'eq-1', nom: 'Congelateur A' }),
+      equipementDbRow({ id: 'eq-2', nom: 'Congelateur B' }),
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([
+      {
+        id: 'r-1',
+        equipementId: 'eq-1',
+        creneau: 'MATIN',
+        temperature: -20,
+        alerteHorsSeuils: false,
+      },
+      {
+        id: 'r-2',
+        equipementId: 'eq-1',
+        creneau: 'MIDI',
+        temperature: -10,
+        alerteHorsSeuils: true,
+      },
+      {
+        id: 'r-3',
+        equipementId: 'eq-2',
+        creneau: 'SOIR',
+        temperature: -19,
+        alerteHorsSeuils: false,
+      },
+    ] as never);
+
+    const result = await loadEquipementsTodayBoard({
+      viewer: responsableUser(),
+      dateISO: TODAY_ISO,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.data.rows).toHaveLength(2);
+    const eq1 = result.data.rows[0];
+    expect(eq1?.cells.MATIN).toEqual({
+      statut: 'SAISI',
+      temperature: -20,
+      releveId: 'r-1',
+      creneau: 'MATIN',
+    });
+    expect(eq1?.cells.MIDI.statut).toBe('ALERTE');
+    expect(eq1?.cells.MIDI.releveId).toBe('r-2');
+    expect(eq1?.cells.SOIR.statut).toBe('MANQUANT');
+    expect(eq1?.cells.SOIR.temperature).toBeNull();
+    expect(eq1?.cells.SOIR.releveId).toBeNull();
+    const eq2 = result.data.rows[1];
+    expect(eq2?.cells.MATIN.statut).toBe('MANQUANT');
+    expect(eq2?.cells.MIDI.statut).toBe('MANQUANT');
+    expect(eq2?.cells.SOIR.statut).toBe('SAISI');
+  });
+
+  it('should narrow the equipement query to a single boutique when boutiqueId is provided', async () => {
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([
+      BOUTIQUE_ID,
+      OTHER_BOUTIQUE_ID,
+    ]);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+
+    await loadEquipementsTodayBoard({
+      viewer: responsableUser(),
+      boutiqueId: BOUTIQUE_ID,
+      dateISO: TODAY_ISO,
+    });
+
+    const findManyCall = vi.mocked(db.equipement.findMany).mock.calls[0]?.[0];
+    expect(findManyCall?.where).toMatchObject({
+      actif: true,
+      boutiqueId: { in: [BOUTIQUE_ID] },
+    });
+  });
+
+  it('should only count active equipements (where actif=true)', async () => {
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+
+    await loadEquipementsTodayBoard({
+      viewer: responsableUser(),
+      dateISO: TODAY_ISO,
+    });
+
+    const findManyCall = vi.mocked(db.equipement.findMany).mock.calls[0]?.[0];
+    expect(findManyCall?.where).toMatchObject({ actif: true });
+  });
+
+  it('should exclude annule releves (annuleParId IS NULL)', async () => {
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+
+    await loadEquipementsTodayBoard({
+      viewer: responsableUser(),
+      dateISO: TODAY_ISO,
+    });
+
+    const findManyCall = vi.mocked(db.releve.findMany).mock.calls[0]?.[0];
+    expect(findManyCall?.where).toMatchObject({ annuleParId: null });
   });
 });

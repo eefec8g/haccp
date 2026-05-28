@@ -10,7 +10,7 @@ import {
 import {
   buildAlertesTrend,
   computeResponsableKpis,
-  listMissingReleves,
+  loadEquipementsTodayBoard,
 } from '@/lib/services/dashboard.service';
 import { listAlertesOuvertes } from '@/lib/services/alerte.service';
 import { getBoutiquesByIds } from '@/lib/services/boutique.service';
@@ -26,7 +26,7 @@ import {
 } from '@/lib/constants/styles';
 import { logger } from '@/lib/logger';
 import type {
-  MissingReleveEntry,
+  EquipementsTodayBoard,
   ResponsableDashboardKpis,
   TrendPoint,
 } from '@/types/dashboard';
@@ -34,29 +34,34 @@ import type { AlerteListItem } from '@/lib/services/alerte.service';
 import { AppPageHeader } from '@/components/features/ui/AppPageHeader';
 import { KpisGrid } from '@/components/features/dashboard/KpisGrid';
 import { KpiCard } from '@/components/features/dashboard/KpiCard';
-import { MissingReleveTable } from '@/components/features/dashboard/MissingReleveTable';
+import { EquipementsTodayTable } from '@/components/features/dashboard/EquipementsTodayTable';
 import { RefreshButton } from '@/components/features/dashboard/RefreshButton';
 import { TrendChart } from '@/components/features/dashboard/TrendChart';
 import { DashboardAlertesSection } from '@/components/features/dashboard/DashboardAlertesSection';
 
 /**
- * Page `/dashboard` (US-DAS-001) - Dashboard Responsable.
+ * Page `/dashboard` (feat/dashboard-as-home).
  *
- * Server Component async. Acces : RESPONSABLE + ADMIN (defense en
- * profondeur). SALARIE est redirige vers `/releves` (la route reste
- * decouvrable dans la nav, mais le redirect filtre les acces non
- * autorises).
+ * Server Component async. Accueil post-login pour TOUS les roles
+ * (SALARIE/RESPONSABLE/ADMIN). La securite multi-tenant est portee par
+ * `getAccessibleBoutiqueIds` (SALARIE -> sa boutique, RESPONSABLE -> ses
+ * boutiques, ADMIN -> toutes).
+ *
+ * Rendu conditionnel :
+ *   - SALARIE         : uniquement le tableau "Releves du jour" (saisie
+ *                       ultra-rapide depuis l'accueil).
+ *   - RESPONSABLE/ADMIN : KPIs + tableau equipements jour + tendance
+ *                         alertes 7j + alertes recentes.
  *
  * Decisions Epic :
  *   - Pas de cache (temps reel) -> `dynamic = 'force-dynamic'`.
  *   - Selector boutique optionnel (?boutiqueId=...) avec scope strict.
- *   - 4 KPIs cles + tendance 7j + alertes recentes + saisies manquantes.
+ *   - Pour le SALARIE : pas de selector (1 seule boutique).
  *
  * Le rendu reste 100% Server Component a l'exception de `TrendChart`
  * (`'use client'` impose par recharts). Next.js code-splitte automati-
  * quement le bundle recharts cote client (le RSC payload n'embarque
- * pas recharts), donc pas besoin de `next/dynamic` ici (interdit en
- * Server Component avec `ssr: false` en Next 15).
+ * pas recharts).
  */
 
 export const dynamic = 'force-dynamic';
@@ -75,9 +80,7 @@ interface DashboardPageProps {
   readonly searchParams: Promise<DashboardSearchParams>;
 }
 
-const BACK_HREF: Route = '/releves';
 const ALERTES_HREF: Route = '/alertes';
-const SALARIE_REDIRECT: Route = '/releves';
 const LOGIN_REDIRECT: Route = '/login';
 const DASHBOARD_HREF: Route = '/dashboard';
 const PAGE_EYEBROW = 'Maison Givre HACCP';
@@ -100,9 +103,9 @@ interface BoutiqueOption {
   readonly ville: string | null;
 }
 
-interface DashboardData {
+interface ManagerDashboardData {
   readonly kpis: ResponsableDashboardKpis;
-  readonly missing: readonly MissingReleveEntry[];
+  readonly board: EquipementsTodayBoard;
   readonly alertes: readonly AlerteListItem[];
   readonly trend: readonly TrendPoint[];
   readonly boutiques: readonly BoutiqueOption[];
@@ -114,6 +117,10 @@ const EMPTY_KPIS: ResponsableDashboardKpis = {
   relevesManquantsJourCount: 0,
   boutiquesCount: 0,
 };
+
+function emptyBoard(dateISO: string): EquipementsTodayBoard {
+  return { dateISO, rows: [] };
+}
 
 /**
  * Resout le filtre `boutiqueId` : si invalide ou hors scope viewer, on
@@ -130,7 +137,7 @@ async function resolveBoutiqueFilter(
   return accessible.includes(raw) ? raw : 'INVALID';
 }
 
-async function loadDashboardData({
+async function loadManagerData({
   viewer,
   boutiqueId,
   dateISO,
@@ -138,12 +145,12 @@ async function loadDashboardData({
   readonly viewer: SessionUser;
   readonly boutiqueId: string | null;
   readonly dateISO: string;
-}): Promise<DashboardData> {
+}): Promise<ManagerDashboardData> {
   const scopeArgs = { viewer, boutiqueId: boutiqueId ?? undefined };
-  const [kpisResult, missingResult, alertesResult, trendResult, accessibleIds] =
+  const [kpisResult, boardResult, alertesResult, trendResult, accessibleIds] =
     await Promise.all([
       computeResponsableKpis({ ...scopeArgs, dateISO }),
-      listMissingReleves({ ...scopeArgs, dateISO }),
+      loadEquipementsTodayBoard({ ...scopeArgs, dateISO }),
       listAlertesOuvertes({ viewer, pagination: ALERT_PAGINATION }),
       buildAlertesTrend(scopeArgs),
       getAccessibleBoutiqueIds(viewer),
@@ -151,7 +158,7 @@ async function loadDashboardData({
   const boutiques = await getBoutiquesByIds(accessibleIds);
   return {
     kpis: kpisResult.success ? kpisResult.data : EMPTY_KPIS,
-    missing: missingResult.success ? missingResult.data : [],
+    board: boardResult.success ? boardResult.data : emptyBoard(dateISO),
     alertes: alertesResult.items,
     trend: trendResult.success ? trendResult.data : [],
     boutiques,
@@ -213,7 +220,45 @@ function BoutiqueSelector({
   );
 }
 
-export default async function DashboardResponsablePage({
+interface SalarieDashboardViewProps {
+  readonly board: EquipementsTodayBoard;
+  readonly subtitle: string;
+  readonly currentHref: Route;
+}
+
+function SalarieDashboardView({
+  board,
+  subtitle,
+  currentHref,
+}: SalarieDashboardViewProps) {
+  return (
+    <main
+      className="min-h-screen bg-mg-ivoire"
+      data-testid="dashboard-salarie-page"
+    >
+      <AppPageHeader
+        eyebrow={PAGE_EYEBROW}
+        title={PAGE_TITLE}
+        subtitle={subtitle}
+        testId="dashboard-header"
+      >
+        <RefreshButton href={currentHref} testId="dashboard-refresh" />
+      </AppPageHeader>
+      <section className={SECTION_CLASSES}>
+        <section
+          className="flex flex-col gap-4"
+          data-testid="dashboard-board-section"
+          aria-label="Releves du jour"
+        >
+          <h2 className={MG_EYEBROW_CLASSES}>Releves du jour</h2>
+          <EquipementsTodayTable rows={board.rows} />
+        </section>
+      </section>
+    </main>
+  );
+}
+
+export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
   const session = await auth();
@@ -225,9 +270,6 @@ export default async function DashboardResponsablePage({
     id: session.user.id,
     role: session.user.role,
   };
-  if (!canManageAlertes(viewer)) {
-    redirect(SALARIE_REDIRECT);
-  }
 
   const raw = await searchParams;
   const parsed = dashboardQuerySchema.safeParse(raw);
@@ -246,14 +288,34 @@ export default async function DashboardResponsablePage({
   }
 
   const todayISO = queryDateISO ?? todayParisISO();
-  const data = await loadDashboardData({
+  const currentHref = buildDashboardHref(filter);
+
+  // SALARIE : vue allegee, uniquement le tableau equipements x creneaux.
+  if (!canManageAlertes(viewer)) {
+    const boardResult = await loadEquipementsTodayBoard({
+      viewer,
+      dateISO: todayISO,
+    });
+    const board = boardResult.success ? boardResult.data : emptyBoard(todayISO);
+    const salarieSubtitle = `Releves du ${formatDateShort(todayISO)}`;
+    return (
+      <SalarieDashboardView
+        board={board}
+        subtitle={salarieSubtitle}
+        currentHref={currentHref}
+      />
+    );
+  }
+
+  // RESPONSABLE / ADMIN : dashboard complet (KPIs + board + trend +
+  // alertes recentes).
+  const data = await loadManagerData({
     viewer,
     boutiqueId: filter,
     dateISO: todayISO,
   });
 
   const subtitle = `Conformite HACCP du ${formatDateShort(todayISO)}`;
-  const currentHref = buildDashboardHref(filter);
   const showSelector = data.boutiques.length >= MIN_BOUTIQUES_FOR_SELECTOR;
 
   return (
@@ -265,8 +327,6 @@ export default async function DashboardResponsablePage({
         eyebrow={PAGE_EYEBROW}
         title={PAGE_TITLE}
         subtitle={subtitle}
-        backHref={BACK_HREF}
-        backLabel="Mes releves"
         testId="dashboard-header"
       >
         <RefreshButton href={currentHref} testId="dashboard-refresh" />
@@ -297,7 +357,7 @@ export default async function DashboardResponsablePage({
             title="Saisies manquantes"
             value={data.kpis.relevesManquantsJourCount}
             description="Creneaux jour non encore saisis."
-            href={'/dashboard#missing' as Route}
+            href={'/dashboard#board' as Route}
             testId="kpi-manquants"
           />
           <KpiCard
@@ -307,6 +367,16 @@ export default async function DashboardResponsablePage({
             testId="kpi-boutiques"
           />
         </KpisGrid>
+
+        <section
+          id="board"
+          className="flex flex-col gap-4"
+          data-testid="dashboard-board-section"
+          aria-label="Releves du jour"
+        >
+          <h2 className={MG_EYEBROW_CLASSES}>Releves du jour</h2>
+          <EquipementsTodayTable rows={data.board.rows} />
+        </section>
 
         <TrendChart
           data={data.trend}
@@ -320,19 +390,6 @@ export default async function DashboardResponsablePage({
           emptyMessage="Aucune alerte ouverte."
           testId="dashboard-alertes"
         />
-
-        <section
-          id="missing"
-          className="flex flex-col gap-4"
-          data-testid="dashboard-missing-section"
-          aria-label="Saisies manquantes du jour"
-        >
-          <h2 className={MG_EYEBROW_CLASSES}>Saisies manquantes du jour</h2>
-          <MissingReleveTable
-            entries={data.missing}
-            testId="dashboard-missing-table"
-          />
-        </section>
       </section>
     </main>
   );

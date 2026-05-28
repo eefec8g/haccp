@@ -4,6 +4,9 @@ import type { Result } from '@/types/result';
 import type {
   AdminDashboardKpis,
   DashboardError,
+  EquipementsTodayBoard,
+  EquipementsTodayCell,
+  EquipementsTodayRow,
   MissingReleveEntry,
   ResponsableDashboardKpis,
   TrendPoint,
@@ -437,4 +440,173 @@ export async function buildAlertesTrend({
   });
   const counts = bucketAlertesByDay(rows);
   return { success: true, data: buildTrendSeries({ from, to, counts }) };
+}
+
+interface EquipementTodayDbRow {
+  readonly id: string;
+  readonly nom: string;
+  readonly seuilMin: number;
+  readonly seuilMax: number;
+  readonly boutiqueId: string;
+  readonly boutique: { readonly nom: string };
+}
+
+interface ReleveTodayDbRow {
+  readonly id: string;
+  readonly equipementId: string;
+  readonly creneau: Creneau;
+  readonly temperature: number;
+  readonly alerteHorsSeuils: boolean;
+}
+
+function indexRelevesByEquipementCreneau(
+  rows: readonly ReleveTodayDbRow[]
+): ReadonlyMap<string, ReleveTodayDbRow> {
+  const map = new Map<string, ReleveTodayDbRow>();
+  for (const row of rows) {
+    map.set(`${row.equipementId}:${row.creneau}`, row);
+  }
+  return map;
+}
+
+function buildCell({
+  releve,
+  creneau,
+}: {
+  readonly releve: ReleveTodayDbRow | undefined;
+  readonly creneau: Creneau;
+}): EquipementsTodayCell {
+  if (!releve) {
+    return {
+      statut: 'MANQUANT',
+      temperature: null,
+      releveId: null,
+      creneau,
+    };
+  }
+  return {
+    statut: releve.alerteHorsSeuils ? 'ALERTE' : 'SAISI',
+    temperature: releve.temperature,
+    releveId: releve.id,
+    creneau,
+  };
+}
+
+function buildEquipementRow({
+  equipement,
+  relevesByKey,
+}: {
+  readonly equipement: EquipementTodayDbRow;
+  readonly relevesByKey: ReadonlyMap<string, ReleveTodayDbRow>;
+}): EquipementsTodayRow {
+  const cells = CRENEAU_ORDER.reduce<Record<Creneau, EquipementsTodayCell>>(
+    (acc, creneau) => {
+      acc[creneau] = buildCell({
+        releve: relevesByKey.get(`${equipement.id}:${creneau}`),
+        creneau,
+      });
+      return acc;
+    },
+    {} as Record<Creneau, EquipementsTodayCell>
+  );
+  return {
+    equipementId: equipement.id,
+    equipementNom: equipement.nom,
+    boutiqueId: equipement.boutiqueId,
+    boutiqueNom: equipement.boutique.nom,
+    seuilMin: equipement.seuilMin,
+    seuilMax: equipement.seuilMax,
+    cells,
+  };
+}
+
+/**
+ * Resout le scope du board "equipements jour" pour TOUS les roles
+ * (SALARIE inclus). Diffraction avec `resolveScope` : ici on n'a pas
+ * besoin du guard `canManageAlertes` -- la securite est portee par
+ * `getAccessibleBoutiqueIds` qui retourne :
+ *   - SALARIE     : sa boutique unique (ou [] si pas affecte)
+ *   - RESPONSABLE : ses boutiques
+ *   - ADMIN       : toutes les boutiques actives
+ */
+async function resolveBoardScope({
+  viewer,
+  boutiqueId,
+}: ScopeArgs): Promise<Result<ResolvedScope, DashboardError>> {
+  const accessible = await getAccessibleBoutiqueIds(viewer);
+  if (!boutiqueId) {
+    return { success: true, data: { boutiqueIds: accessible } };
+  }
+  if (!accessible.includes(boutiqueId)) {
+    return { success: false, error: 'FORBIDDEN' };
+  }
+  return { success: true, data: { boutiqueIds: [boutiqueId] } };
+}
+
+/**
+ * Charge le tableau "Equipements x Creneaux du jour" pour le dashboard
+ * accueil (feat/dashboard-as-home).
+ *
+ * Accessible aux 3 roles : la securite est portee par le scope viewer
+ * (SALARIE -> sa boutique, RESPONSABLE -> ses boutiques, ADMIN -> tout).
+ *
+ * Algorithme :
+ *   1. Resout le scope (accessible OU boutiqueId filtre).
+ *   2. Charge en parallele : equipements actifs + releves actifs du
+ *      jour (annuleParId IS NULL).
+ *   3. Indexe les releves par `equipementId:creneau` (O(1) lookup).
+ *   4. Construit 1 ligne par equipement avec 3 cellules :
+ *      - releve trouve : `SAISI` ou `ALERTE` selon `alerteHorsSeuils`.
+ *      - sinon         : `MANQUANT` (l'UI affiche un CTA "Saisir").
+ *
+ * Performance : 2 queries, agregation memoire bornee par le parc.
+ */
+export async function loadEquipementsTodayBoard({
+  viewer,
+  boutiqueId,
+  dateISO,
+}: DateScopeArgs): Promise<Result<EquipementsTodayBoard, DashboardError>> {
+  const scope = await resolveBoardScope({ viewer, boutiqueId });
+  if (!scope.success) {
+    return scope;
+  }
+  const targetISO = dateISO ?? todayParisISO();
+  const { boutiqueIds } = scope.data;
+  if (boutiqueIds.length === 0) {
+    return { success: true, data: { dateISO: targetISO, rows: [] } };
+  }
+  const date = parseISODateUtc(targetISO);
+  const [equipements, releves] = await Promise.all([
+    db.equipement.findMany({
+      where: { actif: true, boutiqueId: { in: [...boutiqueIds] } },
+      orderBy: [{ boutique: { nom: 'asc' } }, { nom: 'asc' }],
+      select: {
+        id: true,
+        nom: true,
+        seuilMin: true,
+        seuilMax: true,
+        boutiqueId: true,
+        boutique: { select: { nom: true } },
+      },
+    }),
+    db.releve.findMany({
+      where: {
+        date,
+        annuleParId: null,
+        boutiqueId: { in: [...boutiqueIds] },
+      },
+      select: {
+        id: true,
+        equipementId: true,
+        creneau: true,
+        temperature: true,
+        alerteHorsSeuils: true,
+      },
+    }),
+  ]);
+  const relevesByKey = indexRelevesByEquipementCreneau(releves);
+  const rows = equipements.map((equipement) =>
+    buildEquipementRow({ equipement, relevesByKey })
+  );
+  return { success: true, data: { dateISO: targetISO, rows } };
 }

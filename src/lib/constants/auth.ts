@@ -36,12 +36,17 @@ export const RESET_TOKEN_BYTES = 32;
 
 /**
  * Map de redirection post-login selon le role utilisateur.
- * Decision technique (epic-state.md) :
- * - SALARIE / RESPONSABLE -> /releves (la grille de saisie)
- * - ADMIN -> /admin (parametrage parc)
+ *
+ * Decision (feat/dashboard-as-home) : `/dashboard` devient la page
+ * d'accueil pour TOUS les roles (US dashboard-as-home). Le dashboard
+ * presente le tableau equipements x creneaux du jour, point d'entree
+ * naturel pour le SALARIE comme pour le RESPONSABLE/ADMIN.
+ *
+ * - SALARIE / RESPONSABLE -> /dashboard
+ * - ADMIN -> /dashboard (le pilotage admin reste accessible via /admin)
  */
 export const POST_LOGIN_REDIRECT: Readonly<Record<UserRole, string>> = {
-  SALARIE: '/releves',
-  RESPONSABLE: '/releves',
-  ADMIN: '/admin',
+  SALARIE: '/dashboard',
+  RESPONSABLE: '/dashboard',
+  ADMIN: '/dashboard',
 } as const;

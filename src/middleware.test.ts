@@ -105,30 +105,30 @@ describe('[middleware] anonymous users', () => {
 });
 
 describe('[middleware] authenticated users on public paths', () => {
-  it('should redirect a SALARIE away from /login to /releves', async () => {
+  it('should redirect a SALARIE away from /login to /dashboard', async () => {
     const res = await handler(makeRequest('/login', makeSession('SALARIE')));
 
     expect(res.status).toBe(307);
     const target = new URL(res.headers.get('location') ?? '', ORIGIN);
-    expect(target.pathname).toBe('/releves');
+    expect(target.pathname).toBe('/dashboard');
   });
 
-  it('should redirect a RESPONSABLE away from /login to /releves', async () => {
+  it('should redirect a RESPONSABLE away from /login to /dashboard', async () => {
     const res = await handler(
       makeRequest('/login', makeSession('RESPONSABLE'))
     );
 
     expect(res.status).toBe(307);
     const target = new URL(res.headers.get('location') ?? '', ORIGIN);
-    expect(target.pathname).toBe('/releves');
+    expect(target.pathname).toBe('/dashboard');
   });
 
-  it('should redirect an ADMIN away from /login to /admin', async () => {
+  it('should redirect an ADMIN away from /login to /dashboard', async () => {
     const res = await handler(makeRequest('/login', makeSession('ADMIN')));
 
     expect(res.status).toBe(307);
     const target = new URL(res.headers.get('location') ?? '', ORIGIN);
-    expect(target.pathname).toBe('/admin');
+    expect(target.pathname).toBe('/dashboard');
   });
 
   it('should redirect an authenticated user away from /forgot-password', async () => {
@@ -138,7 +138,7 @@ describe('[middleware] authenticated users on public paths', () => {
 
     expect(res.status).toBe(307);
     const target = new URL(res.headers.get('location') ?? '', ORIGIN);
-    expect(target.pathname).toBe('/releves');
+    expect(target.pathname).toBe('/dashboard');
   });
 });
 
@@ -159,22 +159,22 @@ describe('[middleware] role-based access on protected paths', () => {
     expect(res.headers.get('location')).toBeNull();
   });
 
-  it('should redirect a SALARIE away from /admin to /releves', async () => {
+  it('should redirect a SALARIE away from /admin to /dashboard', async () => {
     const res = await handler(makeRequest('/admin', makeSession('SALARIE')));
 
     expect(res.status).toBe(307);
     const target = new URL(res.headers.get('location') ?? '', ORIGIN);
-    expect(target.pathname).toBe('/releves');
+    expect(target.pathname).toBe('/dashboard');
   });
 
-  it('should redirect a RESPONSABLE away from /admin to /releves', async () => {
+  it('should redirect a RESPONSABLE away from /admin to /dashboard', async () => {
     const res = await handler(
       makeRequest('/admin', makeSession('RESPONSABLE'))
     );
 
     expect(res.status).toBe(307);
     const target = new URL(res.headers.get('location') ?? '', ORIGIN);
-    expect(target.pathname).toBe('/releves');
+    expect(target.pathname).toBe('/dashboard');
   });
 
   it('should let a SALARIE access /releves', async () => {

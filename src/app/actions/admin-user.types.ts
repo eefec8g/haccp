@@ -13,6 +13,7 @@ export type UserActionErrorCode =
   | 'EMAIL_ALREADY_EXISTS'
   | 'BOUTIQUE_NOT_FOUND'
   | 'LAST_ADMIN'
+  | 'INVALID_ASSIGNMENT'
   | 'RATE_LIMITED'
   | 'INVALID'
   | 'INTERNAL';
@@ -48,6 +49,20 @@ export type AcceptInvitationActionState =
       readonly retryAfterSeconds?: number;
     };
 
+/**
+ * Etat de l'edition des rattachements (US-ADM-006). Contrairement a
+ * l'invitation (qui redirige), l'edition reste sur la page detail : le
+ * succes est un etat affiche en place (message de confirmation).
+ */
+export type UpdateUserAssignmentActionState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'success' }
+  | {
+      readonly status: 'error';
+      readonly code: UserActionErrorCode;
+      readonly fieldErrors?: UserActionFieldErrors;
+    };
+
 export const INITIAL_USER_INVITE_STATE: UserInviteActionState = {
   status: 'idle',
 };
@@ -55,3 +70,8 @@ export const INITIAL_USER_INVITE_STATE: UserInviteActionState = {
 export const INITIAL_ACCEPT_INVITATION_STATE: AcceptInvitationActionState = {
   status: 'idle',
 };
+
+export const INITIAL_UPDATE_USER_ASSIGNMENT_STATE: UpdateUserAssignmentActionState =
+  {
+    status: 'idle',
+  };

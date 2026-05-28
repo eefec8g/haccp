@@ -7,6 +7,7 @@ import {
   equipementCreateSchema,
   equipementUpdateSchema,
   paginationQuerySchema,
+  updateUserAssignmentSchema,
   userInviteSchema,
 } from './admin';
 
@@ -226,6 +227,88 @@ describe('[admin validations]', () => {
       const result = userInviteSchema.safeParse({
         email: 'not-an-email',
         name: 'X',
+        role: 'ADMIN',
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('updateUserAssignmentSchema', () => {
+    it('should accept a SALARIE with a single boutique', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: VALID_UUID,
+        role: 'SALARIE',
+        boutiqueSalarieId: OTHER_UUID,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject a SALARIE without boutiqueSalarieId', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: VALID_UUID,
+        role: 'SALARIE',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject a SALARIE that also carries boutiquesResponsable', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: VALID_UUID,
+        role: 'SALARIE',
+        boutiqueSalarieId: OTHER_UUID,
+        boutiquesResponsable: [VALID_UUID],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept a RESPONSABLE with multiple boutiques', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: VALID_UUID,
+        role: 'RESPONSABLE',
+        boutiquesResponsable: [VALID_UUID, OTHER_UUID],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject a RESPONSABLE with empty boutiquesResponsable', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: VALID_UUID,
+        role: 'RESPONSABLE',
+        boutiquesResponsable: [],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject a RESPONSABLE that also carries a boutiqueSalarieId', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: VALID_UUID,
+        role: 'RESPONSABLE',
+        boutiqueSalarieId: OTHER_UUID,
+        boutiquesResponsable: [VALID_UUID],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept an ADMIN with no boutique', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: VALID_UUID,
+        role: 'ADMIN',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject an ADMIN that carries any boutique link', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: VALID_UUID,
+        role: 'ADMIN',
+        boutiqueSalarieId: OTHER_UUID,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject when userId is not a uuid', () => {
+      const result = updateUserAssignmentSchema.safeParse({
+        userId: 'not-a-uuid',
         role: 'ADMIN',
       });
       expect(result.success).toBe(false);

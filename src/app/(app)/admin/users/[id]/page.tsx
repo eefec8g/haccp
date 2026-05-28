@@ -6,8 +6,13 @@ import { UserRole } from '@prisma/client';
 import { AdminPageHeader } from '@/components/features/admin/AdminPageHeader';
 import { UserToggleActiveButton } from '@/components/features/admin/UserToggleActiveButton';
 import { StatusBadge } from '@/components/features/admin/StatusBadge';
+import { EditUserAssignmentForm } from '@/components/features/admin/EditUserAssignmentForm';
 import { getUserById } from '@/lib/services/user.service';
-import { getBoutiquesByIds } from '@/lib/services/boutique.service';
+import {
+  getBoutiquesByIds,
+  listBoutiquesForSelect,
+} from '@/lib/services/boutique.service';
+import { BOUTIQUE_OPTIONS_MAX } from '@/lib/constants/admin';
 import { USER_ROLE_LABELS } from '@/lib/constants/user-labels';
 
 export const metadata: Metadata = {
@@ -74,13 +79,17 @@ export default async function AdminUserDetailPage({
 
   // Perf : on ne charge que les boutiques effectivement liees au user
   // (1 a quelques ids max) au lieu de scanner toute la table. Cf.
-  // `getBoutiquesByIds` dans boutique.service.
+  // `getBoutiquesByIds` dans boutique.service. En parallele on charge les
+  // boutiques actives pour alimenter les selecteurs du formulaire d'edition.
   const boutiqueIds = collectBoutiqueIds({
     role: user.role,
     boutiqueSalarieId: user.boutiqueSalarieId,
     boutiqueIdsResponsable: user.boutiqueIdsResponsable,
   });
-  const boutiques = await getBoutiquesByIds(boutiqueIds);
+  const [boutiques, activeBoutiques] = await Promise.all([
+    getBoutiquesByIds(boutiqueIds),
+    listBoutiquesForSelect({ limit: BOUTIQUE_OPTIONS_MAX }),
+  ]);
 
   return (
     <div data-testid={`admin-user-detail-${user.id}`}>
@@ -176,6 +185,29 @@ export default async function AdminUserDetailPage({
             </ul>
           )}
         </div>
+      </section>
+
+      <section
+        className={`${SECTION_CLASSES} mt-8`}
+        aria-label="Modifier les rattachements"
+        data-testid="user-edit-section"
+      >
+        <div>
+          <h2 className="text-sm font-medium uppercase tracking-[0.25em] text-mg-noir">
+            Modifier les responsabilites
+          </h2>
+          <p className="mt-2 text-xs font-light italic text-mg-noir/50">
+            Changez le role et les boutiques rattachees (mutation d&apos;une
+            boutique a une autre, promotion, etc.).
+          </p>
+        </div>
+        <EditUserAssignmentForm
+          userId={user.id}
+          initialRole={user.role}
+          initialBoutiqueSalarieId={user.boutiqueSalarieId}
+          initialBoutiqueIdsResponsable={user.boutiqueIdsResponsable}
+          boutiques={activeBoutiques}
+        />
       </section>
     </div>
   );

@@ -181,6 +181,40 @@ describe('[DashboardPage]', () => {
     expect(html).toContain('87 %');
   });
 
+  it('should render the 3 tournee buttons above the equipements board for a SALARIE', async () => {
+    vi.mocked(auth).mockResolvedValue(SALARIE_SESSION as any);
+    vi.mocked(permissions.canManageAlertes).mockReturnValue(false);
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(dashboardService.loadEquipementsTodayBoard).mockResolvedValue({
+      success: true,
+      data: { dateISO: '2026-05-27', rows: [] },
+    });
+
+    const element = await DashboardPage({ searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(element as any);
+
+    expect(html).toContain('data-testid="dashboard-tournee-buttons"');
+    expect(html).toContain('data-testid="tournee-button-matin"');
+    expect(html).toContain('data-testid="tournee-button-midi"');
+    expect(html).toContain('data-testid="tournee-button-soir"');
+    expect(html).toContain('href="/releves/tournee/MATIN"');
+    expect(html).toContain('href="/releves/tournee/MIDI"');
+    expect(html).toContain('href="/releves/tournee/SOIR"');
+  });
+
+  it('should render the 3 tournee buttons for a RESPONSABLE as well', async () => {
+    vi.mocked(auth).mockResolvedValue(RESPONSABLE_SESSION as any);
+    setHappyPathMocks();
+
+    const element = await DashboardPage({ searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(element as any);
+
+    expect(html).toContain('data-testid="dashboard-tournee-buttons"');
+    expect(html).toContain('data-testid="tournee-button-matin"');
+    expect(html).toContain('data-testid="tournee-button-midi"');
+    expect(html).toContain('data-testid="tournee-button-soir"');
+  });
+
   it('should hide boutique selector when accessible boutiques count is below threshold', async () => {
     vi.mocked(auth).mockResolvedValue(RESPONSABLE_SESSION as any);
     setHappyPathMocks({

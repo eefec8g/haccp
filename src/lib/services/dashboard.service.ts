@@ -457,6 +457,7 @@ interface ReleveTodayDbRow {
   readonly creneau: Creneau;
   readonly temperature: number;
   readonly alerteHorsSeuils: boolean;
+  readonly createdAt: Date;
 }
 
 function indexRelevesByEquipementCreneau(
@@ -482,6 +483,7 @@ function buildCell({
       temperature: null,
       releveId: null,
       creneau,
+      saisiAt: null,
     };
   }
   return {
@@ -489,6 +491,7 @@ function buildCell({
     temperature: releve.temperature,
     releveId: releve.id,
     creneau,
+    saisiAt: releve.createdAt,
   };
 }
 
@@ -601,6 +604,7 @@ export async function loadEquipementsTodayBoard({
         creneau: true,
         temperature: true,
         alerteHorsSeuils: true,
+        createdAt: true,
       },
     }),
   ]);

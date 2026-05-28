@@ -91,6 +91,8 @@ export interface ReleveCreatedResult {
   readonly releveId: string;
   readonly alerteCreated: boolean;
   readonly alerteId: string | null;
+  /** Instant exact de saisie (`Releve.createdAt`) pour l'UI optimiste. */
+  readonly createdAt: Date;
 }
 
 /**

@@ -90,9 +90,11 @@ export type EquipementsTodayCellStatut = 'SAISI' | 'ALERTE' | 'MANQUANT';
 /**
  * Une cellule (equipement x creneau) du tableau "Releves du jour".
  *
- * Quand `statut === 'MANQUANT'`, `temperature` et `releveId` sont `null`.
- * Quand `statut === 'SAISI' | 'ALERTE'`, `temperature` est defini et
- * `releveId` permet a l'UI de pointer vers la fiche releve (consultation).
+ * Quand `statut === 'MANQUANT'`, `temperature`, `releveId` et `saisiAt`
+ * sont `null`. Quand `statut === 'SAISI' | 'ALERTE'`, `temperature` est
+ * defini, `releveId` permet a l'UI de pointer vers la fiche releve
+ * (consultation) et `saisiAt` expose l'instant exact de saisie
+ * (`Releve.createdAt`) pour afficher l'heure HH:mm sous la temperature.
  *
  * `creneau` est duplique sur la cellule (en plus de la cle parent) pour
  * faciliter le rendu sans destructuration verbeuse cote composant.
@@ -102,6 +104,7 @@ export interface EquipementsTodayCell {
   readonly temperature: number | null;
   readonly releveId: string | null;
   readonly creneau: Creneau;
+  readonly saisiAt: Date | null;
 }
 
 /**

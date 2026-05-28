@@ -108,6 +108,28 @@ export function getCurrentCreneau(now: Date = new Date()): Creneau | null {
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /**
+ * Formate l'heure d'un `Date` au format `HH:mm` en Europe/Paris.
+ *
+ * Utilise pour afficher l'heure de saisie d'un releve sous la
+ * temperature (dashboard tableau, tournee guidee) -- conventions HACCP :
+ * trace l'instant exact de releve quelle que soit la timezone serveur.
+ *
+ * Robustesse : si la date est invalide (`NaN`), on renvoie `'--:--'`
+ * pour eviter qu'un bug rendre la cellule vide ou plante le SSR.
+ */
+export function formatTimeShort(date: Date): string {
+  if (Number.isNaN(date.getTime())) {
+    return '--:--';
+  }
+  return new Intl.DateTimeFormat('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: TIMEZONE,
+  }).format(date);
+}
+
+/**
  * Formate une date ISO `YYYY-MM-DD` en `JJ/MM/AAAA` (decision #4).
  * On n'utilise pas Intl ici : la date d'entree est deja une chaine ISO
  * sans heure, le formattage est purement textuel et evite tout risque

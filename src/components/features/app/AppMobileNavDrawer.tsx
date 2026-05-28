@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { UserRole } from '@prisma/client';
 import { LogoutButton } from '@/components/features/auth/LogoutButton';
-import { getAppNavItemsForRole } from '@/lib/constants/app-nav';
+import { getAppNavGroupsForRole } from '@/lib/constants/app-nav';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { CloseIcon } from '@/components/ui/icons/MenuIcons';
 
@@ -16,12 +16,13 @@ interface AppMobileNavDrawerProps {
 }
 
 /**
- * Drawer plein-ecran de navigation transversale mobile (Client
- * Component, Epic RESPONSIVE).
+ * Drawer plein-ecran de navigation UNIFIEE mobile (Client Component,
+ * refactor/unified-sidebar).
  *
- * Resout le finding initial CRITICAL : "Un RESPONSABLE n'a aucun
- * raccourci vers /alertes, /dashboard, /exports/registre-consolide
- * depuis son mobile". Liste les routes filtrees par role.
+ * Reflet mobile de `AppSidebar` : memes groupes (`Operations`,
+ * `Administration`) filtres par role, source unique `app-nav.ts`.
+ * Remplace l'ancien `AdminMobileMenu` (burger admin dedie) : un ADMIN
+ * accede a tout depuis ce seul drawer.
  *
  * a11y :
  *   - `role="dialog"` + `aria-modal="true"` + `aria-labelledby` cible le
@@ -31,11 +32,6 @@ interface AppMobileNavDrawerProps {
  *   - Le focus revient au bouton burger via `onClose` (gere par le
  *     parent).
  *   - Chaque lien depasse 44x44 px (min-h-touch, padding genereux).
- *
- * Pourquoi un drawer plein-ecran et pas un panel lateral ?
- *   - Charte MG mobile : surface unique, hierarchie nette.
- *   - Cohesion avec `AdminMobileMenu` (style sobre, accents or, sans
- *     scintillement).
  *
  * Note d'integration : ce composant ne gere PAS sa visibilite. Le parent
  * (`AppMobileNavButton`) le monte/demonte selon `isOpen`. Cela simplifie
@@ -54,6 +50,8 @@ const HEADER_SUBTITLE_CLASSES =
 const CLOSE_BUTTON_CLASSES =
   'inline-flex min-h-touch min-w-touch items-center justify-center text-mg-noir transition-colors hover:text-mg-or focus:outline-none focus:ring-2 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 const NAV_CLASSES = 'flex-1 overflow-y-auto px-2 py-4';
+const GROUP_TITLE_CLASSES =
+  'px-6 pt-4 pb-1 text-[10px] font-light uppercase tracking-[0.3em] text-mg-or';
 const LINK_BASE =
   'flex min-h-touch items-center px-6 py-4 text-lg font-light tracking-wide text-mg-noir transition-colors hover:bg-mg-or/10 hover:text-mg-or focus:outline-none focus:bg-mg-or/10 focus:ring-2 focus:ring-mg-or focus:ring-inset';
 const LINK_ACTIVE_CLASSES = 'bg-mg-or/10 text-mg-or font-medium';
@@ -74,7 +72,7 @@ export function AppMobileNavDrawer({
 }: AppMobileNavDrawerProps) {
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const items = getAppNavItemsForRole(viewerRole);
+  const groups = getAppNavGroupsForRole(viewerRole);
 
   useFocusTrap({ containerRef, onEscape: onClose, isActive: true });
 
@@ -106,24 +104,34 @@ export function AppMobileNavDrawer({
         </button>
       </div>
       <nav className={NAV_CLASSES} aria-label="Navigation principale mobile">
-        <ul className="flex flex-col">
-          {items.map((item) => {
-            const active = isLinkActive(pathname, item.href);
-            return (
-              <li key={item.slug}>
-                <Link
-                  href={item.href}
-                  onClick={onClose}
-                  aria-current={active ? 'page' : undefined}
-                  className={`${LINK_BASE} ${active ? LINK_ACTIVE_CLASSES : ''}`}
-                  data-testid={`app-nav-link-${item.slug}`}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        {groups.map((group) => (
+          <div
+            key={group.slug}
+            data-testid={`app-nav-group-${group.slug}`}
+            aria-label={group.label}
+            role="group"
+          >
+            <p className={GROUP_TITLE_CLASSES}>{group.label}</p>
+            <ul className="flex flex-col">
+              {group.items.map((item) => {
+                const active = isLinkActive(pathname, item.href);
+                return (
+                  <li key={item.slug}>
+                    <Link
+                      href={item.href}
+                      onClick={onClose}
+                      aria-current={active ? 'page' : undefined}
+                      className={`${LINK_BASE} ${active ? LINK_ACTIVE_CLASSES : ''}`}
+                      data-testid={`app-nav-link-${item.slug}`}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
       <div className={FOOTER_CLASSES}>
         <LogoutButton />

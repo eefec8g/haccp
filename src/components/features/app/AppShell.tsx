@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { UserRole } from '@prisma/client';
-import { AppShellClientGate } from './AppShellClientGate';
+import { AppSidebar } from './AppSidebar';
 import { AppMobileNavButton } from './AppMobileNavButton';
 
 interface AppShellProps {
@@ -9,37 +9,30 @@ interface AppShellProps {
 }
 
 /**
- * Shell transversal pour le route group `(app)` (Server Component,
- * fix/app-sidebar).
+ * Shell transversal UNIFIE pour le route group `(app)` (Server
+ * Component, refactor/unified-sidebar).
  *
  * Render strategy :
- *   - `<AppShellClientGate>` : Client Component fin qui rend la sidebar
- *     desktop `AppSidebar` + wrapper de padding `lg:pl-64` UNIQUEMENT
- *     hors `/admin/*`. Sur `/admin/*` le gate s'efface pour laisser
- *     `AdminLayout` appliquer son propre layout (AdminSidebar + son
- *     propre `lg:pl-64`) sans doubler la sidebar ni le padding.
- *   - `{children}` : on conserve le chrome existant de chaque page
- *     (`AppPageHeader`, `AdminLayout`). Le shell ne touche pas a leur
- *     layout pour eviter le doublon visuel.
- *   - `<AppMobileNavButton>` : overlay mobile-only (FAB) qui ouvre un
- *     drawer plein-ecran avec les routes filtrees par role. Resout le
- *     finding CRITICAL "Un RESPONSABLE n'a aucun raccourci vers
- *     /alertes, /dashboard, /exports/registre-consolide depuis son
- *     mobile".
+ *   - `<AppSidebar>` : sidebar desktop unifiee (Server Component) rendue
+ *     PARTOUT, y compris sur `/admin/*`. L'ancien `AppShellClientGate`
+ *     qui la masquait sur `/admin` (au profit de l'`AdminLayout`) est
+ *     supprime : il n'y a plus qu'une seule sidebar.
+ *   - Wrapper `lg:pl-64` : decale le main de la largeur de la sidebar
+ *     sur lg+, applique uniformement (plus de cas particulier admin).
+ *   - `<AppMobileNavButton>` : overlay mobile-only (FAB) qui ouvre le
+ *     drawer plein-ecran avec les memes groupes filtres par role.
  *
  * Pourquoi Server Component ?
- *   - Pas de hooks ici. Le role est lu server-side (no leak de session
- *     client) et passe en prop aux boundaries client (`AppShellClientGate`
- *     pour la visibilite et le highlight actif, `AppMobileNavButton`
- *     pour le FAB).
- *   - Bundle JS reduit : seul le gate + les liens individuels hydratent.
+ *   - Plus aucun hook de routing ici (le gate client a disparu). Le role
+ *     est lu server-side (no leak de session client) et passe en prop a
+ *     la sidebar et au FAB. Seuls les liens individuels hydratent pour
+ *     calculer leur etat actif.
  */
 export function AppShell({ viewerRole, children }: AppShellProps) {
   return (
     <>
-      <AppShellClientGate viewerRole={viewerRole}>
-        {children}
-      </AppShellClientGate>
+      <AppSidebar viewerRole={viewerRole} />
+      <div className="lg:pl-64">{children}</div>
       <AppMobileNavButton viewerRole={viewerRole} />
     </>
   );

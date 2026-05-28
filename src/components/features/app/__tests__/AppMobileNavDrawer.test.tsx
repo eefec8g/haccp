@@ -20,20 +20,19 @@ vi.mock('@/components/features/auth/LogoutButton', () => ({
 }));
 
 import { AppMobileNavDrawer } from '../AppMobileNavDrawer';
-import { APP_NAV_ITEMS } from '@/lib/constants/app-nav';
 
 /**
- * Tests `AppMobileNavDrawer` (Epic RESPONSIVE).
+ * Tests `AppMobileNavDrawer` (refactor/unified-sidebar).
  *
- * Cas couverts :
- *   - Filtrage par role : SALARIE voit "Tableau de bord" + "Alertes", pas
- *     "Listing des releves" ni "Espace admin".
- *   - Filtrage par role : RESPONSABLE voit dashboard / exports / registre
- *     consolide mais pas l'espace admin.
- *   - Filtrage par role : ADMIN voit tous les items.
- *   - data-testid + aria-current pour le pathname actif.
- *   - Escape ferme le drawer (onClose appele).
- *   - Click sur un lien ferme le drawer (onClose appele).
+ * Le drawer reflete la sidebar UNIFIEE : memes groupes (`Operations`,
+ * `Administration`) filtres par role. Cas couverts :
+ *   - SALARIE : groupe Operations (dashboard + alertes), pas
+ *     d'Administration ni de lien "Espace admin".
+ *   - RESPONSABLE : Operations a 4 items, pas d'Administration.
+ *   - ADMIN : Operations + Administration (users, boutiques, equipements,
+ *     audit).
+ *   - data-testid de groupe + aria-current pour le pathname actif.
+ *   - Escape / click lien / click close ferment le drawer (onClose).
  *   - aria-modal + role dialog + aria-labelledby (a11y).
  */
 describe('[AppMobileNavDrawer]', () => {
@@ -41,7 +40,7 @@ describe('[AppMobileNavDrawer]', () => {
     vi.clearAllMocks();
   });
 
-  it('should show only SALARIE items for a SALARIE role', () => {
+  it('should show only the Operations group for a SALARIE role', () => {
     const html = renderToStaticMarkup(
       <AppMobileNavDrawer
         viewerRole="SALARIE"
@@ -50,19 +49,16 @@ describe('[AppMobileNavDrawer]', () => {
       />
     );
 
-    // feat/dashboard-as-home : /dashboard est accueil pour TOUS les roles
-    // (SALARIE inclus). refactor/remove-releves-page : la page /releves
-    // redondante est supprimee. La nav SALARIE expose donc dashboard +
-    // alertes uniquement.
+    expect(html).toContain('data-testid="app-nav-group-operations"');
+    expect(html).not.toContain('data-testid="app-nav-group-administration"');
     expect(html).toContain('data-testid="app-nav-link-dashboard"');
     expect(html).toContain('data-testid="app-nav-link-alertes"');
-    expect(html).not.toContain('data-testid="app-nav-link-releves"');
+    expect(html).not.toContain('data-testid="app-nav-link-releves-listing"');
     expect(html).not.toContain('data-testid="app-nav-link-registre-consolide"');
     expect(html).not.toContain('data-testid="app-nav-link-admin"');
-    expect(html).not.toContain('data-testid="app-nav-link-releves-listing"');
   });
 
-  it('should show RESPONSABLE items (dashboard, registre consolide unifie) without admin', () => {
+  it('should show the 4 Operations items for RESPONSABLE without Administration', () => {
     const html = renderToStaticMarkup(
       <AppMobileNavDrawer
         viewerRole="RESPONSABLE"
@@ -71,15 +67,16 @@ describe('[AppMobileNavDrawer]', () => {
       />
     );
 
+    expect(html).toContain('data-testid="app-nav-group-operations"');
+    expect(html).not.toContain('data-testid="app-nav-group-administration"');
     expect(html).toContain('data-testid="app-nav-link-dashboard"');
     expect(html).toContain('data-testid="app-nav-link-releves-listing"');
     expect(html).toContain('data-testid="app-nav-link-alertes"');
     expect(html).toContain('data-testid="app-nav-link-registre-consolide"');
-    expect(html).not.toContain('data-testid="app-nav-link-releves"');
-    expect(html).not.toContain('data-testid="app-nav-link-admin"');
+    expect(html).not.toContain('data-testid="app-nav-link-admin-users"');
   });
 
-  it('should show all items including admin for ADMIN role', () => {
+  it('should show both groups including Administration for ADMIN role', () => {
     const html = renderToStaticMarkup(
       <AppMobileNavDrawer
         viewerRole="ADMIN"
@@ -88,9 +85,12 @@ describe('[AppMobileNavDrawer]', () => {
       />
     );
 
-    for (const item of APP_NAV_ITEMS) {
-      expect(html).toContain(`data-testid="app-nav-link-${item.slug}"`);
-    }
+    expect(html).toContain('data-testid="app-nav-group-operations"');
+    expect(html).toContain('data-testid="app-nav-group-administration"');
+    expect(html).toContain('data-testid="app-nav-link-admin-users"');
+    expect(html).toContain('data-testid="app-nav-link-admin-boutiques"');
+    expect(html).toContain('data-testid="app-nav-link-admin-equipements"');
+    expect(html).toContain('data-testid="app-nav-link-admin-audit"');
   });
 
   it('should expose dialog role + aria-modal + aria-labelledby', () => {
@@ -118,9 +118,6 @@ describe('[AppMobileNavDrawer]', () => {
     );
 
     // pathname mocked to /alertes -> "Alertes" item must be aria-current.
-    // React serialise les attributs dans l'ordre de leur declaration JSX,
-    // ce qui place `aria-current` AVANT `data-testid`. On match donc le
-    // bloc `<a ...>` contenant les deux attributs sans presumer de l'ordre.
     expect(html).toMatch(
       /<a[^>]*aria-current="page"[^>]*data-testid="app-nav-link-alertes"/
     );

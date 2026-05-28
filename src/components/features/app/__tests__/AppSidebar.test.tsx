@@ -14,36 +14,35 @@ vi.mock('@/components/features/auth/LogoutButton', () => ({
 }));
 
 import { AppSidebar } from '../AppSidebar';
-import { APP_NAV_ITEMS } from '@/lib/constants/app-nav';
 
 /**
- * Tests `AppSidebar` (fix/app-sidebar + fix/csv-in-consolide).
+ * Tests `AppSidebar` (refactor/unified-sidebar).
  *
- * Couvre :
- *   - Filtrage par role : SALARIE voit 2 items (dashboard + alertes).
- *   - Filtrage par role : RESPONSABLE voit 4 items metier sans l'admin
- *     (dashboard, releves-listing, alertes, exports unifies).
- *   - Filtrage par role : ADMIN voit tous les items.
- *   - data-testid `app-sidebar` + un testid par lien.
- *   - LogoutButton present en pied.
- *   - Sidebar fixe ancree a gauche : `hidden lg:flex`, `fixed inset-y-0
- *     left-0`, largeur `w-64`.
- *   - aria-label de navigation.
+ * La sidebar est desormais UNIFIEE et organisee en groupes
+ * (`Operations`, `Administration`). Couvre :
+ *   - SALARIE : seul le groupe Operations (dashboard + alertes), pas
+ *     d'Administration.
+ *   - RESPONSABLE : Operations a 4 items, pas d'Administration.
+ *   - ADMIN : Operations + Administration (users, boutiques, equipements,
+ *     audit) + titres de groupe.
+ *   - Plus de lien de bascule "Espace admin" (slug `admin`).
+ *   - data-testid `app-sidebar`, `app-sidebar-group-{slug}`,
+ *     `app-sidebar-link-{slug}`.
+ *   - LogoutButton present en pied + sidebar fixe `hidden lg:flex` w-64.
  *
  * `usePathname` est mock car `AppSidebarLink` est un Client Component
  * importe transitivement par la sidebar.
  */
 describe('[AppSidebar]', () => {
-  it('should render the SALARIE links (dashboard + alertes)', () => {
-    // feat/dashboard-as-home : /dashboard est accueil pour TOUS les roles.
-    // refactor/remove-releves-page : la page /releves redondante (cartes
-    // tournee) est supprimee, le dashboard la remplace. La sidebar SALARIE
-    // expose donc uniquement dashboard + alertes.
+  it('should render only the Operations group (dashboard + alertes) for SALARIE', () => {
     const html = renderToStaticMarkup(<AppSidebar viewerRole="SALARIE" />);
 
+    expect(html).toContain('data-testid="app-sidebar-group-operations"');
+    expect(html).not.toContain(
+      'data-testid="app-sidebar-group-administration"'
+    );
     expect(html).toContain('data-testid="app-sidebar-link-dashboard"');
     expect(html).toContain('data-testid="app-sidebar-link-alertes"');
-    expect(html).not.toContain('data-testid="app-sidebar-link-releves"');
     expect(html).not.toContain(
       'data-testid="app-sidebar-link-releves-listing"'
     );
@@ -53,23 +52,38 @@ describe('[AppSidebar]', () => {
     expect(html).not.toContain('data-testid="app-sidebar-link-admin"');
   });
 
-  it('should render 4 business links for RESPONSABLE without the admin link', () => {
+  it('should render the 4 Operations items for RESPONSABLE without the Administration group', () => {
     const html = renderToStaticMarkup(<AppSidebar viewerRole="RESPONSABLE" />);
 
+    expect(html).toContain('data-testid="app-sidebar-group-operations"');
+    expect(html).not.toContain(
+      'data-testid="app-sidebar-group-administration"'
+    );
     expect(html).toContain('data-testid="app-sidebar-link-dashboard"');
     expect(html).toContain('data-testid="app-sidebar-link-releves-listing"');
     expect(html).toContain('data-testid="app-sidebar-link-alertes"');
     expect(html).toContain('data-testid="app-sidebar-link-registre-consolide"');
-    expect(html).not.toContain('data-testid="app-sidebar-link-releves"');
-    expect(html).not.toContain('data-testid="app-sidebar-link-admin"');
+    expect(html).not.toContain('data-testid="app-sidebar-link-admin-users"');
   });
 
-  it('should render every nav item including admin for ADMIN role', () => {
+  it('should render both Operations and Administration groups for ADMIN', () => {
     const html = renderToStaticMarkup(<AppSidebar viewerRole="ADMIN" />);
 
-    for (const item of APP_NAV_ITEMS) {
-      expect(html).toContain(`data-testid="app-sidebar-link-${item.slug}"`);
-    }
+    expect(html).toContain('data-testid="app-sidebar-group-operations"');
+    expect(html).toContain('data-testid="app-sidebar-group-administration"');
+    expect(html).toContain('Operations');
+    expect(html).toContain('Administration');
+    expect(html).toContain('data-testid="app-sidebar-link-admin-users"');
+    expect(html).toContain('data-testid="app-sidebar-link-admin-boutiques"');
+    expect(html).toContain('data-testid="app-sidebar-link-admin-equipements"');
+    expect(html).toContain('data-testid="app-sidebar-link-admin-audit"');
+  });
+
+  it('should NOT render the legacy "Espace admin" toggle link', () => {
+    const html = renderToStaticMarkup(<AppSidebar viewerRole="ADMIN" />);
+
+    expect(html).not.toContain('data-testid="app-sidebar-link-admin"');
+    expect(html).not.toContain('Espace admin');
   });
 
   it('should expose the root sidebar testid + aria-label', () => {

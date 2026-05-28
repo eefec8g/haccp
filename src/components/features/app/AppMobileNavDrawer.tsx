@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import Link from 'next/link';
+import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 import type { UserRole } from '@prisma/client';
 import { LogoutButton } from '@/components/features/auth/LogoutButton';
@@ -56,7 +57,10 @@ const LINK_BASE =
   'flex min-h-touch items-center px-6 py-4 text-lg font-light tracking-wide text-mg-noir transition-colors hover:bg-mg-or/10 hover:text-mg-or focus:outline-none focus:bg-mg-or/10 focus:ring-2 focus:ring-mg-or focus:ring-inset';
 const LINK_ACTIVE_CLASSES = 'bg-mg-or/10 text-mg-or font-medium';
 const FOOTER_CLASSES =
-  'border-t border-mg-noir/10 px-6 py-6 flex items-center justify-center';
+  'border-t border-mg-noir/10 px-6 py-6 flex flex-col items-center gap-4';
+const ACCOUNT_LINK_HREF = '/compte/mot-de-passe' as Route;
+const ACCOUNT_LINK_CLASSES =
+  'inline-flex min-h-touch items-center justify-center text-[11px] font-medium uppercase tracking-[0.2em] text-mg-noir transition-colors hover:text-mg-or focus:outline-none focus:ring-2 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 
 function isLinkActive(pathname: string, href: string): boolean {
   if (pathname === href) {
@@ -134,6 +138,14 @@ export function AppMobileNavDrawer({
         ))}
       </nav>
       <div className={FOOTER_CLASSES}>
+        <Link
+          href={ACCOUNT_LINK_HREF}
+          onClick={onClose}
+          className={ACCOUNT_LINK_CLASSES}
+          data-testid="app-nav-link-account-password"
+        >
+          Mon mot de passe
+        </Link>
         <LogoutButton />
       </div>
     </div>

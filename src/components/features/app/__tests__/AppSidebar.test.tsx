@@ -99,6 +99,16 @@ describe('[AppSidebar]', () => {
     expect(html).toContain('data-testid="logout-button"');
   });
 
+  it('should expose the "Mon mot de passe" account link for every role', () => {
+    for (const role of ['SALARIE', 'RESPONSABLE', 'ADMIN'] as const) {
+      const html = renderToStaticMarkup(<AppSidebar viewerRole={role} />);
+
+      expect(html).toContain('data-testid="app-sidebar-link-account-password"');
+      expect(html).toContain('href="/compte/mot-de-passe"');
+      expect(html).toContain('Mon mot de passe');
+    }
+  });
+
   it('should be hidden on mobile and shown only on lg via `hidden lg:flex`', () => {
     const html = renderToStaticMarkup(<AppSidebar viewerRole="ADMIN" />);
 

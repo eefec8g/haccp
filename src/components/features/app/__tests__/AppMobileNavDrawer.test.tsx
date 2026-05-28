@@ -93,6 +93,54 @@ describe('[AppMobileNavDrawer]', () => {
     expect(html).toContain('data-testid="app-nav-link-admin-audit"');
   });
 
+  it('should expose the "Mon mot de passe" account link in the footer for every role', () => {
+    for (const role of ['SALARIE', 'RESPONSABLE', 'ADMIN'] as const) {
+      const html = renderToStaticMarkup(
+        <AppMobileNavDrawer
+          viewerRole={role}
+          onClose={() => undefined}
+          labelledById="title"
+        />
+      );
+
+      expect(html).toContain('data-testid="app-nav-link-account-password"');
+      expect(html).toContain('href="/compte/mot-de-passe"');
+      expect(html).toContain('Mon mot de passe');
+    }
+  });
+
+  it('should call onClose when the account link is clicked', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onClose = vi.fn();
+
+    act(() => {
+      root.render(
+        <AppMobileNavDrawer
+          viewerRole="SALARIE"
+          onClose={onClose}
+          labelledById="title"
+        />
+      );
+    });
+
+    act(() => {
+      container
+        .querySelector<HTMLAnchorElement>(
+          '[data-testid="app-nav-link-account-password"]'
+        )
+        ?.click();
+    });
+
+    expect(onClose).toHaveBeenCalled();
+
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  });
+
   it('should expose dialog role + aria-modal + aria-labelledby', () => {
     const html = renderToStaticMarkup(
       <AppMobileNavDrawer

@@ -26,6 +26,7 @@ import {
   generatePasswordResetToken,
   validateResetToken,
   resetPassword,
+  changePassword,
 } from './auth.service';
 import { hashToken } from '@/lib/utils/tokens';
 
@@ -361,6 +362,108 @@ describe('[auth.service]', () => {
       const result = await resetPassword(VALID_TOKEN, STRONG_NEW_PASSWORD);
 
       expect(result).toEqual({ success: false, error: 'TOKEN_ALREADY_USED' });
+    });
+  });
+
+  describe('changePassword', () => {
+    const USER_ID = 'user-1';
+
+    async function arrangeUser(
+      overrides: Partial<{ actif: boolean; password: string }> = {}
+    ) {
+      const hashed = await bcrypt.hash(TEST_PASSWORD, 4);
+      vi.mocked(db.user.findUnique).mockResolvedValue({
+        id: USER_ID,
+        password: hashed,
+        actif: true,
+        ...overrides,
+      } as never);
+    }
+
+    it('should update the password hash when the current password is correct', async () => {
+      await arrangeUser();
+      vi.mocked(db.user.update).mockResolvedValue({} as never);
+
+      const result = await changePassword({
+        userId: USER_ID,
+        currentPassword: TEST_PASSWORD,
+        newPassword: STRONG_NEW_PASSWORD,
+      });
+
+      expect(result).toEqual({ success: true, data: undefined });
+      const updateArg = vi.mocked(db.user.update).mock.calls[0]?.[0];
+      expect(updateArg?.where).toEqual({ id: USER_ID });
+      // Le hash persiste ne doit PAS etre le password en clair.
+      expect(updateArg?.data.password).not.toBe(STRONG_NEW_PASSWORD);
+      expect(String(updateArg?.data.password).startsWith('$2')).toBe(true);
+    });
+
+    it('should return USER_NOT_FOUND when the account does not exist', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(null);
+
+      const result = await changePassword({
+        userId: USER_ID,
+        currentPassword: TEST_PASSWORD,
+        newPassword: STRONG_NEW_PASSWORD,
+      });
+
+      expect(result).toEqual({ success: false, error: 'USER_NOT_FOUND' });
+      expect(db.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should return USER_NOT_FOUND when the account is inactive', async () => {
+      await arrangeUser({ actif: false });
+
+      const result = await changePassword({
+        userId: USER_ID,
+        currentPassword: TEST_PASSWORD,
+        newPassword: STRONG_NEW_PASSWORD,
+      });
+
+      expect(result).toEqual({ success: false, error: 'USER_NOT_FOUND' });
+      expect(db.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should return INVALID_CURRENT_PASSWORD when the current password is wrong', async () => {
+      await arrangeUser();
+
+      const result = await changePassword({
+        userId: USER_ID,
+        currentPassword: 'WrongPassword!9aZ',
+        newPassword: STRONG_NEW_PASSWORD,
+      });
+
+      expect(result).toEqual({
+        success: false,
+        error: 'INVALID_CURRENT_PASSWORD',
+      });
+      expect(db.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should return SAME_PASSWORD when new password equals current', async () => {
+      await arrangeUser();
+
+      const result = await changePassword({
+        userId: USER_ID,
+        currentPassword: TEST_PASSWORD,
+        newPassword: TEST_PASSWORD,
+      });
+
+      expect(result).toEqual({ success: false, error: 'SAME_PASSWORD' });
+      expect(db.user.update).not.toHaveBeenCalled();
+    });
+
+    it('should return INTERNAL when the DB update throws', async () => {
+      await arrangeUser();
+      vi.mocked(db.user.update).mockRejectedValue(new Error('db down'));
+
+      const result = await changePassword({
+        userId: USER_ID,
+        currentPassword: TEST_PASSWORD,
+        newPassword: STRONG_NEW_PASSWORD,
+      });
+
+      expect(result).toEqual({ success: false, error: 'INTERNAL' });
     });
   });
 });

@@ -126,9 +126,9 @@ const RECAP_SUBTITLE_CLASSES =
 const RECAP_MODIFIER_CLASSES =
   'inline-flex min-h-touch items-center justify-center border border-mg-noir/20 bg-transparent px-5 text-[10px] font-medium uppercase tracking-[0.3em] text-mg-noir transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 const RECAP_STATUS_OK_CLASSES =
-  'inline-flex w-fit border border-mg-or/40 bg-transparent px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-mg-or';
+  'inline-flex w-fit border border-green-500/40 bg-green-50 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-green-700';
 const RECAP_STATUS_ALERTE_CLASSES =
-  'inline-flex w-fit border border-mg-or bg-mg-or px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-mg-noir';
+  'inline-flex w-fit border border-red-500/50 bg-red-50 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-red-700';
 const RECAP_TEMPERATURE_CLASSES =
   'font-light tracking-wider text-mg-noir tabular-nums';
 const SIGNED_BANNER_CLASSES =
@@ -679,7 +679,7 @@ function RecapStatusBadge({ entry }: { readonly entry: RecapEntry }) {
       role="status"
       data-testid={`tournee-recap-status-${equipement.id}`}
     >
-      {releve.alerteHorsSeuils ? 'Alerte' : 'OK'}
+      {releve.alerteHorsSeuils ? 'KO' : 'OK'}
     </span>
   );
 }

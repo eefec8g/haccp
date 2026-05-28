@@ -160,6 +160,29 @@ describe('[releve validations]', () => {
       }
     });
 
+    it('should normalize empty form fields to undefined and keep valid filters', () => {
+      // Cas reel : un form GET HTML serialise les <select> "Tous" en
+      // chaine vide. Sans normalisation, `boutiqueId=''` faisait echouer
+      // tout le parse et perdait le filtre statut.
+      const result = releveListingQuerySchema.safeParse({
+        boutiqueId: '',
+        equipementId: '',
+        creneau: '',
+        statut: 'MANQUANT',
+        dateStart: '2026-04-29',
+        dateEnd: '2026-05-15',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.boutiqueId).toBeUndefined();
+        expect(result.data.equipementId).toBeUndefined();
+        expect(result.data.creneau).toBeUndefined();
+        expect(result.data.statut).toBe('MANQUANT');
+        expect(result.data.dateStart).toBe('2026-04-29');
+        expect(result.data.dateEnd).toBe('2026-05-15');
+      }
+    });
+
     it('should accept a valid explicit period', () => {
       const result = releveListingQuerySchema.safeParse({
         dateStart: '2026-05-01',

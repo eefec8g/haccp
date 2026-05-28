@@ -38,8 +38,7 @@ import { SUBMIT_CLASSES } from '@/components/features/ui/form-styles';
 const STROKE_LINE_WIDTH = 2;
 const STROKE_COLOR = '#0D0D0D';
 
-const CONTAINER_CLASSES =
-  'flex flex-col gap-3 border border-mg-noir/15 bg-mg-ivoire p-4 shadow-sm';
+const CONTAINER_CLASSES = 'flex flex-col gap-3';
 /**
  * `aspect-[5/2]` aligne la zone visuelle (CSS) sur le ratio natif du
  * canvas (500x200 = 5:2). Sans ca, sur un viewport etroit l'image etait

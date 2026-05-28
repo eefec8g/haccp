@@ -21,7 +21,7 @@ vi.mock('@/lib/permissions', () => ({
 
 vi.mock('@/lib/services/dashboard.service', () => ({
   computeResponsableKpis: vi.fn(),
-  listMissingReleves: vi.fn(),
+  loadEquipementsTodayBoard: vi.fn(),
   buildAlertesTrend: vi.fn(),
 }));
 
@@ -76,7 +76,7 @@ import * as permissions from '@/lib/permissions';
 import * as dashboardService from '@/lib/services/dashboard.service';
 import * as alerteService from '@/lib/services/alerte.service';
 import * as boutiqueService from '@/lib/services/boutique.service';
-import DashboardResponsablePage from '../page';
+import DashboardPage from '../page';
 
 const RESPONSABLE_SESSION = {
   user: { id: 'r1', role: 'RESPONSABLE' as const, email: 'r1@mg.test' },
@@ -110,9 +110,9 @@ function setHappyPathMocks({
     success: true,
     data: DEFAULT_KPIS,
   });
-  vi.mocked(dashboardService.listMissingReleves).mockResolvedValue({
+  vi.mocked(dashboardService.loadEquipementsTodayBoard).mockResolvedValue({
     success: true,
-    data: [],
+    data: { dateISO: '2026-05-27', rows: [] },
   });
   vi.mocked(dashboardService.buildAlertesTrend).mockResolvedValue({
     success: true,
@@ -134,30 +134,39 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('[DashboardResponsablePage]', () => {
+describe('[DashboardPage]', () => {
   it('should redirect to /login when no session', async () => {
     vi.mocked(auth).mockResolvedValue(null as any);
     await expect(
-      DashboardResponsablePage({ searchParams: Promise.resolve({}) })
+      DashboardPage({ searchParams: Promise.resolve({}) })
     ).rejects.toThrow('__REDIRECT__:/login');
     expect(redirect).toHaveBeenCalledWith('/login');
   });
 
-  it('should redirect to /releves when user is SALARIE (anti-enum)', async () => {
+  it('should render the salarie view (board only) for a SALARIE', async () => {
     vi.mocked(auth).mockResolvedValue(SALARIE_SESSION as any);
     vi.mocked(permissions.canManageAlertes).mockReturnValue(false);
-    await expect(
-      DashboardResponsablePage({ searchParams: Promise.resolve({}) })
-    ).rejects.toThrow('__REDIRECT__:/releves');
+    vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
+    vi.mocked(dashboardService.loadEquipementsTodayBoard).mockResolvedValue({
+      success: true,
+      data: { dateISO: '2026-05-27', rows: [] },
+    });
+
+    const element = await DashboardPage({ searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(element as any);
+
+    expect(html).toContain('data-testid="dashboard-salarie-page"');
+    expect(html).toContain('data-testid="dashboard-board-section"');
+    expect(html).not.toContain('data-testid="dashboard-kpis"');
+    expect(html).not.toContain('data-testid="dashboard-trend"');
+    expect(html).not.toContain('data-testid="dashboard-alertes"');
   });
 
-  it('should render KPIs, trend chart and missing table for a RESPONSABLE', async () => {
+  it('should render KPIs, trend chart and equipements board for a RESPONSABLE', async () => {
     vi.mocked(auth).mockResolvedValue(RESPONSABLE_SESSION as any);
     setHappyPathMocks();
 
-    const element = await DashboardResponsablePage({
-      searchParams: Promise.resolve({}),
-    });
+    const element = await DashboardPage({ searchParams: Promise.resolve({}) });
     const html = renderToStaticMarkup(element as any);
 
     expect(html).toContain('data-testid="dashboard-responsable-page"');
@@ -167,7 +176,7 @@ describe('[DashboardResponsablePage]', () => {
     expect(html).toContain('data-testid="kpi-manquants"');
     expect(html).toContain('data-testid="kpi-boutiques"');
     expect(html).toContain('data-testid="dashboard-trend"');
-    expect(html).toContain('data-testid="dashboard-missing-section"');
+    expect(html).toContain('data-testid="dashboard-board-section"');
     expect(html).toContain('data-testid="dashboard-refresh"');
     expect(html).toContain('87 %');
   });
@@ -179,9 +188,7 @@ describe('[DashboardResponsablePage]', () => {
       accessible: ['b1'],
     });
 
-    const element = await DashboardResponsablePage({
-      searchParams: Promise.resolve({}),
-    });
+    const element = await DashboardPage({ searchParams: Promise.resolve({}) });
     const html = renderToStaticMarkup(element as any);
 
     expect(html).not.toContain('data-testid="dashboard-boutique-selector"');
@@ -197,9 +204,7 @@ describe('[DashboardResponsablePage]', () => {
       accessible: ['b1', 'b2'],
     });
 
-    const element = await DashboardResponsablePage({
-      searchParams: Promise.resolve({}),
-    });
+    const element = await DashboardPage({ searchParams: Promise.resolve({}) });
     const html = renderToStaticMarkup(element as any);
 
     expect(html).toContain('data-testid="dashboard-boutique-selector"');
@@ -214,7 +219,7 @@ describe('[DashboardResponsablePage]', () => {
     vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
 
     await expect(
-      DashboardResponsablePage({
+      DashboardPage({
         searchParams: Promise.resolve({
           boutiqueId: '00000000-0000-0000-0000-000000000999',
         }),
@@ -226,9 +231,7 @@ describe('[DashboardResponsablePage]', () => {
     vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any);
     setHappyPathMocks({ alertes: [] });
 
-    const element = await DashboardResponsablePage({
-      searchParams: Promise.resolve({}),
-    });
+    const element = await DashboardPage({ searchParams: Promise.resolve({}) });
     const html = renderToStaticMarkup(element as any);
 
     expect(html).toContain('data-testid="dashboard-alertes-empty"');

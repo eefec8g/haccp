@@ -25,6 +25,14 @@ export interface AppNavItem {
 
 export const APP_NAV_ITEMS: readonly AppNavItem[] = [
   {
+    // Tableau de bord = accueil post-login pour TOUS les roles
+    // (feat/dashboard-as-home). Place en tete de la nav.
+    href: '/dashboard' as Route,
+    label: 'Tableau de bord',
+    slug: 'dashboard',
+    roles: [UserRole.SALARIE, UserRole.RESPONSABLE, UserRole.ADMIN],
+  },
+  {
     href: '/releves' as Route,
     label: 'Mes releves',
     slug: 'releves',
@@ -41,12 +49,6 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     label: 'Alertes',
     slug: 'alertes',
     roles: [UserRole.SALARIE, UserRole.RESPONSABLE, UserRole.ADMIN],
-  },
-  {
-    href: '/dashboard' as Route,
-    label: 'Tableau de bord',
-    slug: 'dashboard',
-    roles: [UserRole.RESPONSABLE, UserRole.ADMIN],
   },
   {
     // Page d'export unifiee : PDF + CSV depuis le meme formulaire

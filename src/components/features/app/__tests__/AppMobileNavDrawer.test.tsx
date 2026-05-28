@@ -50,9 +50,12 @@ describe('[AppMobileNavDrawer]', () => {
       />
     );
 
+    // feat/dashboard-as-home : /dashboard est accueil pour TOUS les roles
+    // (SALARIE inclus). La nav SALARIE expose donc dashboard + releves +
+    // alertes uniquement.
+    expect(html).toContain('data-testid="app-nav-link-dashboard"');
     expect(html).toContain('data-testid="app-nav-link-releves"');
     expect(html).toContain('data-testid="app-nav-link-alertes"');
-    expect(html).not.toContain('data-testid="app-nav-link-dashboard"');
     expect(html).not.toContain('data-testid="app-nav-link-registre-consolide"');
     expect(html).not.toContain('data-testid="app-nav-link-admin"');
     expect(html).not.toContain('data-testid="app-nav-link-releves-listing"');

@@ -11,7 +11,7 @@ beforeEach(() => {
 });
 
 describe('[GET /api/auth/post-login-redirect]', () => {
-  it('should return /releves for a SALARIE session', async () => {
+  it('should return /dashboard for a SALARIE session', async () => {
     auth.mockResolvedValue({
       user: { id: 'u1', email: 'a@b.fr', role: 'SALARIE', boutiqueIds: [] },
     });
@@ -20,10 +20,10 @@ describe('[GET /api/auth/post-login-redirect]', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ redirectTo: '/releves' });
+    expect(body).toEqual({ redirectTo: '/dashboard' });
   });
 
-  it('should return /releves for a RESPONSABLE session', async () => {
+  it('should return /dashboard for a RESPONSABLE session', async () => {
     auth.mockResolvedValue({
       user: {
         id: 'u1',
@@ -34,16 +34,16 @@ describe('[GET /api/auth/post-login-redirect]', () => {
     });
 
     const body = await (await GET()).json();
-    expect(body).toEqual({ redirectTo: '/releves' });
+    expect(body).toEqual({ redirectTo: '/dashboard' });
   });
 
-  it('should return /admin for an ADMIN session', async () => {
+  it('should return /dashboard for an ADMIN session', async () => {
     auth.mockResolvedValue({
       user: { id: 'u1', email: 'a@b.fr', role: 'ADMIN', boutiqueIds: [] },
     });
 
     const body = await (await GET()).json();
-    expect(body).toEqual({ redirectTo: '/admin' });
+    expect(body).toEqual({ redirectTo: '/dashboard' });
   });
 
   it('should fallback to /login when there is no session', async () => {

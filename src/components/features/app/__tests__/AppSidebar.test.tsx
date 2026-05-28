@@ -34,15 +34,17 @@ import { APP_NAV_ITEMS } from '@/lib/constants/app-nav';
  * importe transitivement par la sidebar.
  */
 describe('[AppSidebar]', () => {
-  it('should render exactly 2 links for SALARIE (releves + alertes)', () => {
+  it('should render the SALARIE links (dashboard + releves + alertes)', () => {
+    // feat/dashboard-as-home : /dashboard est accueil pour TOUS les roles.
+    // La sidebar SALARIE expose donc dashboard + releves + alertes.
     const html = renderToStaticMarkup(<AppSidebar viewerRole="SALARIE" />);
 
+    expect(html).toContain('data-testid="app-sidebar-link-dashboard"');
     expect(html).toContain('data-testid="app-sidebar-link-releves"');
     expect(html).toContain('data-testid="app-sidebar-link-alertes"');
     expect(html).not.toContain(
       'data-testid="app-sidebar-link-releves-listing"'
     );
-    expect(html).not.toContain('data-testid="app-sidebar-link-dashboard"');
     expect(html).not.toContain(
       'data-testid="app-sidebar-link-registre-consolide"'
     );

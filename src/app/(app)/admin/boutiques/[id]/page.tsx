@@ -6,6 +6,7 @@ import { AdminPageHeader } from '@/components/features/admin/AdminPageHeader';
 import { BoutiqueForm } from '@/components/features/admin/BoutiqueForm';
 import { BoutiqueToggleActiveButton } from '@/components/features/admin/BoutiqueToggleActiveButton';
 import { getBoutiqueById } from '@/lib/services/boutique.service';
+import { formatDateShort, isoFromDate } from '@/lib/utils/dates';
 
 export const metadata: Metadata = {
   title: 'Detail boutique - Administration HACCP',
@@ -39,13 +40,15 @@ export default async function AdminBoutiqueDetailPage({
   }
 
   const boutique = result.data;
-  const subtitleParts = [boutique.ville, boutique.adresse].filter(
+  const dateOuvertureLabel = `Ouverte le ${formatDateShort(isoFromDate(boutique.dateOuverture))}`;
+  const subtitleParts = [
+    boutique.ville,
+    boutique.adresse,
+    dateOuvertureLabel,
+  ].filter(
     (value): value is string => typeof value === 'string' && value.length > 0
   );
-  const subtitle =
-    subtitleParts.length > 0
-      ? subtitleParts.join(' - ')
-      : 'Aucune adresse renseignee';
+  const subtitle = subtitleParts.join(' - ');
 
   return (
     <div data-testid={`admin-boutique-detail-${boutique.id}`}>

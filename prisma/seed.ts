@@ -17,6 +17,14 @@ const BCRYPT_ROUNDS = 12;
  */
 const E2E_BOUTIQUE_ID = '00000000-0000-4000-8000-000000000001';
 
+/**
+ * Date de debut d'activite commune (boutique + equipements) : une date
+ * passee deterministe pour que les jours de la periode E2E soient bien
+ * ATTENDUS (cf. lib/utils/date-debut.ts). Stockee a minuit UTC pour
+ * s'aligner sur la convention `@db.Date` (jour sans heure).
+ */
+const E2E_DATE_DEBUT = new Date('2026-01-01T00:00:00.000Z');
+
 interface SeedUserSpec {
   readonly email: string;
   readonly password: string;
@@ -126,6 +134,7 @@ async function main(): Promise<void> {
       id: E2E_BOUTIQUE_ID,
       nom: 'MG E2E Lyon',
       ville: 'Lyon',
+      dateOuverture: E2E_DATE_DEBUT,
       actif: true,
     },
   });
@@ -171,6 +180,7 @@ async function main(): Promise<void> {
           type: spec.type,
           seuilMin: spec.seuilMin,
           seuilMax: spec.seuilMax,
+          dateMiseEnService: E2E_DATE_DEBUT,
           actif: true,
           boutiqueId: boutique.id,
         },

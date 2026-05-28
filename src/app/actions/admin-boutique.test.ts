@@ -43,6 +43,8 @@ import {
 import { INITIAL_BOUTIQUE_ACTION_STATE } from './admin-boutique.types';
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111';
+const DATE_OUVERTURE_ISO = '2026-01-01';
+const DATE_OUVERTURE = new Date(`${DATE_OUVERTURE_ISO}T00:00:00.000Z`);
 
 function adminSession() {
   return {
@@ -120,7 +122,11 @@ describe('[createBoutiqueAction]', () => {
 
     const result = await createBoutiqueAction(
       INITIAL_BOUTIQUE_ACTION_STATE,
-      makeFormData({ nom: 'MG Paris 11', ville: 'Paris' })
+      makeFormData({
+        nom: 'MG Paris 11',
+        ville: 'Paris',
+        dateOuverture: DATE_OUVERTURE_ISO,
+      })
     );
 
     expect(result).toEqual({ status: 'error', code: 'DUPLICATE' });
@@ -145,7 +151,11 @@ describe('[createBoutiqueAction]', () => {
     await expect(
       createBoutiqueAction(
         INITIAL_BOUTIQUE_ACTION_STATE,
-        makeFormData({ nom: 'MG Paris 11', ville: 'Paris' })
+        makeFormData({
+          nom: 'MG Paris 11',
+          ville: 'Paris',
+          dateOuverture: DATE_OUVERTURE_ISO,
+        })
       )
     ).rejects.toMatchObject({
       digest: expect.stringContaining('NEXT_REDIRECT'),
@@ -156,6 +166,7 @@ describe('[createBoutiqueAction]', () => {
         nom: 'MG Paris 11',
         adresse: undefined,
         ville: 'Paris',
+        dateOuverture: DATE_OUVERTURE,
       },
       'admin-1'
     );
@@ -229,6 +240,7 @@ describe('[updateBoutiqueAction]', () => {
       nom: 'MG Paris 12',
       adresse: undefined,
       ville: 'Paris',
+      dateOuverture: undefined,
     });
     expect(revalidatePath).toHaveBeenCalledWith('/admin/boutiques');
     expect(revalidatePath).toHaveBeenCalledWith(

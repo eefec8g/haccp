@@ -18,6 +18,7 @@ export interface BoutiqueActionFieldErrors {
   readonly nom?: readonly string[];
   readonly adresse?: readonly string[];
   readonly ville?: readonly string[];
+  readonly dateOuverture?: readonly string[];
   readonly id?: readonly string[];
 }
 

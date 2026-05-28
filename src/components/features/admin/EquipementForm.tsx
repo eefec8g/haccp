@@ -22,6 +22,7 @@ import {
   SUBMIT_CLASSES,
   ERROR_BOX_CLASSES,
 } from '@/components/features/ui/form-styles';
+import { isoFromDate } from '@/lib/utils/dates';
 import { FormField } from './FormField';
 
 type EquipementFormMode = 'create' | 'edit';
@@ -133,6 +134,11 @@ export function EquipementForm({
   const boutiqueError = firstError(fieldErrors, 'boutiqueId');
   const seuilMinError = firstError(fieldErrors, 'seuilMin');
   const seuilMaxError = firstError(fieldErrors, 'seuilMax');
+  const dateMiseEnServiceError = firstError(fieldErrors, 'dateMiseEnService');
+
+  const initialDateMiseEnService = equipement
+    ? isoFromDate(equipement.dateMiseEnService)
+    : '';
 
   const initialBoutiqueId = equipement?.boutiqueId ?? defaultBoutiqueId ?? '';
   const initialType = equipement?.type ?? '';
@@ -275,6 +281,28 @@ export function EquipementForm({
           />
         </FormField>
       </div>
+
+      <FormField
+        label="Date de mise en service"
+        name="dateMiseEnService"
+        required
+        hint="Aucun releve n'est attendu avant cette date (ni avant l'ouverture de la boutique)."
+        error={dateMiseEnServiceError ?? null}
+      >
+        <input
+          id="dateMiseEnService"
+          name="dateMiseEnService"
+          type="date"
+          required
+          defaultValue={initialDateMiseEnService}
+          aria-invalid={!!dateMiseEnServiceError}
+          aria-describedby={
+            dateMiseEnServiceError ? 'dateMiseEnService-error' : undefined
+          }
+          className={INPUT_CLASSES}
+          data-testid="equipement-date-mise-en-service"
+        />
+      </FormField>
 
       <p className="border-l border-mg-or/40 bg-mg-or/5 px-4 py-3 text-xs font-light italic text-mg-noir/60">
         Seuils par defaut conseilles : Congelateur -25°C / -18°C, Vitrine

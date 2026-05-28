@@ -21,6 +21,7 @@ import {
   SUBMIT_CLASSES,
   ERROR_BOX_CLASSES,
 } from '@/components/features/ui/form-styles';
+import { isoFromDate } from '@/lib/utils/dates';
 import { FormField } from './FormField';
 
 type BoutiqueFormMode = 'create' | 'edit';
@@ -90,6 +91,11 @@ export function BoutiqueForm({ mode, boutique }: BoutiqueFormProps) {
   const nomError = firstError(fieldErrors, 'nom');
   const adresseError = firstError(fieldErrors, 'adresse');
   const villeError = firstError(fieldErrors, 'ville');
+  const dateOuvertureError = firstError(fieldErrors, 'dateOuverture');
+
+  const initialDateOuverture = boutique
+    ? isoFromDate(boutique.dateOuverture)
+    : '';
 
   return (
     <form
@@ -164,6 +170,28 @@ export function BoutiqueForm({ mode, boutique }: BoutiqueFormProps) {
           aria-describedby={villeError ? 'ville-error' : undefined}
           className={INPUT_CLASSES}
           data-testid="boutique-ville"
+        />
+      </FormField>
+
+      <FormField
+        label="Date d'ouverture"
+        name="dateOuverture"
+        required
+        hint="Aucun releve n'est attendu avant cette date."
+        error={dateOuvertureError ?? null}
+      >
+        <input
+          id="dateOuverture"
+          name="dateOuverture"
+          type="date"
+          required
+          defaultValue={initialDateOuverture}
+          aria-invalid={!!dateOuvertureError}
+          aria-describedby={
+            dateOuvertureError ? 'dateOuverture-error' : undefined
+          }
+          className={INPUT_CLASSES}
+          data-testid="boutique-date-ouverture"
         />
       </FormField>
 

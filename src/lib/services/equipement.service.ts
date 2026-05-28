@@ -142,6 +142,7 @@ export async function createEquipement(
         boutiqueId: input.boutiqueId,
         seuilMin: input.seuilMin,
         seuilMax: input.seuilMax,
+        dateMiseEnService: input.dateMiseEnService,
       },
     });
     await logAudit({
@@ -198,6 +199,9 @@ export async function updateEquipement(
       ...(input.boutiqueId !== undefined && { boutiqueId: input.boutiqueId }),
       ...(input.seuilMin !== undefined && { seuilMin: input.seuilMin }),
       ...(input.seuilMax !== undefined && { seuilMax: input.seuilMax }),
+      ...(input.dateMiseEnService !== undefined && {
+        dateMiseEnService: input.dateMiseEnService,
+      }),
     },
   });
   return { success: true, data: updated };

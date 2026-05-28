@@ -93,6 +93,23 @@ function clampPositive(value: number): number {
   return value < 0 ? 0 : value;
 }
 
+/**
+ * Fragment Prisma "equipement en service le jour `date`".
+ *
+ * Un equipement est en service ssi sa date de debut effective
+ * (`MAX(boutique.dateOuverture, equipement.dateMiseEnService)`) est <=
+ * `date`. Comme `MAX(a, b) <= date` equivaut a `a <= date AND b <= date`,
+ * on l'exprime directement en deux bornes `lte` (pas de calcul cote
+ * memoire) -- les colonnes sont `@db.Date` (jour, UTC minuit), comparees
+ * a `date` (UTC minuit) au niveau jour.
+ */
+function enServiceWhere(date: Date): Prisma.EquipementWhereInput {
+  return {
+    dateMiseEnService: { lte: date },
+    boutique: { dateOuverture: { lte: date } },
+  };
+}
+
 function roundPercent(numerator: number, denominator: number): number {
   if (denominator <= 0) {
     return 0;
@@ -121,7 +138,11 @@ async function countEquipementsAndReleves({
   }
   const [equipementsActifs, relevesJour] = await Promise.all([
     db.equipement.count({
-      where: { actif: true, boutiqueId: { in: [...boutiqueIds] } },
+      where: {
+        actif: true,
+        boutiqueId: { in: [...boutiqueIds] },
+        ...enServiceWhere(date),
+      },
     }),
     db.releve.count({
       where: {
@@ -340,7 +361,11 @@ export async function listMissingReleves({
   const date = targetDateUtc(dateISO);
   const [equipements, releves] = await Promise.all([
     db.equipement.findMany({
-      where: { actif: true, boutiqueId: { in: [...boutiqueIds] } },
+      where: {
+        actif: true,
+        boutiqueId: { in: [...boutiqueIds] },
+        ...enServiceWhere(date),
+      },
       orderBy: [{ boutique: { nom: 'asc' } }, { nom: 'asc' }],
       select: {
         id: true,
@@ -581,7 +606,16 @@ export async function loadEquipementsTodayBoard({
   const date = parseISODateUtc(targetISO);
   const [equipements, releves] = await Promise.all([
     db.equipement.findMany({
-      where: { actif: true, boutiqueId: { in: [...boutiqueIds] } },
+      // Choix : on EXCLUT du board les equipements pas encore en service
+      // ce jour (`dateDebutEffective > date`). Une ligne d'equipement dont
+      // aucun creneau n'est attendu n'aurait que des cellules "neutres" et
+      // polluerait la saisie rapide -- on prefere ne pas l'afficher du tout
+      // (cf. `enServiceWhere`).
+      where: {
+        actif: true,
+        boutiqueId: { in: [...boutiqueIds] },
+        ...enServiceWhere(date),
+      },
       orderBy: [{ boutique: { nom: 'asc' } }, { nom: 'asc' }],
       select: {
         id: true,

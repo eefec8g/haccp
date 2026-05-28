@@ -21,6 +21,7 @@ export interface EquipementActionFieldErrors {
   readonly boutiqueId?: readonly string[];
   readonly seuilMin?: readonly string[];
   readonly seuilMax?: readonly string[];
+  readonly dateMiseEnService?: readonly string[];
   readonly id?: readonly string[];
 }
 

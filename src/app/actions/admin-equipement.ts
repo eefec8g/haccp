@@ -118,6 +118,7 @@ export async function createEquipementAction(
     boutiqueId: readRequiredString(formData, 'boutiqueId'),
     seuilMin: readRequiredNumber(formData, 'seuilMin'),
     seuilMax: readRequiredNumber(formData, 'seuilMax'),
+    dateMiseEnService: readRequiredString(formData, 'dateMiseEnService'),
   });
   if (!parsed.success) {
     return {
@@ -178,6 +179,7 @@ export async function updateEquipementAction(
     boutiqueId: readOptionalString(formData, 'boutiqueId'),
     seuilMin: readOptionalNumber(formData, 'seuilMin'),
     seuilMax: readOptionalNumber(formData, 'seuilMax'),
+    dateMiseEnService: readOptionalString(formData, 'dateMiseEnService'),
   });
   if (!parsed.success) {
     return {

@@ -89,13 +89,16 @@ model User {
 }
 
 model Boutique {
-  id        String   @id @default(uuid())
-  nom       String
-  adresse   String?
-  ville     String?
-  actif     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  nom           String
+  adresse       String?
+  ville         String?
+  // Date d'ouverture de la boutique (jour, sans heure). Borne basse des
+  // releves attendus : aucun creneau n'est attendu avant cette date.
+  dateOuverture DateTime @db.Date
+  actif         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   equipements  Equipement[]
   salaries     User[]         @relation("SalarieBoutique")
@@ -124,9 +127,13 @@ model Equipement {
   type      TypeEquipement
   seuilMin  Float
   seuilMax  Float
-  actif     Boolean        @default(true)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  // Date de mise en service de l'equipement (jour, sans heure). La date
+  // de debut effective des releves attendus est le MAX de cette date et
+  // de la date d'ouverture de la boutique (cf. lib/utils/date-debut.ts).
+  dateMiseEnService DateTime @db.Date
+  actif             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   boutiqueId String
   boutique   Boutique @relation(fields: [boutiqueId], references: [id])

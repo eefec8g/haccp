@@ -156,6 +156,27 @@ describe('[dashboard.service] computeResponsableKpis', () => {
       expect(result.data.boutiquesCount).toBe(2);
     }
   });
+
+  it('should only count equipements in service on the target day for the taux', async () => {
+    vi.mocked(canManageAlertes).mockReturnValue(true);
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
+    vi.mocked(db.equipement.count).mockResolvedValue(1);
+    vi.mocked(db.releve.count).mockResolvedValue(3);
+    vi.mocked(db.alerte.count).mockResolvedValue(0);
+
+    await computeResponsableKpis({
+      viewer: responsableUser(),
+      dateISO: TODAY_ISO,
+    });
+
+    const target = new Date(`${TODAY_ISO}T00:00:00.000Z`);
+    const countCall = vi.mocked(db.equipement.count).mock.calls[0]?.[0];
+    expect(countCall?.where).toMatchObject({
+      actif: true,
+      dateMiseEnService: { lte: target },
+      boutique: { dateOuverture: { lte: target } },
+    });
+  });
 });
 
 describe('[dashboard.service] computeAdminKpis', () => {
@@ -283,6 +304,26 @@ describe('[dashboard.service] listMissingReleves', () => {
       expect(result.data[0]?.equipementId).toBe('eq-1');
       expect(result.data[0]?.creneauxManquants).toEqual(['MIDI', 'SOIR']);
     }
+  });
+
+  it('should only list missing for equipements in service on the target day', async () => {
+    vi.mocked(canManageAlertes).mockReturnValue(true);
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+
+    await listMissingReleves({
+      viewer: responsableUser(),
+      dateISO: TODAY_ISO,
+    });
+
+    const target = new Date(`${TODAY_ISO}T00:00:00.000Z`);
+    const findManyCall = vi.mocked(db.equipement.findMany).mock.calls[0]?.[0];
+    expect(findManyCall?.where).toMatchObject({
+      actif: true,
+      dateMiseEnService: { lte: target },
+      boutique: { dateOuverture: { lte: target } },
+    });
   });
 
   it('should cap the result at DASHBOARD_MISSING_RELEVE_LIMIT entries', async () => {
@@ -592,5 +633,23 @@ describe('[dashboard.service] loadEquipementsTodayBoard', () => {
 
     const findManyCall = vi.mocked(db.releve.findMany).mock.calls[0]?.[0];
     expect(findManyCall?.where).toMatchObject({ annuleParId: null });
+  });
+
+  it('should exclude equipements not yet in service on the target day', async () => {
+    vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+
+    await loadEquipementsTodayBoard({
+      viewer: responsableUser(),
+      dateISO: TODAY_ISO,
+    });
+
+    const target = new Date(`${TODAY_ISO}T00:00:00.000Z`);
+    const findManyCall = vi.mocked(db.equipement.findMany).mock.calls[0]?.[0];
+    expect(findManyCall?.where).toMatchObject({
+      dateMiseEnService: { lte: target },
+      boutique: { dateOuverture: { lte: target } },
+    });
   });
 });

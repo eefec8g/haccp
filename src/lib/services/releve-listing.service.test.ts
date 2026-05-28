@@ -43,14 +43,29 @@ interface MakeEquipementArgs {
   readonly boutiqueId: string;
   readonly nom?: string;
   readonly boutiqueNom?: string;
+  readonly dateMiseEnServiceISO?: string;
+  readonly dateOuvertureISO?: string;
 }
 
+/**
+ * Par defaut les dates de debut sont anciennes (2020) pour que tous les
+ * jours de test soient ATTENDUS. Les cas dedies "pas encore en service"
+ * passent une date posterieure via les overrides.
+ */
 function makeEquipement(args: MakeEquipementArgs) {
   return {
     id: args.id,
     nom: args.nom ?? `EQ-${args.id}`,
     boutiqueId: args.boutiqueId,
-    boutique: { nom: args.boutiqueNom ?? `Boutique ${args.boutiqueId}` },
+    dateMiseEnService: new Date(
+      `${args.dateMiseEnServiceISO ?? '2020-01-01'}T00:00:00.000Z`
+    ),
+    boutique: {
+      nom: args.boutiqueNom ?? `Boutique ${args.boutiqueId}`,
+      dateOuverture: new Date(
+        `${args.dateOuvertureISO ?? '2020-01-01'}T00:00:00.000Z`
+      ),
+    },
   };
 }
 
@@ -346,6 +361,107 @@ describe('[releve-listing.service] aggregation', () => {
     expect(result.data.stats.totalManquants).toBe(2);
     const annule = result.data.items.find((i) => i.statut === 'ANNULE');
     expect(annule?.motifAnnulation).toBe('Erreur de saisie');
+  });
+
+  it('should NOT emit MANQUANT for days before the equipement date de debut effective', async () => {
+    // Mise en service le 2026-05-11 : le 2026-05-10 n'est PAS attendu.
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      makeEquipement({
+        id: 'eq-1',
+        boutiqueId: 'b-1',
+        dateMiseEnServiceISO: '2026-05-11',
+      }),
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+    const result = await listRelevesForListing({
+      viewer: RESPONSABLE,
+      query: { ...BASE_QUERY, dateStart: '2026-05-10', dateEnd: '2026-05-12' },
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    // 2 jours attendus (11, 12) x 1 eq x 3 creneaux = 6 (le 10 exclu).
+    expect(result.data.stats.totalManquants).toBe(6);
+    expect(result.data.items.every((i) => i.dateISO !== '2026-05-10')).toBe(
+      true
+    );
+  });
+
+  it('should bound the date de debut effective to the LATEST of boutique/equipement', async () => {
+    // Boutique ouverte le 2026-05-12 (plus tardive) -> seul le 12 attendu.
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      makeEquipement({
+        id: 'eq-1',
+        boutiqueId: 'b-1',
+        dateMiseEnServiceISO: '2026-05-10',
+        dateOuvertureISO: '2026-05-12',
+      }),
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+    const result = await listRelevesForListing({
+      viewer: RESPONSABLE,
+      query: { ...BASE_QUERY, dateStart: '2026-05-10', dateEnd: '2026-05-12' },
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    // 1 jour attendu (12) x 1 eq x 3 creneaux = 3.
+    expect(result.data.stats.totalManquants).toBe(3);
+    expect(result.data.items.every((i) => i.dateISO === '2026-05-12')).toBe(
+      true
+    );
+  });
+
+  it('should still project an ANNULE releve recorded before the date de debut effective', async () => {
+    // Un annule existant le 2026-05-10 (avant mise en service) reste une
+    // donnee reelle a tracer, meme si le jour n'est pas "attendu".
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      makeEquipement({
+        id: 'eq-1',
+        boutiqueId: 'b-1',
+        dateMiseEnServiceISO: '2026-05-11',
+      }),
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([
+      makeReleve({
+        id: 'r-old',
+        dateISO: '2026-05-10',
+        creneau: 'MATIN',
+        equipementId: 'eq-1',
+        boutiqueId: 'b-1',
+        annuleParId: 'r-cancel',
+        annuleMotif: 'Test materiel avant ouverture',
+      }),
+    ] as never);
+    const result = await listRelevesForListing({
+      viewer: RESPONSABLE,
+      query: { ...BASE_QUERY, dateStart: '2026-05-10', dateEnd: '2026-05-10' },
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    // Aucun MANQUANT (jour non attendu) mais l'annule est projete.
+    expect(result.data.stats.totalManquants).toBe(0);
+    expect(result.data.stats.totalAnnules).toBe(1);
+  });
+
+  it('should load equipement date de debut fields in the equipement select', async () => {
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      makeEquipement({ id: 'eq-1', boutiqueId: 'b-1' }),
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+    await listRelevesForListing({
+      viewer: RESPONSABLE,
+      query: { ...BASE_QUERY, dateStart: '2026-05-10', dateEnd: '2026-05-10' },
+    });
+    const call = vi.mocked(db.equipement.findMany).mock.calls[0]?.[0];
+    expect(call?.select).toMatchObject({
+      dateMiseEnService: true,
+      boutique: { select: { nom: true, dateOuverture: true } },
+    });
   });
 
   it('should mix multiple boutiques and equipements deterministically', async () => {

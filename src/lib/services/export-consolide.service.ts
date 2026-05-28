@@ -8,6 +8,7 @@ import {
   parseISODateUtc,
   todayParisISO,
 } from '@/lib/utils/dates';
+import { countJoursAttendus, dateDebutEffective } from '@/lib/utils/date-debut';
 import {
   CRENEAUX_PAR_JOUR,
   MAX_PERIODE_DAYS,
@@ -219,8 +220,9 @@ function buildSections(args: BuildFromLoadedArgs): BuiltSections {
   const alertes = aggregateAlertes(args.loaded.alertes);
   const signatures = aggregateSignatures(args.loaded.signatures);
   const stats = computeStats({
-    jours: args.periodeDays.length,
-    equipementsCount: args.loaded.equipements.length,
+    dateStartISO: args.query.dateStart,
+    dateEndISO: args.query.dateEnd,
+    equipements: args.loaded.equipements,
     relevesCount: args.loaded.releves.length,
     alertes,
     signatures,
@@ -302,14 +304,36 @@ function loadBoutiquesData(scope: LoadScope): Promise<readonly BoutiqueRow[]> {
   });
 }
 
-function loadEquipementsData(
+async function loadEquipementsData(
   scope: LoadScope
 ): Promise<readonly EquipementRow[]> {
-  return db.equipement.findMany({
+  const rows = await db.equipement.findMany({
     where: { boutiqueId: { in: scope.boutiqueIds }, actif: true },
     orderBy: [{ boutique: { nom: 'asc' } }, { nom: 'asc' }],
     select: EQUIPEMENT_SELECT,
   });
+  return rows.map(toEquipementRow);
+}
+
+/**
+ * Projette une ligne DB en `EquipementRow` en pre-calculant la date de
+ * debut effective (`MAX(boutique.dateOuverture, equipement.
+ * dateMiseEnService)`, cf. `date-debut.ts`), conservee en ISO
+ * `YYYY-MM-DD` pour borner les cellules et les stats sans re-parser.
+ */
+function toEquipementRow(row: EquipementDbRow): EquipementRow {
+  return {
+    id: row.id,
+    nom: row.nom,
+    boutiqueId: row.boutiqueId,
+    boutique: { nom: row.boutique.nom },
+    dateDebutEffectiveISO: isoFromDate(
+      dateDebutEffective({
+        dateOuverture: row.boutique.dateOuverture,
+        dateMiseEnService: row.dateMiseEnService,
+      })
+    ),
+  };
 }
 
 function loadRelevesData(scope: LoadScope): Promise<readonly ReleveRow[]> {
@@ -384,7 +408,8 @@ const EQUIPEMENT_SELECT = {
   id: true,
   nom: true,
   boutiqueId: true,
-  boutique: { select: { nom: true } },
+  dateMiseEnService: true,
+  boutique: { select: { nom: true, dateOuverture: true } },
 } as const;
 
 const RELEVE_SELECT = {
@@ -431,11 +456,24 @@ interface BoutiqueRow {
   readonly ville: string | null;
 }
 
+interface EquipementDbRow {
+  readonly id: string;
+  readonly nom: string;
+  readonly boutiqueId: string;
+  readonly dateMiseEnService: Date;
+  readonly boutique: { readonly nom: string; readonly dateOuverture: Date };
+}
+
 interface EquipementRow {
   readonly id: string;
   readonly nom: string;
   readonly boutiqueId: string;
   readonly boutique: { readonly nom: string };
+  /**
+   * Jour ISO `YYYY-MM-DD` de debut effectif des releves attendus. Borne
+   * basse des cellules MANQUANT et du total attendu.
+   */
+  readonly dateDebutEffectiveISO: string;
 }
 
 interface ReleveRow {
@@ -634,8 +672,9 @@ function toConsolideSignature(row: SignatureRow): ConsolideSignature {
 }
 
 interface ComputeStatsArgs {
-  readonly jours: number;
-  readonly equipementsCount: number;
+  readonly dateStartISO: string;
+  readonly dateEndISO: string;
+  readonly equipements: readonly EquipementRow[];
   readonly relevesCount: number;
   readonly alertes: readonly ConsolideAlerte[];
   readonly signatures: readonly ConsolideSignature[];
@@ -657,9 +696,25 @@ interface RelevesStats {
   readonly tauxConformite: number;
 }
 
+/**
+ * Total des releves attendus, borne par equipement : pour chacun on ne
+ * compte que les jours >= a sa date de debut effective (cf.
+ * `date-debut.ts`), multiplie par le nombre de creneaux. Un equipement
+ * mis en service apres la fin de periode contribue 0 (jamais attendu).
+ */
+function computeTotalRelevesAttendus(args: ComputeStatsArgs): number {
+  let total = 0;
+  for (const equipement of args.equipements) {
+    const debut = parseISODateUtc(equipement.dateDebutEffectiveISO);
+    total +=
+      countJoursAttendus(args.dateStartISO, args.dateEndISO, debut) *
+      CRENEAUX_PAR_JOUR;
+  }
+  return total;
+}
+
 function computeRelevesStats(args: ComputeStatsArgs): RelevesStats {
-  const totalRelevesAttendus =
-    args.jours * args.equipementsCount * CRENEAUX_PAR_JOUR;
+  const totalRelevesAttendus = computeTotalRelevesAttendus(args);
   const totalRelevesSaisis = args.relevesCount;
   const relevesManquants = Math.max(
     totalRelevesAttendus - totalRelevesSaisis,

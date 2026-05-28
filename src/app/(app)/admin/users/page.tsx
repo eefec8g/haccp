@@ -163,11 +163,17 @@ const USER_COLUMNS: readonly AdminDataTableColumn<UserListItem>[] = [
         >
           Detail
         </Link>
-        <UserToggleActiveButton
-          userId={row.id}
-          userLabel={row.email}
-          actif={row.actif}
-        />
+        {/* Pas de desactivation d'un compte ADMIN depuis la liste :
+            evite de verrouiller l'acces administrateur. Le backend
+            protege deja le dernier admin (LAST_ADMIN), on masque ici
+            le bouton pour TOUT admin (defense en profondeur + UX). */}
+        {row.role !== 'ADMIN' ? (
+          <UserToggleActiveButton
+            userId={row.id}
+            userLabel={row.email}
+            actif={row.actif}
+          />
+        ) : null}
       </div>
     ),
   },

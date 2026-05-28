@@ -55,7 +55,7 @@ export const metadata: Metadata = {
 const SECTION_CLASSES = 'px-6 py-10 sm:px-10';
 const STACK_CLASSES = 'mx-auto flex max-w-5xl flex-col gap-10';
 const HEADER_EYEBROW_PREFIX = 'MAISON GIVRE - HACCP';
-const BACK_LABEL = 'Retour au registre';
+const BACK_LABEL = 'Tableau de bord';
 const TABLE_TITLE = 'Releves de la journee';
 const ALERTES_TITLE = 'Alertes du jour';
 const NO_RELEVES = 'Aucun releve enregistre pour cette journee.';
@@ -82,7 +82,7 @@ const EXPORT_LINK_CLASSES =
   'inline-flex items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 const ALERTE_LINE_CLASSES = 'text-sm font-light text-mg-noir';
 
-const RELEVES_PATH = '/releves' as Route;
+const DASHBOARD_PATH = '/dashboard' as Route;
 
 interface RegistreDetailPageProps {
   readonly params: Promise<{
@@ -209,7 +209,7 @@ function RegistreContent({
         eyebrow={HEADER_EYEBROW_PREFIX}
         title={`Registre du ${formatDateShort(dateISO)}`}
         subtitle={data.boutique.nom}
-        backHref={RELEVES_PATH}
+        backHref={DASHBOARD_PATH}
         backLabel={BACK_LABEL}
         testId="registre-detail-header"
       >

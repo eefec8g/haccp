@@ -133,7 +133,9 @@ describe('[tourneeSaisieAction]', () => {
       },
     });
     expect(revalidatePath).toHaveBeenCalledWith('/dashboard');
-    expect(revalidatePath).toHaveBeenCalledWith('/releves');
+    // refactor/remove-releves-page : la page /releves redondante est
+    // supprimee, seul le dashboard porte l'etat des creneaux a rafraichir.
+    expect(revalidatePath).not.toHaveBeenCalledWith('/releves');
     expect(dispatchAlerteEmail).not.toHaveBeenCalled();
   });
 

@@ -26,8 +26,8 @@ import { APP_NAV_ITEMS } from '@/lib/constants/app-nav';
  * Tests `AppMobileNavDrawer` (Epic RESPONSIVE).
  *
  * Cas couverts :
- *   - Filtrage par role : SALARIE voit "Mes releves" + "Alertes", pas
- *     "Tableau de bord" ni "Espace admin".
+ *   - Filtrage par role : SALARIE voit "Tableau de bord" + "Alertes", pas
+ *     "Listing des releves" ni "Espace admin".
  *   - Filtrage par role : RESPONSABLE voit dashboard / exports / registre
  *     consolide mais pas l'espace admin.
  *   - Filtrage par role : ADMIN voit tous les items.
@@ -51,11 +51,12 @@ describe('[AppMobileNavDrawer]', () => {
     );
 
     // feat/dashboard-as-home : /dashboard est accueil pour TOUS les roles
-    // (SALARIE inclus). La nav SALARIE expose donc dashboard + releves +
+    // (SALARIE inclus). refactor/remove-releves-page : la page /releves
+    // redondante est supprimee. La nav SALARIE expose donc dashboard +
     // alertes uniquement.
     expect(html).toContain('data-testid="app-nav-link-dashboard"');
-    expect(html).toContain('data-testid="app-nav-link-releves"');
     expect(html).toContain('data-testid="app-nav-link-alertes"');
+    expect(html).not.toContain('data-testid="app-nav-link-releves"');
     expect(html).not.toContain('data-testid="app-nav-link-registre-consolide"');
     expect(html).not.toContain('data-testid="app-nav-link-admin"');
     expect(html).not.toContain('data-testid="app-nav-link-releves-listing"');
@@ -70,11 +71,11 @@ describe('[AppMobileNavDrawer]', () => {
       />
     );
 
-    expect(html).toContain('data-testid="app-nav-link-releves"');
+    expect(html).toContain('data-testid="app-nav-link-dashboard"');
     expect(html).toContain('data-testid="app-nav-link-releves-listing"');
     expect(html).toContain('data-testid="app-nav-link-alertes"');
-    expect(html).toContain('data-testid="app-nav-link-dashboard"');
     expect(html).toContain('data-testid="app-nav-link-registre-consolide"');
+    expect(html).not.toContain('data-testid="app-nav-link-releves"');
     expect(html).not.toContain('data-testid="app-nav-link-admin"');
   });
 
@@ -144,7 +145,7 @@ describe('[AppMobileNavDrawer]', () => {
     act(() => {
       container
         .querySelector<HTMLAnchorElement>(
-          '[data-testid="app-nav-link-releves"]'
+          '[data-testid="app-nav-link-dashboard"]'
         )
         ?.click();
     });

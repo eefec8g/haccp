@@ -12,7 +12,7 @@ import { ReleveHistoryList } from '../ReleveHistoryList';
  *   - pagination absente si totalPages === 1
  *
  * Server Component pur : on rend en static markup et on assert sur le
- * HTML genere (data-testid + classes). Pattern aligne sur TourneeGrid.
+ * HTML genere (data-testid + classes).
  */
 
 function buildItem(overrides: Partial<ReleveListItem> = {}): ReleveListItem {

@@ -303,7 +303,7 @@ describe('[annulerReleveAction]', () => {
         ip: '1.2.3.4',
       })
     );
-    expect(revalidatePath).toHaveBeenCalledWith('/releves');
+    expect(revalidatePath).toHaveBeenCalledWith('/dashboard');
     expect(revalidatePath).toHaveBeenCalledWith('/releves/historique');
     expect(redirect).toHaveBeenCalledWith('/releves/historique');
     expect(dispatchAlerteEmail).not.toHaveBeenCalled();

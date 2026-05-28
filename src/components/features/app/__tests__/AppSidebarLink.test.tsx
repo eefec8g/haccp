@@ -48,7 +48,7 @@ describe('[AppSidebarLink]', () => {
     const html = renderToStaticMarkup(
       <AppSidebarLink
         href={'/releves' as Route}
-        label="Mes releves"
+        label="Releves"
         testId="app-sidebar-link-releves"
       />
     );
@@ -77,7 +77,7 @@ describe('[AppSidebarLink]', () => {
     const html = renderToStaticMarkup(
       <AppSidebarLink
         href={'/releves' as Route}
-        label="Mes releves"
+        label="Releves"
         testId="app-sidebar-link-releves"
       />
     );
@@ -104,7 +104,7 @@ describe('[AppSidebarLink]', () => {
     const html = renderToStaticMarkup(
       <AppSidebarLink
         href={'/releves' as Route}
-        label="Mes releves"
+        label="Releves"
         testId="app-sidebar-link-releves"
       />
     );

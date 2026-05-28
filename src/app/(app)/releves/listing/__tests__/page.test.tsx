@@ -80,13 +80,13 @@ describe('[ReleveListingPage]', () => {
     expect(redirect).toHaveBeenCalledWith('/login');
   });
 
-  it('should redirect to /releves when user is SALARIE (anti-enum)', async () => {
+  it('should redirect to /dashboard when user is SALARIE (anti-enum)', async () => {
     vi.mocked(auth).mockResolvedValue(SALARIE_SESSION as any);
     vi.mocked(permissions.canExport).mockReturnValue(false);
 
     await expect(
       ReleveListingPage({ searchParams: Promise.resolve({}) })
-    ).rejects.toThrow('__REDIRECT__:/releves');
+    ).rejects.toThrow('__REDIRECT__:/dashboard');
   });
 
   it('should render the page for RESPONSABLE with form + stats + table', async () => {
@@ -207,7 +207,7 @@ describe('[ReleveListingPage]', () => {
     );
   });
 
-  it('should redirect to /releves when service returns FORBIDDEN (defense)', async () => {
+  it('should redirect to /dashboard when service returns FORBIDDEN (defense)', async () => {
     vi.mocked(auth).mockResolvedValue(RESPONSABLE_SESSION as any);
     vi.mocked(permissions.canExport).mockReturnValue(true);
     vi.mocked(permissions.getAccessibleBoutiqueIds).mockResolvedValue(['b1']);
@@ -220,7 +220,7 @@ describe('[ReleveListingPage]', () => {
 
     await expect(
       ReleveListingPage({ searchParams: Promise.resolve({}) })
-    ).rejects.toThrow('__REDIRECT__:/releves');
+    ).rejects.toThrow('__REDIRECT__:/dashboard');
   });
 
   it('should display the service error message when service returns non-forbidden error', async () => {

@@ -27,7 +27,7 @@ const alertesQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-const BACK_HREF: Route = '/releves';
+const BACK_HREF: Route = '/dashboard';
 const SECTION_CLASSES = 'px-6 py-10 sm:px-10';
 const PAGE_TITLE = 'Alertes ouvertes';
 const PAGE_SUBTITLE = 'Releves hors seuils en attente de resolution.';
@@ -67,7 +67,7 @@ export default async function AlertesPage({ searchParams }: AlertesPageProps) {
         title={PAGE_TITLE}
         subtitle={PAGE_SUBTITLE}
         backHref={BACK_HREF}
-        backLabel="Retour a la tournee"
+        backLabel="Tableau de bord"
         testId="alertes-header"
       />
       <section className={SECTION_CLASSES}>

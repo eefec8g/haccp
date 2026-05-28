@@ -50,11 +50,11 @@ describe('[RegistreJournalierPage]', () => {
     expect(redirect).toHaveBeenCalledWith('/login');
   });
 
-  it('should redirect to /releves when user is SALARIE', async () => {
+  it('should redirect to /dashboard when user is SALARIE', async () => {
     vi.mocked(auth).mockResolvedValue(SALARIE_SESSION as any);
     await expect(
       RegistreJournalierPage({ searchParams: Promise.resolve({}) })
-    ).rejects.toThrow('__REDIRECT__:/releves');
+    ).rejects.toThrow('__REDIRECT__:/dashboard');
   });
 
   it('should render the registre form with take bound on boutiques', async () => {

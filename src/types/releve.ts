@@ -6,7 +6,12 @@ import type { Creneau, TypeEquipement } from '@prisma/client';
  * de signature dans les listings (donnees sensibles).
  */
 
-/** Etat d'un creneau d'equipement pour la tournee du jour. */
+/**
+ * Etat d'un creneau d'equipement pour le jour (badge de statut).
+ *
+ * Consomme par `CreneauBadge` (dashboard, historique, alertes) pour
+ * rendre l'etat d'un creneau de maniere coherente partout.
+ */
 export type CreneauStatus =
   /** Releve actif existant sans alerte. */
   | 'DONE'
@@ -14,32 +19,6 @@ export type CreneauStatus =
   | 'ALERTE'
   /** Aucun releve actif sur ce creneau. */
   | 'MISSING';
-
-/**
- * Etat d'un creneau pour un equipement donne (US-REL-001).
- * `releveId`/`temperature`/`alerte` ne sont renseignes que si
- * `status !== 'MISSING'`.
- */
-export interface TourneeCreneauInfo {
-  readonly creneau: Creneau;
-  readonly status: CreneauStatus;
-  readonly releveId: string | null;
-  readonly temperature: number | null;
-  readonly alerte: boolean;
-}
-
-/** Une carte equipement avec ses 3 creneaux du jour (US-REL-001). */
-export interface TourneeEquipementCard {
-  readonly equipementId: string;
-  readonly equipementNom: string;
-  readonly type: TypeEquipement;
-  readonly seuilMin: number;
-  readonly seuilMax: number;
-  readonly boutiqueId: string;
-  readonly boutiqueNom: string;
-  /** Toujours dans l'ordre MATIN, MIDI, SOIR (cf. CRENEAU_ORDER). */
-  readonly creneaux: readonly TourneeCreneauInfo[];
-}
 
 /**
  * Ligne d'historique/listing releve (US-REL-003, US-REL-004 admin).

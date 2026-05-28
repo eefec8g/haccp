@@ -28,14 +28,19 @@ import type {
  *   7. Sur alerteHorsSeuils : dispatch email via `after()` (fire-and-forget,
  *      decision #2 du Epic state). Aucune latence ajoutee a la reponse.
  *      Mutualise avec `releve-correction.ts` via `dispatchAlerteEmail`.
- *   8. revalidatePath('/releves') + redirect (POST-redirect-GET)
+ *   8. revalidatePath('/dashboard') + redirect (POST-redirect-GET)
  *
  * L'envoi email est volontairement isole de `createReleve` (le service
  * n'orchestre que la DB transactionnelle). Si l'email echoue, l'alerte
  * reste creee en base : le responsable peut la consulter via l'UI.
+ *
+ * Note routing : la vue tournee a ete fusionnee dans `/dashboard`
+ * (suppression de la page `/releves` redondante). Apres saisie on
+ * revalide et redirige donc vers le dashboard, qui affiche l'etat a jour
+ * des creneaux du jour.
  */
 
-const RELEVES_PATH = '/releves';
+const DASHBOARD_PATH = '/dashboard';
 
 function mapServiceError(error: ReleveError): ReleveCreateActionErrorCode {
   switch (error) {
@@ -121,6 +126,6 @@ export async function createReleveAction(
     dispatchAlerteEmail(result.data.alerteId);
   }
 
-  revalidatePath(RELEVES_PATH);
-  redirect(RELEVES_PATH);
+  revalidatePath(DASHBOARD_PATH);
+  redirect(DASHBOARD_PATH);
 }

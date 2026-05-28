@@ -20,9 +20,9 @@ import { APP_NAV_ITEMS } from '@/lib/constants/app-nav';
  * Tests `AppSidebar` (fix/app-sidebar + fix/csv-in-consolide).
  *
  * Couvre :
- *   - Filtrage par role : SALARIE voit 2 items (releves + alertes).
- *   - Filtrage par role : RESPONSABLE voit 5 items metier sans l'admin
- *     (releves, releves-listing, alertes, dashboard, exports unifies).
+ *   - Filtrage par role : SALARIE voit 2 items (dashboard + alertes).
+ *   - Filtrage par role : RESPONSABLE voit 4 items metier sans l'admin
+ *     (dashboard, releves-listing, alertes, exports unifies).
  *   - Filtrage par role : ADMIN voit tous les items.
  *   - data-testid `app-sidebar` + un testid par lien.
  *   - LogoutButton present en pied.
@@ -34,14 +34,16 @@ import { APP_NAV_ITEMS } from '@/lib/constants/app-nav';
  * importe transitivement par la sidebar.
  */
 describe('[AppSidebar]', () => {
-  it('should render the SALARIE links (dashboard + releves + alertes)', () => {
+  it('should render the SALARIE links (dashboard + alertes)', () => {
     // feat/dashboard-as-home : /dashboard est accueil pour TOUS les roles.
-    // La sidebar SALARIE expose donc dashboard + releves + alertes.
+    // refactor/remove-releves-page : la page /releves redondante (cartes
+    // tournee) est supprimee, le dashboard la remplace. La sidebar SALARIE
+    // expose donc uniquement dashboard + alertes.
     const html = renderToStaticMarkup(<AppSidebar viewerRole="SALARIE" />);
 
     expect(html).toContain('data-testid="app-sidebar-link-dashboard"');
-    expect(html).toContain('data-testid="app-sidebar-link-releves"');
     expect(html).toContain('data-testid="app-sidebar-link-alertes"');
+    expect(html).not.toContain('data-testid="app-sidebar-link-releves"');
     expect(html).not.toContain(
       'data-testid="app-sidebar-link-releves-listing"'
     );
@@ -51,14 +53,14 @@ describe('[AppSidebar]', () => {
     expect(html).not.toContain('data-testid="app-sidebar-link-admin"');
   });
 
-  it('should render 5 business links for RESPONSABLE without the admin link', () => {
+  it('should render 4 business links for RESPONSABLE without the admin link', () => {
     const html = renderToStaticMarkup(<AppSidebar viewerRole="RESPONSABLE" />);
 
-    expect(html).toContain('data-testid="app-sidebar-link-releves"');
+    expect(html).toContain('data-testid="app-sidebar-link-dashboard"');
     expect(html).toContain('data-testid="app-sidebar-link-releves-listing"');
     expect(html).toContain('data-testid="app-sidebar-link-alertes"');
-    expect(html).toContain('data-testid="app-sidebar-link-dashboard"');
     expect(html).toContain('data-testid="app-sidebar-link-registre-consolide"');
+    expect(html).not.toContain('data-testid="app-sidebar-link-releves"');
     expect(html).not.toContain('data-testid="app-sidebar-link-admin"');
   });
 

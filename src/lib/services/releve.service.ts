@@ -14,11 +14,8 @@ import type {
   ReleveCreatedResult,
   ReleveListItem,
   SaisieContext,
-  TourneeCreneauInfo,
-  TourneeEquipementCard,
 } from '@/types/releve';
 import {
-  CRENEAU_ORDER,
   COMMENTAIRE_MIN_CHARS,
   DAYS_RECENT_HISTORY,
   MOTIF_CORRECTION_TOURNEE,
@@ -28,7 +25,6 @@ import { buildPaginated } from '@/lib/utils/pagination';
 import {
   getRecentDaysRange,
   isoFromDate,
-  isWithinRecentDays,
   parseISODateUtc,
   todayParisISO,
 } from '@/lib/utils/dates';
@@ -71,121 +67,6 @@ type TxClient = Prisma.TransactionClient;
 
 interface CreateReleveServiceInput extends ReleveCreateInput {
   readonly ip: string | null;
-}
-
-// ===== Helpers prives =====
-
-function buildTourneeCreneaux(
-  releves: readonly {
-    readonly id: string;
-    readonly creneau: Creneau;
-    readonly temperature: number;
-    readonly alerteHorsSeuils: boolean;
-  }[]
-): readonly TourneeCreneauInfo[] {
-  const byCreneau = new Map<Creneau, (typeof releves)[number]>();
-  for (const releve of releves) {
-    byCreneau.set(releve.creneau, releve);
-  }
-  return CRENEAU_ORDER.map((creneau) => {
-    const releve = byCreneau.get(creneau);
-    if (!releve) {
-      return {
-        creneau,
-        status: 'MISSING' as const,
-        releveId: null,
-        temperature: null,
-        alerte: false,
-      };
-    }
-    return {
-      creneau,
-      status: releve.alerteHorsSeuils ? ('ALERTE' as const) : ('DONE' as const),
-      releveId: releve.id,
-      temperature: releve.temperature,
-      alerte: releve.alerteHorsSeuils,
-    };
-  });
-}
-
-// ===== US-REL-001 : Tournee du jour =====
-
-interface ListTourneeArgs {
-  readonly viewer: ViewerContext;
-  readonly dateISO?: string;
-  readonly boutiqueId?: string;
-}
-
-/**
- * Recupere la liste des cartes equipement avec status des 3 creneaux
- * du jour, pour la tournee du salarie (US-REL-001).
- *
- * Filtre par boutique selon le role :
- *   - SALARIE : sa boutique unique (boutiqueSalarieId)
- *   - RESPONSABLE : ses boutiques (jointure BoutiqueUser)
- *   - ADMIN : toutes les boutiques actives
- */
-export async function listTournee({
-  viewer,
-  dateISO,
-  boutiqueId,
-}: ListTourneeArgs): Promise<readonly TourneeEquipementCard[]> {
-  // RG-LECT-001 : un SALARIE ne peut consulter qu'une tournee dans la
-  // fenetre `DAYS_RECENT_HISTORY` (7j). RESPONSABLE/ADMIN gardent l'acces
-  // complet (use-case audit historique). Fallback vide = symetrique avec
-  // "scope vide" (le caller affiche un etat "aucune tournee").
-  if (
-    viewer.role === 'SALARIE' &&
-    dateISO &&
-    !isWithinRecentDays(dateISO, DAYS_RECENT_HISTORY)
-  ) {
-    return [];
-  }
-
-  const accessible = await getAccessibleBoutiqueIds(viewer);
-  if (accessible.length === 0) {
-    return [];
-  }
-  const scopedBoutiqueIds =
-    boutiqueId && accessible.includes(boutiqueId)
-      ? [boutiqueId]
-      : [...accessible];
-  if (scopedBoutiqueIds.length === 0) {
-    return [];
-  }
-
-  const date = parseISODateUtc(dateISO ?? todayParisISO());
-
-  const equipements = await db.equipement.findMany({
-    where: {
-      actif: true,
-      boutiqueId: { in: scopedBoutiqueIds },
-    },
-    orderBy: [{ boutique: { nom: 'asc' } }, { nom: 'asc' }],
-    include: {
-      boutique: { select: { id: true, nom: true } },
-      releves: {
-        where: { date, annuleParId: null },
-        select: {
-          id: true,
-          creneau: true,
-          temperature: true,
-          alerteHorsSeuils: true,
-        },
-      },
-    },
-  });
-
-  return equipements.map((equipement) => ({
-    equipementId: equipement.id,
-    equipementNom: equipement.nom,
-    type: equipement.type,
-    seuilMin: equipement.seuilMin,
-    seuilMax: equipement.seuilMax,
-    boutiqueId: equipement.boutique.id,
-    boutiqueNom: equipement.boutique.nom,
-    creneaux: buildTourneeCreneaux(equipement.releves),
-  }));
 }
 
 // ===== US-REL-002 : Saisie context =====

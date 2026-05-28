@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { UserRole } from '@prisma/client';
-import { AppDesktopNav } from './AppDesktopNav';
+import { AppShellClientGate } from './AppShellClientGate';
 import { AppMobileNavButton } from './AppMobileNavButton';
 
 interface AppShellProps {
@@ -9,15 +9,15 @@ interface AppShellProps {
 }
 
 /**
- * Shell transversal pour le route group `(app)` (Server Component, Epic
- * RESPONSIVE).
+ * Shell transversal pour le route group `(app)` (Server Component,
+ * fix/app-sidebar).
  *
  * Render strategy :
- *   - `<AppDesktopNav>` : top navigation desktop-only (`hidden md:block`)
- *     qui expose les routes transversales (Listing, Alertes, Dashboard,
- *     Exports, Registre consolide, Admin) filtrees par role. Resout le
- *     manque de nav desktop signale sur `fix/desktop-nav` (les chromes
- *     de page n'avaient pas de lien vers les autres sections).
+ *   - `<AppShellClientGate>` : Client Component fin qui rend la sidebar
+ *     desktop `AppSidebar` + wrapper de padding `lg:pl-64` UNIQUEMENT
+ *     hors `/admin/*`. Sur `/admin/*` le gate s'efface pour laisser
+ *     `AdminLayout` appliquer son propre layout (AdminSidebar + son
+ *     propre `lg:pl-64`) sans doubler la sidebar ni le padding.
  *   - `{children}` : on conserve le chrome existant de chaque page
  *     (`TourneeHeader`, `AppPageHeader`, `AdminLayout`). Le shell ne
  *     touche pas a leur layout pour eviter le doublon visuel.
@@ -29,19 +29,17 @@ interface AppShellProps {
  *
  * Pourquoi Server Component ?
  *   - Pas de hooks ici. Le role est lu server-side (no leak de session
- *     client) et passe en prop aux boundaries client (`AppDesktopNavLink`
- *     pour le highlight actif, `AppMobileNavButton` pour le FAB).
- *   - Bundle JS reduit : seuls les liens desktop + le FAB hydratent.
- *
- * Pas de wrapper visuel autour de children : volontaire, pour ne pas
- * casser les pages qui prennent la pleine largeur (registre PDF preview,
- * boutiques admin, etc.).
+ *     client) et passe en prop aux boundaries client (`AppShellClientGate`
+ *     pour la visibilite et le highlight actif, `AppMobileNavButton`
+ *     pour le FAB).
+ *   - Bundle JS reduit : seul le gate + les liens individuels hydratent.
  */
 export function AppShell({ viewerRole, children }: AppShellProps) {
   return (
     <>
-      <AppDesktopNav viewerRole={viewerRole} />
-      {children}
+      <AppShellClientGate viewerRole={viewerRole}>
+        {children}
+      </AppShellClientGate>
       <AppMobileNavButton viewerRole={viewerRole} />
     </>
   );

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 vi.mock('../AppMobileNavButton', () => ({
@@ -9,38 +10,46 @@ vi.mock('../AppMobileNavButton', () => ({
   ),
 }));
 
-vi.mock('../AppDesktopNav', () => ({
-  AppDesktopNav: ({ viewerRole }: { readonly viewerRole: string }) => (
-    <nav data-testid="app-desktop-nav" data-role={viewerRole}>
-      desktop-nav
-    </nav>
+vi.mock('../AppShellClientGate', () => ({
+  AppShellClientGate: ({
+    viewerRole,
+    children,
+  }: {
+    readonly viewerRole: string;
+    readonly children: ReactNode;
+  }) => (
+    <div data-testid="app-shell-gate" data-role={viewerRole}>
+      {children}
+    </div>
   ),
 }));
 
 import { AppShell } from '../AppShell';
 
 /**
- * Tests `AppShell` (Epic RESPONSIVE).
+ * Tests `AppShell` (fix/app-sidebar).
  *
  * Vrai contrat du composant :
- *   - Render des enfants sans wrapper visuel (pour ne pas casser les
- *     pages a pleine largeur).
- *   - Render de la top nav desktop (`AppDesktopNav`) avec le role propage.
- *   - Render du FAB de navigation mobile (`AppMobileNavButton`) avec le
+ *   - Mount du `AppShellClientGate` (qui rend la sidebar desktop +
+ *     wrapper `lg:pl-64` hors `/admin/*`) avec le role propage.
+ *   - Render des enfants A L'INTERIEUR du gate (la sidebar doit
+ *     accompagner les enfants pour partager le meme decalage).
+ *   - Mount du FAB de navigation mobile (`AppMobileNavButton`) avec le
  *     role propage.
  *
- * On mock les deux navs pour eviter d'embarquer leur chaine client
+ * On mock les deux boundaries pour eviter d'embarquer leur chaine client
  * (`useId`, `useState`, `usePathname`) qui n'apporte rien ici : on teste
  * le contrat structurel du shell.
  */
 describe('[AppShell]', () => {
-  it('should render the children inline (no wrapper that breaks pages)', () => {
+  it('should render the children inside the client gate', () => {
     const html = renderToStaticMarkup(
       <AppShell viewerRole="SALARIE">
         <main data-testid="page-main">contenu page</main>
       </AppShell>
     );
 
+    expect(html).toContain('data-testid="app-shell-gate"');
     expect(html).toContain('data-testid="page-main"');
     expect(html).toContain('contenu page');
   });
@@ -56,39 +65,43 @@ describe('[AppShell]', () => {
     expect(html).toContain('data-role="RESPONSABLE"');
   });
 
-  it('should mount the desktop nav with the viewer role', () => {
+  it('should pass the viewer role to the client gate', () => {
     const html = renderToStaticMarkup(
       <AppShell viewerRole="RESPONSABLE">
         <div data-testid="child" />
       </AppShell>
     );
 
-    expect(html).toContain('data-testid="app-desktop-nav"');
     expect(html).toMatch(
-      /<nav[^>]*data-testid="app-desktop-nav"[^>]*data-role="RESPONSABLE"/
+      /<div[^>]*data-testid="app-shell-gate"[^>]*data-role="RESPONSABLE"/
     );
   });
 
-  it('should render the desktop nav BEFORE children (sticky at the top of the app)', () => {
+  it('should render the gate BEFORE the mobile FAB (FAB stays at the end as overlay)', () => {
     const html = renderToStaticMarkup(
       <AppShell viewerRole="ADMIN">
         <main data-testid="page-main">contenu page</main>
       </AppShell>
     );
 
-    const navIndex = html.indexOf('data-testid="app-desktop-nav"');
-    const childIndex = html.indexOf('data-testid="page-main"');
-    expect(navIndex).toBeGreaterThanOrEqual(0);
-    expect(childIndex).toBeGreaterThan(navIndex);
+    const gateIndex = html.indexOf('data-testid="app-shell-gate"');
+    const fabIndex = html.indexOf('data-testid="app-nav-button"');
+    expect(gateIndex).toBeGreaterThanOrEqual(0);
+    expect(fabIndex).toBeGreaterThan(gateIndex);
   });
 
-  it('should pass ADMIN role when viewer is admin', () => {
+  it('should pass ADMIN role both to the gate and to the FAB', () => {
     const html = renderToStaticMarkup(
       <AppShell viewerRole="ADMIN">
         <div data-testid="child" />
       </AppShell>
     );
 
-    expect(html).toContain('data-role="ADMIN"');
+    expect(html).toMatch(
+      /<div[^>]*data-testid="app-shell-gate"[^>]*data-role="ADMIN"/
+    );
+    expect(html).toMatch(
+      /<button[^>]*data-testid="app-nav-button"[^>]*data-role="ADMIN"/
+    );
   });
 });

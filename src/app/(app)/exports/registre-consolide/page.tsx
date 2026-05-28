@@ -37,12 +37,13 @@ import { MAX_PERIODE_DAYS } from '@/lib/constants/export-consolide';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Registre consolide - HACCP Maison Givre',
+  title: 'Exports - HACCP Maison Givre',
   robots: { index: false, follow: false },
 };
 
 const RELEVES_PATH = '/releves' as Route;
 const ACTION_URL = '/api/exports/registre-consolide';
+const CSV_ACTION_URL = '/api/exports/csv';
 
 /**
  * Borne defensive sur le `findMany` boutiques : un viewer ADMIN couvre
@@ -116,8 +117,8 @@ export default async function RegistreConsolidePage({
     >
       <AppPageHeader
         eyebrow="MAISON GIVRE - HACCP"
-        title="Registre journalier consolide"
-        subtitle={`Exportez un registre PDF sur une periode personnalisee (${MAX_PERIODE_DAYS} jours max) pour audit DDPP.`}
+        title="Exports"
+        subtitle={`Exportez le registre consolide au format PDF ou CSV sur une periode personnalisee (${MAX_PERIODE_DAYS} jours max) pour audit DDPP.`}
         backHref={RELEVES_PATH}
         backLabel="Mes releves"
         testId="export-consolide-header"
@@ -125,6 +126,7 @@ export default async function RegistreConsolidePage({
       <section className="mx-auto max-w-2xl px-6 py-12 sm:px-10">
         <ExportConsolideForm
           actionUrl={ACTION_URL}
+          csvActionUrl={CSV_ACTION_URL}
           boutiques={boutiques}
           defaultDateStart={defaultDateStart}
           defaultDateEnd={today}

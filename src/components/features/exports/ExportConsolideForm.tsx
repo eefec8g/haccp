@@ -19,10 +19,19 @@ import {
  * Formulaire d'export "Registre journalier consolide" (Epic REGISTRE
  * US-REG-001).
  *
- * Pattern : HTML form GET vers le Route Handler `/api/exports/registre-
- * consolide`. Le browser gere le download natif via
- * `Content-Disposition: attachment`. Aucune Server Action ici (la
- * response est binaire PDF).
+ * Pattern : HTML form GET avec DEUX boutons submit qui ciblent deux
+ * Route Handlers distincts via `formAction` (HTML5) :
+ *   - PDF -> `actionUrl` (= `/api/exports/registre-consolide`),
+ *     parametres natifs `dateStart` / `dateEnd` ;
+ *   - CSV -> `csvActionUrl` (= `/api/exports/csv`), parametres
+ *     `dateFrom` / `dateTo` (alimentes via deux `<input type="hidden">`
+ *     synchronizes sur l'etat des inputs visibles).
+ *
+ * Pourquoi cette fusion (fix/csv-in-consolide) : eliminer la page
+ * `/releves/export` dediee au CSV au profit d'un seul ecran d'export.
+ * Le compromis accepte par le PO : pas de filtre `equipement` cote CSV
+ * (le schema Zod `exportCsvQuerySchema` le tolere via `.optional()`),
+ * periode max 31 jours (suffisant pour audit DDPP).
  *
  * Validation cote client (UX uniquement) :
  *   - `dateStart <= dateEnd` ;
@@ -30,8 +39,10 @@ import {
  *   - periode <= `maxPeriodeDays` jours inclus.
  *
  * Validation reelle (defense en profondeur) cote API : Zod
- * `exportConsolideQuerySchema` + service `validatePeriode`. Le client
- * ne fait que pre-bloquer le submit pour eviter un aller-retour visible.
+ * `exportConsolideQuerySchema` + `exportCsvQuerySchema` + services. Le
+ * client ne fait que pre-bloquer le submit pour eviter un aller-retour
+ * visible : les DEUX boutons sont desactives ensemble si la validation
+ * echoue (semantique "un seul etat de validite par form").
  *
  * Granularite `aria-invalid` (CC-7) : marque uniquement le(s) champ(s)
  * en cause -- `dateEnd` pour les erreurs de longueur/futur, les deux
@@ -46,6 +57,7 @@ export interface ExportConsolideFormBoutique {
 
 interface ExportConsolideFormProps {
   readonly actionUrl: string;
+  readonly csvActionUrl: string;
   readonly boutiques: readonly ExportConsolideFormBoutique[];
   readonly defaultDateStart: string;
   readonly defaultDateEnd: string;
@@ -58,6 +70,7 @@ const RELEVES_PATH = '/releves' as Route;
 
 export function ExportConsolideForm({
   actionUrl,
+  csvActionUrl,
   boutiques,
   defaultDateStart,
   defaultDateEnd,
@@ -89,6 +102,8 @@ export function ExportConsolideForm({
     ]
       .filter((id): id is string => id !== null)
       .join(' ') || undefined;
+
+  const submitDisabled = !validation.valid;
 
   return (
     <form
@@ -161,6 +176,16 @@ export function ExportConsolideForm({
         </div>
       </div>
 
+      {/*
+        Inputs hidden synchronizes : la route CSV attend `dateFrom`
+        et `dateTo` (cf. `exportCsvQuerySchema`). On les alimente
+        ici a partir des memes states React que les inputs visibles
+        pour eviter une duplication d'UI tout en restant compatible
+        avec le contrat existant du Route Handler `/api/exports/csv`.
+      */}
+      <input type="hidden" name="dateFrom" value={dateStart} readOnly />
+      <input type="hidden" name="dateTo" value={dateEnd} readOnly />
+
       {errorMessage ? (
         <div
           id={serverErrorId}
@@ -185,14 +210,25 @@ export function ExportConsolideForm({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <button
           type="submit"
           className={SUBMIT_CLASSES}
-          disabled={!validation.valid}
-          data-testid="consolide-submit"
+          disabled={submitDisabled}
+          aria-label="Telecharger le registre PDF"
+          data-testid="consolide-submit-pdf"
         >
           Telecharger le PDF
+        </button>
+        <button
+          type="submit"
+          formAction={csvActionUrl}
+          className={SUBMIT_CLASSES}
+          disabled={submitDisabled}
+          aria-label="Telecharger le registre CSV"
+          data-testid="consolide-submit-csv"
+        >
+          Telecharger le CSV
         </button>
         <Link
           href={RELEVES_PATH}

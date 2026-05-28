@@ -9,6 +9,7 @@ const BOUTIQUES = [
 
 const COMMON_PROPS = {
   actionUrl: '/api/exports/registre-consolide',
+  csvActionUrl: '/api/exports/csv',
   boutiques: BOUTIQUES,
   maxDate: '2026-05-27',
   maxPeriodeDays: 31,
@@ -23,6 +24,10 @@ const COMMON_PROPS = {
  * defaut (`defaultDateStart` / `defaultDateEnd`) ; on teste donc les
  * cas en variant ces props, ce qui couvre la fonction de validation
  * indirectement avec un cout cognitif minimal.
+ *
+ * Depuis fix/csv-in-consolide, le formulaire expose DEUX boutons
+ * submit (PDF + CSV) qui partagent la meme validation et soumettent
+ * a deux Route Handlers via `formAction`.
  */
 
 describe('[ExportConsolideForm]', () => {
@@ -43,11 +48,76 @@ describe('[ExportConsolideForm]', () => {
     expect(html).toContain('data-testid="consolide-boutique"');
     expect(html).toContain('data-testid="consolide-date-start"');
     expect(html).toContain('data-testid="consolide-date-end"');
-    expect(html).toContain('data-testid="consolide-submit"');
+    expect(html).toContain('data-testid="consolide-submit-pdf"');
+    expect(html).toContain('data-testid="consolide-submit-csv"');
     expect(html).toContain('data-testid="consolide-cancel"');
   });
 
-  it('should enable submit button when periode is valid', () => {
+  it('should expose a CSV submit button with formAction targeting the CSV route handler', () => {
+    const html = renderToStaticMarkup(
+      <ExportConsolideForm
+        {...COMMON_PROPS}
+        defaultDateStart="2026-05-20"
+        defaultDateEnd="2026-05-27"
+      />
+    );
+
+    // Le bouton CSV doit overrider l'action du form via formAction.
+    // L'ordre des attributs est non garanti : on cherche le bouton CSV
+    // par son testid puis on verifie que le meme <button> porte le
+    // formAction attendu (les regex SSR sont sensibles a l'ordre).
+    const csvButtonMatch = html.match(
+      /<button[^>]*data-testid="consolide-submit-csv"[^>]*>/
+    );
+    expect(csvButtonMatch).not.toBeNull();
+    expect(csvButtonMatch?.[0]).toContain('formAction="/api/exports/csv"');
+
+    // Le bouton PDF ne porte PAS de formAction (il herite de form action).
+    const pdfButtonMatch = html.match(
+      /<button[^>]*data-testid="consolide-submit-pdf"[^>]*>/
+    );
+    expect(pdfButtonMatch).not.toBeNull();
+    expect(pdfButtonMatch?.[0]).not.toContain('formAction');
+  });
+
+  it('should expose hidden dateFrom/dateTo inputs synchronized with dateStart/dateEnd', () => {
+    // La route CSV attend `dateFrom`/`dateTo` ; on alimente ces noms
+    // via des inputs hidden synchronizes sur le meme state que les
+    // inputs visibles `dateStart`/`dateEnd`.
+    const html = renderToStaticMarkup(
+      <ExportConsolideForm
+        {...COMMON_PROPS}
+        defaultDateStart="2026-05-20"
+        defaultDateEnd="2026-05-27"
+      />
+    );
+
+    expect(html).toMatch(
+      /<input[^>]*type="hidden"[^>]*name="dateFrom"[^>]*value="2026-05-20"/
+    );
+    expect(html).toMatch(
+      /<input[^>]*type="hidden"[^>]*name="dateTo"[^>]*value="2026-05-27"/
+    );
+  });
+
+  it('should expose aria-label on both submit buttons for screen readers', () => {
+    const html = renderToStaticMarkup(
+      <ExportConsolideForm
+        {...COMMON_PROPS}
+        defaultDateStart="2026-05-20"
+        defaultDateEnd="2026-05-27"
+      />
+    );
+
+    expect(html).toMatch(
+      /<button[^>]*aria-label="Telecharger le registre PDF"[^>]*data-testid="consolide-submit-pdf"/
+    );
+    expect(html).toMatch(
+      /<button[^>]*aria-label="Telecharger le registre CSV"[^>]*data-testid="consolide-submit-csv"/
+    );
+  });
+
+  it('should enable BOTH submit buttons when periode is valid', () => {
     const html = renderToStaticMarkup(
       <ExportConsolideForm
         {...COMMON_PROPS}
@@ -56,12 +126,15 @@ describe('[ExportConsolideForm]', () => {
       />
     );
     expect(html).toMatch(
-      /<button[^>]*data-testid="consolide-submit"(?![^>]*disabled)/
+      /<button[^>]*data-testid="consolide-submit-pdf"(?![^>]*disabled)/
+    );
+    expect(html).toMatch(
+      /<button[^>]*data-testid="consolide-submit-csv"(?![^>]*disabled)/
     );
     expect(html).not.toContain('data-testid="consolide-form-client-error"');
   });
 
-  it('should disable submit and show error when dateStart > dateEnd', () => {
+  it('should disable BOTH submit buttons and show error when dateStart > dateEnd', () => {
     const html = renderToStaticMarkup(
       <ExportConsolideForm
         {...COMMON_PROPS}
@@ -70,13 +143,16 @@ describe('[ExportConsolideForm]', () => {
       />
     );
     expect(html).toMatch(
-      /<button[^>]*disabled[^>]*data-testid="consolide-submit"/
+      /<button[^>]*disabled[^>]*data-testid="consolide-submit-pdf"/
+    );
+    expect(html).toMatch(
+      /<button[^>]*disabled[^>]*data-testid="consolide-submit-csv"/
     );
     expect(html).toContain('data-testid="consolide-form-client-error"');
     expect(html).toContain('La date de fin doit etre superieure');
   });
 
-  it('should disable submit and show error when periode > maxPeriodeDays', () => {
+  it('should disable BOTH submit buttons and show error when periode > maxPeriodeDays', () => {
     const html = renderToStaticMarkup(
       <ExportConsolideForm
         {...COMMON_PROPS}
@@ -85,12 +161,15 @@ describe('[ExportConsolideForm]', () => {
       />
     );
     expect(html).toMatch(
-      /<button[^>]*disabled[^>]*data-testid="consolide-submit"/
+      /<button[^>]*disabled[^>]*data-testid="consolide-submit-pdf"/
+    );
+    expect(html).toMatch(
+      /<button[^>]*disabled[^>]*data-testid="consolide-submit-csv"/
     );
     expect(html).toContain('inferieure ou egale a 31 jours');
   });
 
-  it('should disable submit and show error when dateEnd > maxDate (future)', () => {
+  it('should disable BOTH submit buttons and show error when dateEnd > maxDate (future)', () => {
     const html = renderToStaticMarkup(
       <ExportConsolideForm
         {...COMMON_PROPS}
@@ -99,7 +178,10 @@ describe('[ExportConsolideForm]', () => {
       />
     );
     expect(html).toMatch(
-      /<button[^>]*disabled[^>]*data-testid="consolide-submit"/
+      /<button[^>]*disabled[^>]*data-testid="consolide-submit-pdf"/
+    );
+    expect(html).toMatch(
+      /<button[^>]*disabled[^>]*data-testid="consolide-submit-csv"/
     );
     expect(html).toContain('ne peut pas etre dans le futur');
   });

@@ -89,14 +89,14 @@ describe('[AppSidebarLink]', () => {
     usePathnameMock.mockReturnValue('/');
     const html = renderToStaticMarkup(
       <AppSidebarLink
-        href={'/exports' as Route}
-        label="Exports CSV"
-        testId="app-sidebar-link-exports"
+        href={'/exports/registre-consolide' as Route}
+        label="Exports"
+        testId="app-sidebar-link-registre-consolide"
       />
     );
 
-    expect(html).toContain('data-testid="app-sidebar-link-exports"');
-    expect(html).toContain('Exports CSV');
+    expect(html).toContain('data-testid="app-sidebar-link-registre-consolide"');
+    expect(html).toContain('Exports');
   });
 
   it('should respect WCAG touch target via `min-h-touch`', () => {

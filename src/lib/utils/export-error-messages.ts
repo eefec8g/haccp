@@ -3,8 +3,8 @@ import { resolveErrorFromTable } from '@/lib/utils/error-messages-resolver';
 /**
  * Messages d'erreur partages entre les pages d'export (Epic EXPORT).
  *
- * Avant cette extraction, chaque page (`/releves/export`, `/releves/registre`)
- * dupliquait sa table `ERROR_MESSAGES` + sa fonction `resolveErrorMessage`.
+ * Avant cette extraction, chaque page d'export dupliquait sa table
+ * `ERROR_MESSAGES` + sa fonction `resolveErrorMessage`.
  * Les deux versions divergeaient sur 1-2 cles (range_too_large CSV-only,
  * libelles "registre" vs "export") avec un risque de drift.
  *

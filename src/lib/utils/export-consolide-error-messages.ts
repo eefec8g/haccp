@@ -2,15 +2,20 @@ import { MAX_PERIODE_DAYS } from '@/lib/constants/export-consolide';
 import { resolveErrorFromTable } from '@/lib/utils/error-messages-resolver';
 
 /**
- * Messages d'erreur dedies au registre journalier consolide (Epic REGISTRE
- * US-REG-001). Distincts de `EXPORT_ERROR_MESSAGES` car la semantique
- * "periode" est specifique (max `MAX_PERIODE_DAYS` jours, pas de futur)
- * et les codes URL exposes par `/api/exports/registre-consolide` ne
- * recouvrent pas tous ceux du CSV/PDF journalier.
+ * Messages d'erreur dedies a la page `/exports/registre-consolide` (Epic
+ * REGISTRE US-REG-001 puis fix/csv-in-consolide).
+ *
+ * Cette page recoit desormais les redirects 303 de DEUX Route Handlers :
+ *   - `/api/exports/registre-consolide` (PDF) : codes `periode_*`,
+ *     `validation`, `boutique_not_found`, `rate_limited`, `forbidden`,
+ *     `internal`.
+ *   - `/api/exports/csv` : codes additionnels `range_too_large` (alias
+ *     de `periode_too_large`, semantique identique pour l'utilisateur),
+ *     `no_data` (CSV vide) -- les autres codes sont communs.
  *
  * Code source d'erreur : ces strings sont les codes URL `?error=<code>`
- * emis par le Route Handler. Ajouter une nouvelle erreur -> ajouter sa
- * traduction ici.
+ * emis par les Route Handlers. Ajouter une nouvelle erreur -> ajouter
+ * sa traduction ici.
  *
  * Resolution : delegue a `resolveErrorFromTable` (DRY avec
  * `export-error-messages.ts`).
@@ -26,6 +31,8 @@ type ExportConsolideErrorCode =
   | 'boutique_not_found'
   | 'rate_limited'
   | 'forbidden'
+  | 'range_too_large'
+  | 'no_data'
   | 'internal';
 
 export const EXPORT_CONSOLIDE_ERROR_MESSAGES: Readonly<
@@ -41,6 +48,8 @@ export const EXPORT_CONSOLIDE_ERROR_MESSAGES: Readonly<
     'La boutique selectionnee est introuvable ou hors de votre perimetre.',
   rate_limited: "Trop d'exports recents. Reessayez dans quelques minutes.",
   forbidden: "Vous n'avez pas la permission de declencher cet export.",
+  range_too_large: `La periode doit etre inferieure ou egale a ${MAX_PERIODE_DAYS} jours.`,
+  no_data: 'Aucune donnee a exporter pour la periode selectionnee.',
   internal: 'Une erreur interne est survenue. Reessayez plus tard.',
 };
 

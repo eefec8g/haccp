@@ -64,6 +64,15 @@ export const MOTIF_ANNULATION_MIN_CHARS = 10;
 export const MOTIF_ANNULATION_MAX_CHARS = 500;
 
 /**
+ * Motif auto-genere lorsqu'un salarie corrige SON PROPRE releve du jour
+ * depuis le recap de la tournee guidee, AVANT signature. La correction
+ * reste une annulation tracee (RG-IMMU-001) : l'ancien releve est
+ * conserve, marque annule avec ce motif, et un nouveau releve actif est
+ * cree. Le salarie n'a pas a saisir de motif (UX saisie ultra-rapide).
+ */
+export const MOTIF_CORRECTION_TOURNEE = 'Correction lors de la tournee';
+
+/**
  * Bornes temperature pour Zod. Plus larges que les seuils equipement
  * (`SEUIL_TEMP_MIN/MAX` -50/50) pour tolerer la saisie d'erreurs
  * legeres et laisser le service trancher "hors seuils".

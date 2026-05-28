@@ -3,12 +3,14 @@ import { db } from '@/lib/prisma';
 import type { Result } from '@/types/result';
 import type {
   ReleveAnnulationInput,
+  ReleveCorrectionInput,
   ReleveCreateInput,
   ReleveHistoryQuery,
 } from '@/lib/validations/releve';
 import type { PaginatedResult, PaginationQuery } from '@/types/admin';
 import type {
   ReleveAnnulationResult,
+  ReleveCorrectionResult,
   ReleveCreatedResult,
   ReleveListItem,
   SaisieContext,
@@ -19,11 +21,13 @@ import {
   CRENEAU_ORDER,
   COMMENTAIRE_MIN_CHARS,
   DAYS_RECENT_HISTORY,
+  MOTIF_CORRECTION_TOURNEE,
 } from '@/lib/constants/releve';
 import { computeReleveSignature } from '@/lib/signature';
 import { buildPaginated } from '@/lib/utils/pagination';
 import {
   getRecentDaysRange,
+  isoFromDate,
   isWithinRecentDays,
   parseISODateUtc,
   todayParisISO,
@@ -53,6 +57,9 @@ export type ReleveError =
   | 'NOT_FOUND'
   | 'FORBIDDEN'
   | 'ALREADY_CANCELLED'
+  | 'NOT_TODAY'
+  | 'CRENEAU_MISMATCH'
+  | 'TOURNEE_DEJA_SIGNEE'
   | 'INTERNAL_ERROR';
 
 interface ViewerContext {
@@ -746,6 +753,281 @@ export async function annulerReleve({
         replacementReleveId,
         replacementAlerteId,
       } satisfies ReleveAnnulationResult;
+    });
+    return { success: true, data: result };
+  } catch (error) {
+    if (error instanceof ReleveServiceError) {
+      return { success: false, error: error.code };
+    }
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      return { success: false, error: 'ALREADY_EXISTS' };
+    }
+    return { success: false, error: 'INTERNAL_ERROR' };
+  }
+}
+
+// ===== Correction inline par l'auteur (tournee guidee, avant signature) =====
+
+interface CorrigerReleveArgs {
+  readonly viewer: ViewerContext;
+  readonly input: ReleveCorrectionInput;
+  readonly ip: string | null;
+}
+
+interface OriginalReleve {
+  readonly id: string;
+  readonly date: Date;
+  readonly creneau: Creneau;
+  readonly temperature: number;
+  readonly alerteHorsSeuils: boolean;
+  readonly userId: string;
+  readonly boutiqueId: string;
+  readonly equipementId: string;
+  readonly annuleParId: string | null;
+  readonly equipement: {
+    readonly seuilMin: number;
+    readonly seuilMax: number;
+  };
+}
+
+/**
+ * Verifie les garde-fous metier de la correction inline (RG-IMMU-001) :
+ *   - l'auteur ne corrige que SON PROPRE releve (FORBIDDEN sinon)
+ *   - le releve doit etre du jour Europe/Paris (NOT_TODAY sinon)
+ *   - le creneau/equipement fourni doit matcher l'original (CRENEAU_MISMATCH)
+ *   - le releve ne doit pas etre deja annule (ALREADY_CANCELLED)
+ * Leve une `ReleveServiceError` (rollback transaction) en cas d'echec.
+ */
+function assertCorrectionAllowed(
+  original: OriginalReleve,
+  args: CorrigerReleveArgs
+): void {
+  if (original.annuleParId !== null) {
+    throw new ReleveServiceError('ALREADY_CANCELLED');
+  }
+  if (original.userId !== args.viewer.id) {
+    throw new ReleveServiceError('FORBIDDEN');
+  }
+  if (isoFromDate(original.date) !== todayParisISO()) {
+    throw new ReleveServiceError('NOT_TODAY');
+  }
+  if (
+    original.creneau !== args.input.creneau ||
+    original.equipementId !== args.input.equipementId
+  ) {
+    throw new ReleveServiceError('CRENEAU_MISMATCH');
+  }
+}
+
+/**
+ * Cree le releve d'annulation tracant la correction (motif auto-genere)
+ * puis lie l'original via `annuleParId`. La signature couvre la valeur
+ * stockee (`commentaire: null`, le motif vit dans `motifAnnulation`).
+ */
+async function insertCorrectionAnnulation({
+  tx,
+  original,
+  viewerId,
+  ip,
+  serverTimestamp,
+}: {
+  readonly tx: TxClient;
+  readonly original: OriginalReleve;
+  readonly viewerId: string;
+  readonly ip: string | null;
+  readonly serverTimestamp: Date;
+}): Promise<string> {
+  const signature = computeReleveSignature({
+    userId: viewerId,
+    serverTimestamp,
+    ip,
+    equipementId: original.equipementId,
+    creneau: original.creneau,
+    temperature: original.temperature,
+    commentaire: null,
+  });
+  const annulation = await tx.releve.create({
+    data: {
+      date: original.date,
+      creneau: original.creneau,
+      temperature: original.temperature,
+      commentaire: null,
+      alerteHorsSeuils: original.alerteHorsSeuils,
+      signature,
+      ip,
+      motifAnnulation: MOTIF_CORRECTION_TOURNEE,
+      equipementId: original.equipementId,
+      boutiqueId: original.boutiqueId,
+      userId: viewerId,
+    },
+    select: { id: true },
+  });
+  await tx.releve.update({
+    where: { id: original.id },
+    data: { annuleParId: annulation.id },
+  });
+  return annulation.id;
+}
+
+/**
+ * Cree le nouveau releve actif (valeur corrigee) + son alerte eventuelle.
+ * Reutilise `insertReleve` pour garder une seule source de verite sur le
+ * calcul d'alerte/signature (DRY).
+ */
+async function insertCorrectionReleve({
+  tx,
+  args,
+  original,
+  serverTimestamp,
+}: {
+  readonly tx: TxClient;
+  readonly args: CorrigerReleveArgs;
+  readonly original: OriginalReleve;
+  readonly serverTimestamp: Date;
+}): Promise<{
+  readonly releveId: string;
+  readonly alerteCreated: boolean;
+  readonly alerteId: string | null;
+  readonly createdAt: Date;
+}> {
+  const inserted = await insertReleve({
+    tx,
+    input: {
+      equipementId: original.equipementId,
+      creneau: original.creneau,
+      temperature: args.input.temperature,
+      commentaire: args.input.commentaire,
+      ip: args.ip,
+    },
+    viewerId: args.viewer.id,
+    equipement: {
+      id: original.equipementId,
+      boutiqueId: original.boutiqueId,
+      seuilMin: original.equipement.seuilMin,
+      seuilMax: original.equipement.seuilMax,
+    },
+    date: original.date,
+    serverTimestamp,
+  });
+  if (!inserted.alerteHorsSeuils) {
+    return {
+      releveId: inserted.id,
+      alerteCreated: false,
+      alerteId: null,
+      createdAt: inserted.createdAt,
+    };
+  }
+  const alerte = await createAlerte({
+    releveId: inserted.id,
+    tx: tx as unknown as Parameters<typeof createAlerte>[0]['tx'],
+  });
+  return {
+    releveId: inserted.id,
+    alerteCreated: true,
+    alerteId: alerte.id,
+    createdAt: inserted.createdAt,
+  };
+}
+
+/**
+ * Corrige un releve du jour saisi par l'auteur lui-meme, depuis le recap
+ * de la tournee guidee, AVANT signature (fix/signature-action-context).
+ *
+ * Decision metier (validee user) : le SALARIE peut corriger SA PROPRE
+ * saisie du jour tant que la tournee (boutique + date) n'est pas signee.
+ * La correction reste conforme HACCP (RG-IMMU-001) : c'est une annulation
+ * tracee (motif auto `MOTIF_CORRECTION_TOURNEE`) + un nouveau releve actif,
+ * jamais un UPDATE/DELETE du releve original.
+ *
+ * Garde-fous (vs `annulerReleve` reserve RESPONSABLE/ADMIN) :
+ *   - auteur uniquement (`userId === viewer.id`)
+ *   - jour meme uniquement (`date === todayParisISO`)
+ *   - creneau + equipement coherents avec l'original
+ *   - tournee NON signee (signature absente sur boutiqueId + dateISO)
+ *
+ * Atomicite (1 seule transaction) :
+ *   1. Lock + verifie l'original (garde-fous)
+ *   2. Refuse si la tournee du jour est deja signee
+ *   3. Verifie commentaire si nouvelle valeur hors seuils (RG-COMM-001)
+ *   4. Cree l'annulation tracee + lie `annuleParId`
+ *   5. Cree le nouveau releve actif (+ alerte si hors seuils)
+ */
+export async function corrigerPropreReleveDuJour(
+  args: CorrigerReleveArgs
+): Promise<Result<ReleveCorrectionResult, ReleveError>> {
+  const serverTimestamp = new Date();
+  try {
+    const result = await db.$transaction(async (tx) => {
+      const txClient = tx as unknown as TxClient;
+      const original = await txClient.releve.findUnique({
+        where: { id: args.input.releveId },
+        select: {
+          id: true,
+          date: true,
+          creneau: true,
+          temperature: true,
+          alerteHorsSeuils: true,
+          userId: true,
+          boutiqueId: true,
+          equipementId: true,
+          annuleParId: true,
+          equipement: { select: { seuilMin: true, seuilMax: true } },
+        },
+      });
+      if (!original) {
+        throw new ReleveServiceError('NOT_FOUND');
+      }
+      assertCorrectionAllowed(original, args);
+
+      const signed = await txClient.signature.findUnique({
+        where: {
+          boutiqueId_dateISO: {
+            boutiqueId: original.boutiqueId,
+            dateISO: isoFromDate(original.date),
+          },
+        },
+        select: { id: true },
+      });
+      if (signed) {
+        throw new ReleveServiceError('TOURNEE_DEJA_SIGNEE');
+      }
+
+      const horsSeuils = isHorsSeuils(
+        args.input.temperature,
+        original.equipement.seuilMin,
+        original.equipement.seuilMax
+      );
+      if (
+        horsSeuils &&
+        (!args.input.commentaire ||
+          args.input.commentaire.length < COMMENTAIRE_MIN_CHARS)
+      ) {
+        throw new ReleveServiceError('COMMENTAIRE_REQUIRED');
+      }
+
+      const annulationReleveId = await insertCorrectionAnnulation({
+        tx: txClient,
+        original,
+        viewerId: args.viewer.id,
+        ip: args.ip,
+        serverTimestamp,
+      });
+      const created = await insertCorrectionReleve({
+        tx: txClient,
+        args,
+        original,
+        serverTimestamp,
+      });
+      return {
+        annulationReleveId,
+        releveId: created.releveId,
+        alerteCreated: created.alerteCreated,
+        alerteId: created.alerteId,
+        createdAt: created.createdAt,
+      } satisfies ReleveCorrectionResult;
     });
     return { success: true, data: result };
   } catch (error) {

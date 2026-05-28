@@ -80,6 +80,22 @@ export const releveAnnulationSchema = z.object({
 });
 
 /**
+ * Correction inline d'un releve par son auteur depuis la tournee guidee
+ * (fix/signature-action-context). Le salarie corrige SON PROPRE releve du
+ * jour AVANT signature : on identifie le releve a corriger (`releveId`) et
+ * on fournit la nouvelle valeur. Le motif d'annulation est auto-genere
+ * cote service (pas demande au salarie). Le creneau est verifie cote
+ * service contre le releve original (defense en profondeur).
+ */
+export const releveCorrectionSchema = z.object({
+  releveId: z.string().uuid('Identifiant releve invalide'),
+  equipementId: z.string().uuid('Identifiant equipement invalide'),
+  creneau: z.nativeEnum(Creneau),
+  temperature: temperatureField,
+  commentaire: commentaireOptional,
+});
+
+/**
  * Query string `/releves?date=YYYY-MM-DD` (US-REL-001). Par defaut
  * (date absente) le service prend la date du jour Europe/Paris.
  */
@@ -202,6 +218,7 @@ export const releveListingQuerySchema = z
 
 export type ReleveCreateInput = z.infer<typeof releveCreateSchema>;
 export type ReleveAnnulationInput = z.infer<typeof releveAnnulationSchema>;
+export type ReleveCorrectionInput = z.infer<typeof releveCorrectionSchema>;
 export type TourneeQuery = z.infer<typeof tourneeQuerySchema>;
 export type ReleveHistoryQuery = z.infer<typeof releveHistoryQuerySchema>;
 export type ReleveListingQueryInput = z.infer<typeof releveListingQuerySchema>;

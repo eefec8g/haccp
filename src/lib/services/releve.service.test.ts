@@ -14,14 +14,17 @@ vi.mock('@/lib/prisma', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    signature: { findUnique: vi.fn() },
     alerte: { create: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
 
 import { db } from '@/lib/prisma';
+import { parseISODateUtc, todayParisISO } from '@/lib/utils/dates';
 import {
   annulerReleve,
+  corrigerPropreReleveDuJour,
   createReleve,
   getReleveById,
   getSaisieContext,
@@ -829,6 +832,243 @@ describe('[releve.service]', () => {
       // L'integrite HACCP : on n'a rien insere
       expect(create).not.toHaveBeenCalled();
       expect(update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('corrigerPropreReleveDuJour', () => {
+    const TODAY = parseISODateUtc(todayParisISO());
+
+    interface OriginalOverrides {
+      readonly userId?: string;
+      readonly date?: Date;
+      readonly creneau?: string;
+      readonly equipementId?: string;
+      readonly annuleParId?: string | null;
+      readonly temperature?: number;
+      readonly alerteHorsSeuils?: boolean;
+    }
+
+    interface TxMocks {
+      readonly create: ReturnType<typeof vi.fn>;
+      readonly update: ReturnType<typeof vi.fn>;
+      readonly signatureFindUnique: ReturnType<typeof vi.fn>;
+      readonly alerteCreate: ReturnType<typeof vi.fn>;
+    }
+
+    /**
+     * Cable un `$transaction` avec un releve original (overrides), une
+     * signature optionnelle, et deux `releve.create` successifs (annulation
+     * puis nouveau releve). Renvoie les mocks pour assertions fines.
+     */
+    function setupTx(args: {
+      readonly original: OriginalOverrides;
+      readonly signature?: { id: string } | null;
+    }): TxMocks {
+      const create = vi
+        .fn()
+        .mockResolvedValueOnce({ id: NEW_ANNUL_ID })
+        .mockResolvedValueOnce({
+          id: NEW_RELEVE_ID,
+          createdAt: new Date('2026-05-27T06:50:00.000Z'),
+        });
+      const update = vi.fn().mockResolvedValue({});
+      const signatureFindUnique = vi
+        .fn()
+        .mockResolvedValue(args.signature ?? null);
+      const alerteCreate = vi.fn().mockResolvedValue({ id: 'alerte-new' });
+      vi.mocked(db.$transaction).mockImplementation(
+        async (cb: unknown) =>
+          await (cb as (tx: unknown) => Promise<unknown>)({
+            releve: {
+              findUnique: vi.fn().mockResolvedValue({
+                id: RELEVE_ID,
+                date: args.original.date ?? TODAY,
+                creneau: args.original.creneau ?? 'MATIN',
+                temperature: args.original.temperature ?? -20,
+                alerteHorsSeuils: args.original.alerteHorsSeuils ?? false,
+                userId: args.original.userId ?? SALARIE_ID,
+                boutiqueId: BOUTIQUE_ID,
+                equipementId: args.original.equipementId ?? EQUIPEMENT_ID,
+                annuleParId:
+                  args.original.annuleParId === undefined
+                    ? null
+                    : args.original.annuleParId,
+                equipement: { seuilMin: -25, seuilMax: -18 },
+              }),
+              create,
+              update,
+            },
+            signature: { findUnique: signatureFindUnique },
+            alerte: { create: alerteCreate },
+          })
+      );
+      return { create, update, signatureFindUnique, alerteCreate };
+    }
+
+    function validInput(overrides: Record<string, unknown> = {}) {
+      return {
+        releveId: RELEVE_ID,
+        equipementId: EQUIPEMENT_ID,
+        creneau: 'MATIN' as const,
+        temperature: -22,
+        commentaire: undefined,
+        ...overrides,
+      };
+    }
+
+    it('should correct the releve : trace annulation + create new releve (happy path)', async () => {
+      const mocks = setupTx({ original: {} });
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput(),
+        ip: '127.0.0.1',
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.annulationReleveId).toBe(NEW_ANNUL_ID);
+        expect(result.data.releveId).toBe(NEW_RELEVE_ID);
+        expect(result.data.alerteCreated).toBe(false);
+        expect(result.data.alerteId).toBeNull();
+      }
+      // Tracabilite immuable : annulation creee + original lie, jamais de delete.
+      expect(mocks.create).toHaveBeenCalledTimes(2);
+      expect(mocks.update).toHaveBeenCalledWith({
+        where: { id: RELEVE_ID },
+        data: { annuleParId: NEW_ANNUL_ID },
+      });
+      const annulationData = mocks.create.mock.calls[0]?.[0];
+      expect(annulationData?.data?.motifAnnulation).toBe(
+        'Correction lors de la tournee'
+      );
+    });
+
+    it('should reject FORBIDDEN when the viewer is not the author', async () => {
+      const mocks = setupTx({ original: { userId: 'someone-else' } });
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput(),
+        ip: null,
+      });
+
+      expect(result).toEqual({ success: false, error: 'FORBIDDEN' });
+      expect(mocks.create).not.toHaveBeenCalled();
+      expect(mocks.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject NOT_TODAY when the releve is from another day', async () => {
+      const mocks = setupTx({
+        original: { date: new Date('2020-01-01T00:00:00.000Z') },
+      });
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput(),
+        ip: null,
+      });
+
+      expect(result).toEqual({ success: false, error: 'NOT_TODAY' });
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject CRENEAU_MISMATCH when input creneau differs from original', async () => {
+      const mocks = setupTx({ original: { creneau: 'MIDI' } });
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput({ creneau: 'MATIN' }),
+        ip: null,
+      });
+
+      expect(result).toEqual({ success: false, error: 'CRENEAU_MISMATCH' });
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject ALREADY_CANCELLED when the releve is already annule', async () => {
+      const mocks = setupTx({ original: { annuleParId: 'existing-annul' } });
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput(),
+        ip: null,
+      });
+
+      expect(result).toEqual({ success: false, error: 'ALREADY_CANCELLED' });
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject TOURNEE_DEJA_SIGNEE when the day registre is signed', async () => {
+      const mocks = setupTx({
+        original: {},
+        signature: { id: 'sig-1' },
+      });
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput(),
+        ip: null,
+      });
+
+      expect(result).toEqual({ success: false, error: 'TOURNEE_DEJA_SIGNEE' });
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
+    it('should require a commentaire when the corrected value is hors seuils', async () => {
+      const mocks = setupTx({ original: {} });
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput({ temperature: -5 }),
+        ip: null,
+      });
+
+      expect(result).toEqual({ success: false, error: 'COMMENTAIRE_REQUIRED' });
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
+    it('should create an alerte when the corrected value is hors seuils with a commentaire', async () => {
+      const mocks = setupTx({ original: {} });
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput({
+          temperature: -5,
+          commentaire: 'Porte restee ouverte, verifie',
+        }),
+        ip: null,
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.alerteCreated).toBe(true);
+        expect(result.data.alerteId).toBe('alerte-new');
+      }
+      expect(mocks.alerteCreate).toHaveBeenCalledTimes(1);
+    });
+
+    it('should mark NOT_FOUND when the releve does not exist', async () => {
+      vi.mocked(db.$transaction).mockImplementation(
+        async (cb: unknown) =>
+          await (cb as (tx: unknown) => Promise<unknown>)({
+            releve: {
+              findUnique: vi.fn().mockResolvedValue(null),
+              create: vi.fn(),
+              update: vi.fn(),
+            },
+            signature: { findUnique: vi.fn() },
+            alerte: { create: vi.fn() },
+          })
+      );
+
+      const result = await corrigerPropreReleveDuJour({
+        viewer: { id: SALARIE_ID, role: 'SALARIE' },
+        input: validInput(),
+        ip: null,
+      });
+
+      expect(result).toEqual({ success: false, error: 'NOT_FOUND' });
     });
   });
 });

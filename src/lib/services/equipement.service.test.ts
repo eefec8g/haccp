@@ -38,6 +38,7 @@ import {
 const EQUIPEMENT_ID = '11111111-1111-4111-8111-111111111111';
 const BOUTIQUE_ID = '22222222-2222-4222-8222-222222222222';
 const ADMIN_ID = 'admin-1';
+const DATE_MISE_EN_SERVICE = new Date('2026-01-01T00:00:00.000Z');
 
 function arrangeTransaction() {
   const txStub = {
@@ -58,6 +59,7 @@ function makeEquipementRow(overrides: Partial<Record<string, unknown>> = {}) {
     type: 'CONGELATEUR',
     seuilMin: -25,
     seuilMax: -18,
+    dateMiseEnService: DATE_MISE_EN_SERVICE,
     actif: true,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
@@ -140,6 +142,7 @@ describe('[equipement.service]', () => {
         boutiqueId: BOUTIQUE_ID,
         seuilMin: -25,
         seuilMax: -18,
+        dateMiseEnService: DATE_MISE_EN_SERVICE,
         ...overrides,
       };
     }

@@ -50,12 +50,15 @@ function arrangeTransaction() {
   return txStub;
 }
 
+const DATE_OUVERTURE = new Date('2026-01-01T00:00:00.000Z');
+
 function makeBoutiqueRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: VALID_UUID,
     nom: 'MG Paris 11',
     adresse: '12 rue de la Paix',
     ville: 'Paris',
+    dateOuverture: DATE_OUVERTURE,
     actif: true,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
@@ -151,6 +154,7 @@ describe('[boutique.service]', () => {
         {
           nom: 'MG Paris 11',
           ville: 'Paris',
+          dateOuverture: DATE_OUVERTURE,
         },
         ADMIN_ID
       );
@@ -170,6 +174,7 @@ describe('[boutique.service]', () => {
         {
           nom: 'MG Paris 11',
           ville: 'Paris',
+          dateOuverture: DATE_OUVERTURE,
         },
         ADMIN_ID
       );

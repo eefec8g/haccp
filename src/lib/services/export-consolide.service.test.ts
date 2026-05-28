@@ -193,11 +193,16 @@ describe('[export-consolide.service] scope', () => {
 
 describe('[export-consolide.service] aggregation', () => {
   const BOUTIQUE = { id: 'b-1', nom: 'MG Paris 11', ville: 'Paris' };
+  // Dates de debut anciennes (2020) -> tous les jours de test attendus.
   const EQUIPEMENT = {
     id: 'e-1',
     nom: 'CGL-01',
     boutiqueId: 'b-1',
-    boutique: { nom: 'MG Paris 11' },
+    dateMiseEnService: new Date('2020-01-01T00:00:00.000Z'),
+    boutique: {
+      nom: 'MG Paris 11',
+      dateOuverture: new Date('2020-01-01T00:00:00.000Z'),
+    },
   };
 
   beforeEach(() => {
@@ -301,6 +306,87 @@ describe('[export-consolide.service] aggregation', () => {
       expect(result.data.stats.totalRelevesSaisis).toBe(1);
       expect(result.data.stats.relevesManquants).toBe(2);
       expect(result.data.stats.tauxConformite).toBe(33);
+    }
+  });
+
+  it('should bound totalRelevesAttendus by the equipement date de debut effective', async () => {
+    // Equipement mis en service le 2026-03-11 : sur une periode de 3 jours
+    // (10, 11, 12), seuls 2 jours sont attendus -> 2 x 3 creneaux = 6.
+    vi.mocked(db.boutique.findMany).mockResolvedValue([BOUTIQUE] as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      {
+        ...EQUIPEMENT,
+        dateMiseEnService: new Date('2026-03-11T00:00:00.000Z'),
+      },
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([
+      makeReleveRow('2026-03-11', 'MATIN'),
+    ] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.signature.findMany).mockResolvedValue([] as never);
+
+    const result = await buildRegistreConsolide({
+      viewer: RESPONSABLE,
+      query: { dateStart: '2026-03-10', dateEnd: '2026-03-12' },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.stats.totalRelevesAttendus).toBe(6);
+      expect(result.data.stats.totalRelevesSaisis).toBe(1);
+      expect(result.data.stats.relevesManquants).toBe(5);
+      // 1 / 6 ~= 17%.
+      expect(result.data.stats.tauxConformite).toBe(17);
+    }
+  });
+
+  it('should count 0 attendu when the equipement is put in service after the period', async () => {
+    vi.mocked(db.boutique.findMany).mockResolvedValue([BOUTIQUE] as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      {
+        ...EQUIPEMENT,
+        dateMiseEnService: new Date('2026-04-01T00:00:00.000Z'),
+      },
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.signature.findMany).mockResolvedValue([] as never);
+
+    const result = await buildRegistreConsolide({
+      viewer: RESPONSABLE,
+      query: { dateStart: '2026-03-10', dateEnd: '2026-03-12' },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.stats.totalRelevesAttendus).toBe(0);
+      expect(result.data.stats.relevesManquants).toBe(0);
+      expect(result.data.stats.tauxConformite).toBe(0);
+    }
+  });
+
+  it('should use the LATEST of boutique ouverture / equipement mise en service', async () => {
+    // Boutique ouverte le 2026-03-12 (plus tardive) : 1 seul jour attendu.
+    vi.mocked(db.boutique.findMany).mockResolvedValue([BOUTIQUE] as never);
+    vi.mocked(db.equipement.findMany).mockResolvedValue([
+      {
+        ...EQUIPEMENT,
+        dateMiseEnService: new Date('2026-03-10T00:00:00.000Z'),
+        boutique: {
+          nom: 'MG Paris 11',
+          dateOuverture: new Date('2026-03-12T00:00:00.000Z'),
+        },
+      },
+    ] as never);
+    vi.mocked(db.releve.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
+    vi.mocked(db.signature.findMany).mockResolvedValue([] as never);
+
+    const result = await buildRegistreConsolide({
+      viewer: RESPONSABLE,
+      query: { dateStart: '2026-03-10', dateEnd: '2026-03-12' },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.stats.totalRelevesAttendus).toBe(3);
     }
   });
 

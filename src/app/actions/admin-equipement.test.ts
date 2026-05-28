@@ -44,6 +44,10 @@ import { INITIAL_EQUIPEMENT_ACTION_STATE } from './admin-equipement.types';
 
 const EQUIPEMENT_UUID = '22222222-2222-4222-8222-222222222222';
 const BOUTIQUE_UUID = '11111111-1111-4111-8111-111111111111';
+const DATE_MISE_EN_SERVICE_ISO = '2026-01-01';
+const DATE_MISE_EN_SERVICE = new Date(
+  `${DATE_MISE_EN_SERVICE_ISO}T00:00:00.000Z`
+);
 
 function adminSession() {
   return {
@@ -64,6 +68,7 @@ function validCreatePayload(overrides: Record<string, string> = {}) {
     boutiqueId: BOUTIQUE_UUID,
     seuilMin: '-25',
     seuilMax: '-18',
+    dateMiseEnService: DATE_MISE_EN_SERVICE_ISO,
     ...overrides,
   };
 }
@@ -247,6 +252,7 @@ describe('[createEquipementAction]', () => {
         boutiqueId: BOUTIQUE_UUID,
         seuilMin: -25,
         seuilMax: -18,
+        dateMiseEnService: DATE_MISE_EN_SERVICE,
       },
       'admin-1'
     );
@@ -327,6 +333,7 @@ describe('[updateEquipementAction]', () => {
       boutiqueId: undefined,
       seuilMin: -25,
       seuilMax: -18,
+      dateMiseEnService: undefined,
     });
     expect(revalidatePath).toHaveBeenCalledWith('/admin/equipements');
     expect(revalidatePath).toHaveBeenCalledWith(

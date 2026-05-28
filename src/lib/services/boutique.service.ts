@@ -174,6 +174,7 @@ export async function createBoutique(
         nom: input.nom,
         adresse: input.adresse ?? null,
         ville: input.ville ?? null,
+        dateOuverture: input.dateOuverture,
       },
     });
     await logAudit({
@@ -217,6 +218,9 @@ export async function updateBoutique(
       ...(input.nom !== undefined && { nom: input.nom }),
       ...(input.adresse !== undefined && { adresse: input.adresse ?? null }),
       ...(input.ville !== undefined && { ville: input.ville ?? null }),
+      ...(input.dateOuverture !== undefined && {
+        dateOuverture: input.dateOuverture,
+      }),
     },
   });
   return { success: true, data: updated };

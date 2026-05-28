@@ -89,6 +89,7 @@ export async function createBoutiqueAction(
     nom: readRequiredString(formData, 'nom'),
     adresse: readOptionalString(formData, 'adresse'),
     ville: readOptionalString(formData, 'ville'),
+    dateOuverture: readRequiredString(formData, 'dateOuverture'),
   });
   if (!parsed.success) {
     return {
@@ -149,6 +150,7 @@ export async function updateBoutiqueAction(
     nom: readOptionalString(formData, 'nom'),
     adresse: readOptionalString(formData, 'adresse'),
     ville: readOptionalString(formData, 'ville'),
+    dateOuverture: readOptionalString(formData, 'dateOuverture'),
   });
   if (!parsed.success) {
     return {

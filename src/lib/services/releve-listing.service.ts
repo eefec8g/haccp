@@ -12,6 +12,7 @@ import {
   parseISODateUtc,
   todayParisISO,
 } from '@/lib/utils/dates';
+import { dateDebutEffective } from '@/lib/utils/date-debut';
 import { CRENEAU_ORDER } from '@/lib/constants/releve';
 import {
   HARD_LIMIT_RELEVES,
@@ -265,10 +266,10 @@ function makeLoadScope(args: AssembleArgs): LoadScope {
   };
 }
 
-function loadEquipementsData(
+async function loadEquipementsData(
   scope: LoadScope
 ): Promise<readonly EquipementRow[]> {
-  return db.equipement.findMany({
+  const rows = await db.equipement.findMany({
     where: {
       actif: true,
       boutiqueId: { in: [...scope.boutiqueIds] },
@@ -277,6 +278,29 @@ function loadEquipementsData(
     orderBy: [{ boutique: { nom: 'asc' } }, { nom: 'asc' }],
     select: EQUIPEMENT_SELECT,
   });
+  return rows.map(toEquipementRow);
+}
+
+/**
+ * Projette une ligne DB en `EquipementRow` en pre-calculant la date de
+ * debut effective (`MAX(boutique.dateOuverture, equipement.
+ * dateMiseEnService)`, cf. `date-debut.ts`). On la stocke en ISO
+ * `YYYY-MM-DD` pour comparer directement aux jours enumeres (eux aussi
+ * ISO) sans re-parser a chaque cellule.
+ */
+function toEquipementRow(row: EquipementDbRow): EquipementRow {
+  return {
+    id: row.id,
+    nom: row.nom,
+    boutiqueId: row.boutiqueId,
+    boutique: { nom: row.boutique.nom },
+    dateDebutEffectiveISO: isoFromDate(
+      dateDebutEffective({
+        dateOuverture: row.boutique.dateOuverture,
+        dateMiseEnService: row.dateMiseEnService,
+      })
+    ),
+  };
 }
 
 function loadRelevesData(scope: LoadScope): Promise<readonly ReleveRow[]> {
@@ -317,7 +341,8 @@ const EQUIPEMENT_SELECT = {
   id: true,
   nom: true,
   boutiqueId: true,
-  boutique: { select: { nom: true } },
+  dateMiseEnService: true,
+  boutique: { select: { nom: true, dateOuverture: true } },
 } as const;
 
 const RELEVE_SELECT = {
@@ -337,11 +362,24 @@ const RELEVE_SELECT = {
   annule: { select: { motifAnnulation: true } },
 } as const;
 
+interface EquipementDbRow {
+  readonly id: string;
+  readonly nom: string;
+  readonly boutiqueId: string;
+  readonly dateMiseEnService: Date;
+  readonly boutique: { readonly nom: string; readonly dateOuverture: Date };
+}
+
 interface EquipementRow {
   readonly id: string;
   readonly nom: string;
   readonly boutiqueId: string;
   readonly boutique: { readonly nom: string };
+  /**
+   * Jour ISO `YYYY-MM-DD` de debut effectif des releves attendus pour cet
+   * equipement. Aucun MANQUANT n'est genere pour un jour anterieur.
+   */
+  readonly dateDebutEffectiveISO: string;
 }
 
 interface ReleveRow {
@@ -425,6 +463,11 @@ interface BuildCellItemsArgs {
  * Construit les items pour une cellule (date, equipement, creneau) :
  *   - 0 ou 1 actif (=> SAISI ou ALERTE) OU 1 manquant virtuel (=> MANQUANT)
  *   - 0..N annules (=> ANNULE), chronologiquement ordonnes.
+ *
+ * Le MANQUANT virtuel n'est emis QUE si le jour est attendu (>= date de
+ * debut effective de l'equipement). Avant cette date, la cellule vide est
+ * neutre : ni MANQUANT ni attendue. Les actifs et annules eventuels
+ * (donnees reelles) restent toujours projetes, quel que soit le jour.
  */
 function buildCellItems(
   args: BuildCellItemsArgs
@@ -434,7 +477,7 @@ function buildCellItems(
   const actif = args.buckets.actifs.get(key);
   if (actif) {
     items.push(toItemFromActif(actif, args));
-  } else {
+  } else if (args.dateISO >= args.equipement.dateDebutEffectiveISO) {
     items.push(toItemManquant(args));
   }
   const annules = args.buckets.annules.get(key) ?? [];

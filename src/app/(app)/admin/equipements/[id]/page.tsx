@@ -8,6 +8,7 @@ import { EquipementForm } from '@/components/features/admin/EquipementForm';
 import { EquipementToggleActiveButton } from '@/components/features/admin/EquipementToggleActiveButton';
 import { getEquipementById } from '@/lib/services/equipement.service';
 import { listBoutiques } from '@/lib/services/boutique.service';
+import { formatDateShort, isoFromDate } from '@/lib/utils/dates';
 
 export const metadata: Metadata = {
   title: 'Detail equipement - Administration HACCP',
@@ -54,7 +55,10 @@ export default async function AdminEquipementDetailPage({
   });
   const boutiques = boutiquesResult.items;
 
-  const subtitle = `${TYPE_LABELS[equipement.type]} - ${equipement.seuilMin}°C / ${equipement.seuilMax}°C`;
+  const dateMiseEnServiceLabel = formatDateShort(
+    isoFromDate(equipement.dateMiseEnService)
+  );
+  const subtitle = `${TYPE_LABELS[equipement.type]} - ${equipement.seuilMin}°C / ${equipement.seuilMax}°C - En service depuis le ${dateMiseEnServiceLabel}`;
 
   return (
     <div data-testid={`admin-equipement-detail-${equipement.id}`}>

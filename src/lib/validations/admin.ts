@@ -34,6 +34,33 @@ const trimmedString = z.string().trim();
 const uuidField = z.string().uuid();
 const emailField = trimmedString.toLowerCase().email("L'email est invalide");
 
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_LENGTH = 10;
+
+/**
+ * Verifie qu'une date ISO `YYYY-MM-DD` correspond a un jour reel
+ * (`2026-02-30` -> false). `new Date(...)` ne throw pas, il decale ; on
+ * detecte le drift par round-trip slice UTC (meme strategie que
+ * `validations/export.ts`).
+ */
+function isCalendarDate(dateISO: string): boolean {
+  const parsed = new Date(`${dateISO}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+  return parsed.toISOString().slice(0, ISO_DATE_LENGTH) === dateISO;
+}
+
+/**
+ * Champ date ISO `YYYY-MM-DD` obligatoire (input `<input type="date">`).
+ * Transforme en `Date` UTC minuit pour persistance Prisma `@db.Date`.
+ */
+const isoDateField = z
+  .string()
+  .regex(ISO_DATE_REGEX, 'Date au format YYYY-MM-DD requise')
+  .refine(isCalendarDate, 'Date inexistante')
+  .transform((value) => new Date(`${value}T00:00:00.000Z`));
+
 const seuilField = z
   .number({ invalid_type_error: 'Le seuil doit etre un nombre' })
   .min(SEUIL_TEMP_MIN, `Le seuil doit etre >= ${SEUIL_TEMP_MIN}`)
@@ -72,6 +99,7 @@ export const boutiqueCreateSchema = z.object({
     ),
   adresse: optionalTrimmedField(BOUTIQUE_ADRESSE_MAX),
   ville: optionalTrimmedField(BOUTIQUE_VILLE_MAX),
+  dateOuverture: isoDateField,
 });
 
 export const boutiqueUpdateSchema = boutiqueCreateSchema.partial();
@@ -95,6 +123,7 @@ export const equipementCreateSchema = z
     boutiqueId: uuidField,
     seuilMin: seuilField,
     seuilMax: seuilField,
+    dateMiseEnService: isoDateField,
   })
   .refine((data) => data.seuilMin < data.seuilMax, {
     message: SEUILS_INVALID,
@@ -115,6 +144,7 @@ export const equipementUpdateSchema = z
     boutiqueId: uuidField.optional(),
     seuilMin: seuilField.optional(),
     seuilMax: seuilField.optional(),
+    dateMiseEnService: isoDateField.optional(),
   })
   .refine(
     (data) =>

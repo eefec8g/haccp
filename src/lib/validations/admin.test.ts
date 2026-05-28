@@ -14,21 +14,46 @@ const VALID_UUID = '11111111-1111-4111-8111-111111111111';
 const OTHER_UUID = '22222222-2222-4222-8222-222222222222';
 const VALID_PASSWORD = 'StrongPass1!aZ';
 const VALID_TOKEN = 'a'.repeat(43);
+const VALID_DATE_ISO = '2026-01-01';
 
 describe('[admin validations]', () => {
   describe('boutiqueCreateSchema', () => {
-    it('should accept a minimal valid input (nom only)', () => {
-      const result = boutiqueCreateSchema.safeParse({ nom: 'MG Paris 11' });
+    it('should accept a minimal valid input (nom + dateOuverture)', () => {
+      const result = boutiqueCreateSchema.safeParse({
+        nom: 'MG Paris 11',
+        dateOuverture: VALID_DATE_ISO,
+      });
       expect(result.success).toBe(true);
     });
 
+    it('should reject when dateOuverture is missing', () => {
+      const result = boutiqueCreateSchema.safeParse({ nom: 'MG Paris 11' });
+      expect(result.success).toBe(false);
+    });
+
+    it('should transform dateOuverture into a UTC midnight Date', () => {
+      const parsed = boutiqueCreateSchema.parse({
+        nom: 'MG Paris 11',
+        dateOuverture: VALID_DATE_ISO,
+      });
+      expect(parsed.dateOuverture).toEqual(
+        new Date(`${VALID_DATE_ISO}T00:00:00.000Z`)
+      );
+    });
+
     it('should reject a nom that is too short', () => {
-      const result = boutiqueCreateSchema.safeParse({ nom: 'A' });
+      const result = boutiqueCreateSchema.safeParse({
+        nom: 'A',
+        dateOuverture: VALID_DATE_ISO,
+      });
       expect(result.success).toBe(false);
     });
 
     it('should trim the nom', () => {
-      const parsed = boutiqueCreateSchema.parse({ nom: '  MG Lyon  ' });
+      const parsed = boutiqueCreateSchema.parse({
+        nom: '  MG Lyon  ',
+        dateOuverture: VALID_DATE_ISO,
+      });
       expect(parsed.nom).toBe('MG Lyon');
     });
 
@@ -36,6 +61,7 @@ describe('[admin validations]', () => {
       const parsed = boutiqueCreateSchema.parse({
         nom: 'MG Paris',
         adresse: '',
+        dateOuverture: VALID_DATE_ISO,
       });
       expect(parsed.adresse).toBeUndefined();
     });
@@ -61,6 +87,7 @@ describe('[admin validations]', () => {
         boutiqueId: VALID_UUID,
         seuilMin: -25,
         seuilMax: -18,
+        dateMiseEnService: VALID_DATE_ISO,
         ...overrides,
       };
     }
@@ -68,6 +95,13 @@ describe('[admin validations]', () => {
     it('should accept a valid equipement', () => {
       const result = equipementCreateSchema.safeParse(baseInput());
       expect(result.success).toBe(true);
+    });
+
+    it('should reject when dateMiseEnService is missing', () => {
+      const result = equipementCreateSchema.safeParse(
+        baseInput({ dateMiseEnService: undefined })
+      );
+      expect(result.success).toBe(false);
     });
 
     it('should reject when seuilMin >= seuilMax', () => {

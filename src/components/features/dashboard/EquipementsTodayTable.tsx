@@ -5,6 +5,10 @@ import type {
 import { CRENEAU_LABELS, CRENEAU_ORDER } from '@/lib/constants/releve';
 import { formatTemperature } from '@/lib/utils/format-temperature';
 import { formatTimeShort } from '@/lib/utils/dates';
+import {
+  getTemperatureBand,
+  type TemperatureBand,
+} from '@/lib/utils/temperature-band';
 
 /**
  * EquipementsTodayTable - Tableau "Releves du jour" du dashboard accueil
@@ -47,8 +51,18 @@ const TD_CLASSES = 'px-6 py-4 align-middle';
 const CELL_CONTAINER_CLASSES = 'flex flex-col items-start gap-0';
 const BADGE_BASE_CLASSES =
   'inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] font-medium tracking-wide';
-const BADGE_SAISI_CLASSES = `${BADGE_BASE_CLASSES} border border-mg-or/40 bg-transparent text-mg-or`;
-const BADGE_ALERTE_CLASSES = `${BADGE_BASE_CLASSES} border border-mg-or bg-mg-or text-mg-noir`;
+
+/**
+ * Code couleur par plage de temperature (repere visuel terrain) :
+ *   - COLD   (< 0 degC)   : bleu (regime froid normal)
+ *   - NORMAL (0 a 20 degC) : neutre noir
+ *   - HIGH   (> 20 degC)  : rouge (anormalement chaud)
+ */
+const BADGE_BAND_CLASSES: Readonly<Record<TemperatureBand, string>> = {
+  COLD: `${BADGE_BASE_CLASSES} border border-blue-400/50 bg-blue-50 text-blue-700`,
+  NORMAL: `${BADGE_BASE_CLASSES} border border-mg-noir/20 bg-transparent text-mg-noir`,
+  HIGH: `${BADGE_BASE_CLASSES} border border-red-400/50 bg-red-50 text-red-700`,
+};
 const MISSING_TEXT_CLASSES = 'text-sm font-light italic text-mg-noir/40';
 const CELL_TIME_CLASSES = 'mt-1 text-[10px] tracking-wide text-mg-noir/50';
 const EMPTY_CLASSES =
@@ -82,8 +96,8 @@ function CellView({ cell, equipementId, testIdPrefix }: CellViewProps) {
       </div>
     );
   }
-  const badgeClasses =
-    cell.statut === 'ALERTE' ? BADGE_ALERTE_CLASSES : BADGE_SAISI_CLASSES;
+  const band = getTemperatureBand(cell.temperature) ?? 'NORMAL';
+  const badgeClasses = BADGE_BAND_CLASSES[band];
   const statusLabel = cell.statut === 'ALERTE' ? 'alerte' : 'saisi';
   const heureLabel = cell.saisiAt ? formatTimeShort(cell.saisiAt) : null;
   return (

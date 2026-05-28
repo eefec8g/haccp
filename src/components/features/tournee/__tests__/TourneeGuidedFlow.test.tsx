@@ -387,7 +387,7 @@ describe('[Tournee] CorrectionStep', () => {
     expect(html).toContain('deja signee');
   });
 
-  it('should render the ALERTE status badge in the recap when a releve is hors seuils', () => {
+  it('should render the KO status badge in red in the recap when a releve is hors seuils', () => {
     saisieMockState.current = { status: 'idle' };
     const horsSeuils: TourneeReleve = { ...RELEVE_A, alerteHorsSeuils: true };
     const html = renderFlow({
@@ -395,11 +395,12 @@ describe('[Tournee] CorrectionStep', () => {
     });
 
     expect(html).toContain('data-testid="tournee-recap-status-eq-a"');
-    expect(html).toContain('Alerte');
-    expect(html).toContain('bg-mg-or');
-    // EQ_B reste OK.
+    expect(html).toContain('>KO</span>');
+    expect(html).toContain('text-red-700');
+    // EQ_B reste OK (vert).
     expect(html).toContain('data-testid="tournee-recap-status-eq-b"');
     expect(html).toContain('>OK</span>');
+    expect(html).toContain('text-green-700');
   });
 
   it('should render the empty state when there is no equipement actif', () => {

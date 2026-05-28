@@ -160,12 +160,45 @@ describe('[Dashboard] EquipementsTodayTable', () => {
     ];
     const html = renderToStaticMarkup(<EquipementsTodayTable rows={rows} />);
     expect(html).toContain('-10.0 degC');
-    expect(html).toContain('bg-mg-or');
+    // -10 degC = bande COLD -> bleu (code couleur par valeur).
+    expect(html).toContain('text-blue-700');
     expect(html).toContain('Matin - alerte');
     expect(html).toContain(
       'data-testid="equipements-today-table-cell-eq-4-MATIN-time"'
     );
     expect(html).toContain('13:05');
+  });
+
+  it('should color temperature badges by value band (cold/normal/high)', () => {
+    const rows = [
+      buildRow({
+        equipementId: 'eq-band',
+        cells: {
+          MATIN: buildCell({
+            creneau: 'MATIN',
+            statut: 'SAISI',
+            temperature: -18,
+            releveId: 'r-cold',
+          }),
+          MIDI: buildCell({
+            creneau: 'MIDI',
+            statut: 'SAISI',
+            temperature: 5,
+            releveId: 'r-normal',
+          }),
+          SOIR: buildCell({
+            creneau: 'SOIR',
+            statut: 'SAISI',
+            temperature: 25,
+            releveId: 'r-high',
+          }),
+        },
+      }),
+    ];
+    const html = renderToStaticMarkup(<EquipementsTodayTable rows={rows} />);
+    expect(html).toContain('text-blue-700'); // -18 = COLD
+    expect(html).toContain('text-mg-noir'); // 5 = NORMAL
+    expect(html).toContain('text-red-700'); // 25 = HIGH
   });
 
   it('should use a custom testId when provided', () => {

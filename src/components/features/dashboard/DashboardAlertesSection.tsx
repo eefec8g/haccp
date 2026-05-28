@@ -34,6 +34,12 @@ interface DashboardAlertesSectionProps {
   readonly title?: string;
   readonly emptyMessage?: string;
   readonly testId?: string;
+  /**
+   * Affiche le lien "Resoudre" sur chaque carte. Defaut `true` : cette
+   * section n'est rendue que par les dashboards RESPONSABLE/ADMIN (le
+   * dashboard SALARIE affiche la tournee du jour, pas les alertes).
+   */
+  readonly canManage?: boolean;
 }
 
 export function DashboardAlertesSection({
@@ -41,6 +47,7 @@ export function DashboardAlertesSection({
   title = DEFAULT_TITLE,
   emptyMessage = DEFAULT_EMPTY,
   testId = DEFAULT_TEST_ID,
+  canManage = true,
 }: DashboardAlertesSectionProps) {
   return (
     <section
@@ -64,7 +71,7 @@ export function DashboardAlertesSection({
         <ul className={LIST_CLASSES} data-testid={`${testId}-list`}>
           {alertes.map((alerte) => (
             <li key={alerte.id}>
-              <AlerteListItem alerte={alerte} />
+              <AlerteListItem alerte={alerte} canManage={canManage} />
             </li>
           ))}
         </ul>

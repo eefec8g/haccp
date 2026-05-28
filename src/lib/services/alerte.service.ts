@@ -248,22 +248,19 @@ interface ListAlertesOuvertesArgs {
  * Liste paginee des alertes status OUVERTE des boutiques accessibles
  * au viewer (US-ALE-001).
  *
+ * - SALARIE : sa boutique unique (lecture seule, il consulte les alertes
+ *   qui le concernent ; la resolution reste RESPONSABLE/ADMIN).
  * - RESPONSABLE : ses boutiques.
  * - ADMIN : toutes les boutiques actives.
- * - SALARIE : refuse (defense en profondeur, l'UI guard deja en amont).
  *
- * N-5 : guard role applicatif au tout debut, symetrique avec
- * `getAlerteById` / `resolveAlerte`. Retour vide plutot que FORBIDDEN
- * pour rester compatible avec la signature `PaginatedResult` (les pages
- * appelantes guard deja, ce n'est que la defense en profondeur).
+ * Le scope est porte exclusivement par `getAccessibleBoutiqueIds` qui
+ * borne deja chaque role a son perimetre : pas de fuite cross-boutique.
+ * Un viewer sans boutique accessible recoit une page vide.
  */
 export async function listAlertesOuvertes({
   viewer,
   pagination,
 }: ListAlertesOuvertesArgs): Promise<PaginatedResult<AlerteListItem>> {
-  if (!canManageAlertes(viewer)) {
-    return buildPaginated([], 0, pagination);
-  }
   const accessible = await getAccessibleBoutiqueIds(viewer);
   if (accessible.length === 0) {
     return buildPaginated([], 0, pagination);
@@ -295,21 +292,22 @@ interface GetAlerteByIdArgs {
 }
 
 /**
- * Recupere une alerte avec verification de role + scope boutique.
+ * Recupere une alerte avec verification de scope boutique (lecture).
  *
- * - Role : guard `canManageAlertes` (RESPONSABLE/ADMIN) en tout premier,
- *   symetrique avec `resolveAlerte` (defense en profondeur).
- * - Scope : si l'alerte pointe vers un releve d'une boutique non
- *   accessible au viewer, on remonte `NOT_FOUND` plutot que `FORBIDDEN`
- *   pour eviter une fuite d'existence (anti-enum).
+ * Lecture ouverte aux trois roles : le SALARIE peut consulter une alerte
+ * de SA boutique (un congelateur en alerte le concerne). La GESTION
+ * (resolution) reste reservee RESPONSABLE/ADMIN cote `resolveAlerte`.
+ *
+ * - Scope : la liste `getAccessibleBoutiqueIds` borne deja le SALARIE a sa
+ *   boutique, le RESPONSABLE a ses boutiques et l'ADMIN au parc. Si
+ *   l'alerte pointe vers un releve d'une boutique non accessible au
+ *   viewer, on remonte `NOT_FOUND` plutot que `FORBIDDEN` pour eviter une
+ *   fuite d'existence (anti-enum).
  */
 export async function getAlerteById({
   viewer,
   alerteId,
 }: GetAlerteByIdArgs): Promise<Result<AlerteListItem, AlerteError>> {
-  if (!canManageAlertes(viewer)) {
-    return { success: false, error: 'FORBIDDEN' };
-  }
   const alerte = await db.alerte.findUnique({
     where: { id: alerteId },
     select: ALERTE_LIST_SELECT,

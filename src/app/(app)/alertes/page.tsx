@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import type { Route } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { canManageAlertes } from '@/lib/permissions';
@@ -38,10 +38,12 @@ const PAGE_SUBTITLE = 'Releves hors seuils en attente de resolution.';
  * Server Component async :
  *   - Auth check : redirect /login si pas de session (defense en
  *     profondeur, le middleware filtre deja en amont).
- *   - Role check : notFound() si role non habilite (anti-enum : on
- *     n'expose pas l'existence de la page aux salaries).
+ *   - Lecture ouverte aux trois roles : le SALARIE consulte les alertes
+ *     de SA boutique (lecture seule), la liste etant scopee par
+ *     `getAccessibleBoutiqueIds` cote service (multi-tenant strict).
+ *   - `canManage` (RESPONSABLE/ADMIN) conditionne l'affichage des actions
+ *     de resolution ; le SALARIE voit la liste sans bouton "Resoudre".
  *   - Parse les query params (page / pageSize) via Zod, defauts surs.
- *   - Charge la liste paginee scopee aux boutiques accessibles.
  *   - Rend un header sobre + lien retour + la liste.
  */
 export default async function AlertesPage({ searchParams }: AlertesPageProps) {
@@ -50,9 +52,7 @@ export default async function AlertesPage({ searchParams }: AlertesPageProps) {
     redirect('/login');
   }
   const viewer = { id: session.user.id, role: session.user.role };
-  if (!canManageAlertes(viewer)) {
-    notFound();
-  }
+  const canManage = canManageAlertes(viewer);
 
   const raw = await searchParams;
   const parsed = alertesQuerySchema.safeParse(raw);
@@ -73,6 +73,7 @@ export default async function AlertesPage({ searchParams }: AlertesPageProps) {
       <section className={SECTION_CLASSES}>
         <AlerteList
           items={result.items}
+          canManage={canManage}
           pagination={{
             page: result.page,
             pageSize: result.pageSize,

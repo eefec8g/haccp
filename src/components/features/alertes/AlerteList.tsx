@@ -17,6 +17,11 @@ import { AlerteListItem } from './AlerteListItem';
 
 interface AlerteListProps {
   readonly items: readonly AlerteListItemData[];
+  /**
+   * RESPONSABLE/ADMIN : affiche le lien "Resoudre" sur chaque carte.
+   * SALARIE : lecture seule (consultation des alertes de sa boutique).
+   */
+  readonly canManage: boolean;
   readonly pagination: {
     readonly page: number;
     readonly pageSize: number;
@@ -32,7 +37,7 @@ const EMPTY_TEXT_CLASSES = 'text-sm font-light italic text-mg-noir/60';
 const PAGINATION_BASE_HREF = '/alertes';
 const EMPTY_MESSAGE = 'Aucune alerte ouverte. Tout est en ordre.';
 
-export function AlerteList({ items, pagination }: AlerteListProps) {
+export function AlerteList({ items, canManage, pagination }: AlerteListProps) {
   if (items.length === 0) {
     return (
       <section
@@ -52,7 +57,7 @@ export function AlerteList({ items, pagination }: AlerteListProps) {
       aria-label="Alertes ouvertes"
     >
       {items.map((alerte) => (
-        <AlerteListItem key={alerte.id} alerte={alerte} />
+        <AlerteListItem key={alerte.id} alerte={alerte} canManage={canManage} />
       ))}
       <Pagination
         currentPage={pagination.page}

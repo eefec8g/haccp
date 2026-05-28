@@ -16,7 +16,9 @@ import { DateCourte } from '@/components/features/releves/DateCourte';
  *   - Date + creneau (DateCourte + CreneauBadge) en ligne info.
  *   - Temperature + seuils (rappel HACCP).
  *   - Commentaire de saisie (raison hors seuils) si renseigne.
- *   - Lien primaire "Resoudre" vers `/alertes/<id>`.
+ *   - RESPONSABLE/ADMIN : lien primaire "Resoudre" vers `/alertes/<id>`.
+ *   - SALARIE (`canManage = false`) : lien secondaire "Consulter" en
+ *     lecture seule (pas d'action de resolution).
  *
  * a11y :
  *   - `<article>` semantique avec aria-label "Alerte ouverte ..."
@@ -26,6 +28,8 @@ import { DateCourte } from '@/components/features/releves/DateCourte';
 
 interface AlerteListItemProps {
   readonly alerte: AlerteListItemData;
+  /** RESPONSABLE/ADMIN : lien "Resoudre". SALARIE : lien "Consulter". */
+  readonly canManage: boolean;
 }
 
 const CARD_CLASSES =
@@ -47,11 +51,19 @@ const COMMENT_CLASSES =
  */
 const ACTION_LINK_CLASSES =
   'inline-flex min-h-touch w-full items-center justify-center bg-mg-noir px-6 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-ivoire transition-colors hover:bg-mg-or hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire sm:w-auto';
+/**
+ * Lien lecture seule (SALARIE) : variante "outline" sobre pour signaler
+ * qu'il ne declenche aucune action de resolution, tout en restant une
+ * cible tactile WCAG (`min-h-touch`).
+ */
+const READ_LINK_CLASSES =
+  'inline-flex min-h-touch w-full items-center justify-center border border-mg-noir/20 px-6 py-3 text-[11px] font-light uppercase tracking-[0.3em] text-mg-noir transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire sm:w-auto';
 
-export function AlerteListItem({ alerte }: AlerteListItemProps) {
+export function AlerteListItem({ alerte, canManage }: AlerteListItemProps) {
   const { releve } = alerte;
   const detailHref = `/alertes/${alerte.id}` as Route;
   const ariaLabel = `Alerte ouverte sur ${releve.equipementNom} a ${releve.boutiqueNom}`;
+  const actionLabel = canManage ? 'Resoudre' : 'Consulter';
   return (
     <article
       className={CARD_CLASSES}
@@ -104,10 +116,10 @@ export function AlerteListItem({ alerte }: AlerteListItemProps) {
       <div className="flex w-full shrink-0 items-start sm:w-auto">
         <Link
           href={detailHref}
-          className={ACTION_LINK_CLASSES}
+          className={canManage ? ACTION_LINK_CLASSES : READ_LINK_CLASSES}
           data-testid={`alerte-item-${alerte.id}-resolve`}
         >
-          Resoudre
+          {actionLabel}
         </Link>
       </div>
     </article>

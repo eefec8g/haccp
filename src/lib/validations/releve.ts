@@ -137,6 +137,17 @@ const LISTING_ISO_DATE_FIELD = z
   .string()
   .regex(ISO_DATE_REGEX, 'La date doit etre au format YYYY-MM-DD');
 
+/**
+ * Les `<select>` "Tous" et les inputs date vides d'un form GET HTML
+ * serialisent une chaine vide (`?boutiqueId=&creneau=...`). Sans ce
+ * preprocess, `""` echouait la validation `uuid()`/`nativeEnum()` et
+ * faisait sauter TOUS les filtres (y compris ceux valides). On
+ * normalise `""` -> `undefined` pour que les champs optionnels soient
+ * traites comme absents.
+ */
+const emptyToUndefined = (value: unknown): unknown =>
+  value === '' ? undefined : value;
+
 function computeDefaultPeriode(): {
   readonly dateStart: string;
   readonly dateEnd: string;
@@ -162,12 +173,24 @@ interface NormalizedListingQuery {
 
 export const releveListingQuerySchema = z
   .object({
-    boutiqueId: z.string().uuid('Identifiant boutique invalide').optional(),
-    equipementId: z.string().uuid('Identifiant equipement invalide').optional(),
-    creneau: z.nativeEnum(Creneau).optional(),
-    statut: z.enum(['SAISI', 'ALERTE', 'MANQUANT', 'ANNULE']).optional(),
-    dateStart: LISTING_ISO_DATE_FIELD.optional(),
-    dateEnd: LISTING_ISO_DATE_FIELD.optional(),
+    boutiqueId: z.preprocess(
+      emptyToUndefined,
+      z.string().uuid('Identifiant boutique invalide').optional()
+    ),
+    equipementId: z.preprocess(
+      emptyToUndefined,
+      z.string().uuid('Identifiant equipement invalide').optional()
+    ),
+    creneau: z.preprocess(emptyToUndefined, z.nativeEnum(Creneau).optional()),
+    statut: z.preprocess(
+      emptyToUndefined,
+      z.enum(['SAISI', 'ALERTE', 'MANQUANT', 'ANNULE']).optional()
+    ),
+    dateStart: z.preprocess(
+      emptyToUndefined,
+      LISTING_ISO_DATE_FIELD.optional()
+    ),
+    dateEnd: z.preprocess(emptyToUndefined, LISTING_ISO_DATE_FIELD.optional()),
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce
       .number()

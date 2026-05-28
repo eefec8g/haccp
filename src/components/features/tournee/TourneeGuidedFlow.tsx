@@ -33,6 +33,7 @@ import {
   TEMPERATURE_MAX,
   TEMPERATURE_MIN,
 } from '@/lib/constants/releve';
+import { USER_ROLE_LABELS } from '@/lib/constants/user-labels';
 import { buildRateLimitMessage } from '@/lib/utils/rate-limit-message';
 import { resolveSignatureErrorMessage } from '@/lib/utils/signature-error-messages';
 import { formatTemperature } from '@/lib/utils/format-temperature';
@@ -45,6 +46,8 @@ import {
   TEXTAREA_CLASSES,
 } from '@/components/features/ui/form-styles';
 import { SignaturePad } from '@/components/features/signature/SignaturePad';
+import { ResponsiveDataTable } from '@/components/features/admin/ResponsiveDataTable';
+import type { AdminDataTableColumn } from '@/components/features/admin/AdminDataTable';
 import type {
   TourneeEquipement,
   TourneeReleve,
@@ -117,17 +120,23 @@ const PROGRESS_CLASSES =
   'text-[10px] font-medium uppercase tracking-[0.3em] text-mg-or';
 const SIGNATURE_FRAME_CLASSES =
   'flex flex-col gap-4 border border-mg-noir/10 bg-mg-ivoire/40 p-5';
-const SIGNATURE_NOTICE_CLASSES =
-  'border border-mg-noir/15 bg-mg-ivoire px-4 py-3 text-xs font-light uppercase tracking-[0.15em] text-mg-noir';
 const RECAP_FRAME_CLASSES = 'flex flex-col gap-5';
-const RECAP_ROW_CLASSES =
-  'flex flex-col gap-3 border border-mg-noir/10 bg-white p-5 sm:flex-row sm:items-center sm:justify-between';
+const RECAP_SUBTITLE_CLASSES =
+  'text-[11px] uppercase tracking-[0.2em] text-mg-noir/50';
 const RECAP_MODIFIER_CLASSES =
   'inline-flex min-h-touch items-center justify-center border border-mg-noir/20 bg-transparent px-5 text-[10px] font-medium uppercase tracking-[0.3em] text-mg-noir transition-colors hover:border-mg-or hover:text-mg-or focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 const RECAP_STATUS_OK_CLASSES =
   'inline-flex w-fit border border-mg-or/40 bg-transparent px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-mg-or';
 const RECAP_STATUS_ALERTE_CLASSES =
   'inline-flex w-fit border border-mg-or bg-mg-or px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-mg-noir';
+const RECAP_TEMPERATURE_CLASSES =
+  'font-light tracking-wider text-mg-noir tabular-nums';
+const SIGNED_BANNER_CLASSES =
+  'flex flex-col gap-1 border-l-2 border-mg-or bg-mg-or/5 px-5 py-4';
+const SIGNED_BANNER_EYEBROW_CLASSES =
+  'text-[10px] font-medium uppercase tracking-[0.3em] text-mg-or';
+const SIGNED_BANNER_TEXT_CLASSES = 'text-sm font-light text-mg-noir';
+const SIGNED_BANNER_VALUE_CLASSES = 'font-medium text-mg-noir';
 const CANCEL_BUTTON_CLASSES =
   'inline-flex min-h-touch items-center justify-center border border-mg-noir/20 bg-transparent px-5 text-[11px] font-medium uppercase tracking-[0.25em] text-mg-noir/70 transition-colors hover:border-mg-noir hover:text-mg-noir focus:outline-none focus:ring-1 focus:ring-mg-or focus:ring-offset-2 focus:ring-offset-mg-ivoire';
 
@@ -657,60 +666,137 @@ interface RecapEntry {
   readonly releve: TourneeReleve;
 }
 
-interface RecapRowProps {
-  readonly entry: RecapEntry;
-  readonly onModifier: (equipementId: string) => void;
+/** Badge de statut OK / Alerte d'une ligne de recap (charte MG). */
+function RecapStatusBadge({ entry }: { readonly entry: RecapEntry }) {
+  const { equipement, releve } = entry;
+  return (
+    <span
+      className={
+        releve.alerteHorsSeuils
+          ? RECAP_STATUS_ALERTE_CLASSES
+          : RECAP_STATUS_OK_CLASSES
+      }
+      role="status"
+      data-testid={`tournee-recap-status-${equipement.id}`}
+    >
+      {releve.alerteHorsSeuils ? 'Alerte' : 'OK'}
+    </span>
+  );
 }
 
 /**
- * Ligne de recap avec bouton "Modifier".
+ * Bouton "Modifier" d'une ligne de recap.
  *
  * Le bouton ne pointe PLUS vers la page externe `/releves/{id}/annuler`
  * (reservee RESPONSABLE/ADMIN -> 404 pour le salarie). Il rouvre le step
  * de correction inline dans le flow (`onModifier`), permettant a l'auteur
  * de corriger sa propre saisie du jour avant la signature.
  */
-function RecapRow({ entry, onModifier }: RecapRowProps) {
-  const { equipement, releve } = entry;
-  const statusLabel = releve.alerteHorsSeuils ? 'Alerte' : 'OK';
+function RecapModifierButton({
+  entry,
+  onModifier,
+}: {
+  readonly entry: RecapEntry;
+  readonly onModifier: (equipementId: string) => void;
+}) {
+  const { equipement } = entry;
+  return (
+    <button
+      type="button"
+      onClick={() => onModifier(equipement.id)}
+      className={RECAP_MODIFIER_CLASSES}
+      aria-label={`Modifier le releve de ${equipement.nom}`}
+      data-testid={`tournee-recap-modifier-${equipement.id}`}
+    >
+      Modifier
+    </button>
+  );
+}
+
+/**
+ * Colonnes du tableau de recap. La colonne "Action" (bouton Modifier)
+ * n'est presente QUE si la tournee n'est pas signee : une fois signee,
+ * le recap est en lecture seule stricte (tracabilite immuable HACCP).
+ */
+function buildRecapColumns(
+  onModifier: (equipementId: string) => void,
+  isLocked: boolean
+): readonly AdminDataTableColumn<RecapEntry>[] {
+  const baseColumns: readonly AdminDataTableColumn<RecapEntry>[] = [
+    {
+      key: 'equipement',
+      label: 'Equipement',
+      render: (entry) => entry.equipement.nom,
+    },
+    {
+      key: 'temperature',
+      label: 'Temperature',
+      align: 'right',
+      render: (entry) => (
+        <span className={RECAP_TEMPERATURE_CLASSES}>
+          {formatTemperature(entry.releve.temperature)}
+        </span>
+      ),
+    },
+    {
+      key: 'heure',
+      label: 'Heure',
+      align: 'right',
+      render: (entry) => formatTimeShort(entry.releve.saisiAt),
+    },
+    {
+      key: 'statut',
+      label: 'Statut',
+      render: (entry) => <RecapStatusBadge entry={entry} />,
+    },
+  ];
+  if (isLocked) {
+    return baseColumns;
+  }
+  return [
+    ...baseColumns,
+    {
+      key: 'action',
+      label: 'Action',
+      align: 'right',
+      render: (entry) => (
+        <RecapModifierButton entry={entry} onModifier={onModifier} />
+      ),
+    },
+  ];
+}
+
+function recapEntryId(entry: RecapEntry): string {
+  return entry.equipement.id;
+}
+
+interface SignedBannerProps {
+  readonly signature: TourneeSignature;
+}
+
+/** Bandeau "Tournee signee le ... a ... par ..." (recap verrouille). */
+function SignedBanner({ signature }: SignedBannerProps) {
+  const dateShort = formatDateShort(
+    signature.signedAt.toISOString().slice(0, 10)
+  );
+  const heure = formatTimeShort(signature.signedAt);
+  const roleLabel = USER_ROLE_LABELS[signature.signataireRoleSnapshot];
   return (
     <div
-      className={RECAP_ROW_CLASSES}
-      data-testid={`tournee-recap-row-${equipement.id}`}
+      className={SIGNED_BANNER_CLASSES}
+      role="status"
+      data-testid="tournee-recap-signed-banner"
     >
-      <div className="flex flex-col gap-1">
-        <h3 className="text-base font-light tracking-wide text-mg-noir">
-          {equipement.nom}
-        </h3>
-        <p className="text-2xl font-light tracking-wider text-mg-noir">
-          {formatTemperature(releve.temperature)}
-        </p>
-        <p className="text-[10px] tracking-wide text-mg-noir/50">
-          Saisi a {formatTimeShort(releve.saisiAt)}
-        </p>
-      </div>
-      <div className="flex items-center gap-4">
-        <span
-          className={
-            releve.alerteHorsSeuils
-              ? RECAP_STATUS_ALERTE_CLASSES
-              : RECAP_STATUS_OK_CLASSES
-          }
-          role="status"
-          data-testid={`tournee-recap-status-${equipement.id}`}
-        >
-          {statusLabel}
-        </span>
-        <button
-          type="button"
-          onClick={() => onModifier(equipement.id)}
-          className={RECAP_MODIFIER_CLASSES}
-          aria-label={`Modifier le releve de ${equipement.nom}`}
-          data-testid={`tournee-recap-modifier-${equipement.id}`}
-        >
-          Modifier
-        </button>
-      </div>
+      <p className={SIGNED_BANNER_EYEBROW_CLASSES}>Tournee signee</p>
+      <p className={SIGNED_BANNER_TEXT_CLASSES}>
+        Signee le{' '}
+        <span className={SIGNED_BANNER_VALUE_CLASSES}>{dateShort}</span> a{' '}
+        <span className={SIGNED_BANNER_VALUE_CLASSES}>{heure}</span> par{' '}
+        <span className={SIGNED_BANNER_VALUE_CLASSES}>
+          {signature.signataireNom}
+        </span>{' '}
+        ({roleLabel}).
+      </p>
     </div>
   );
 }
@@ -718,11 +804,31 @@ function RecapRow({ entry, onModifier }: RecapRowProps) {
 interface RecapStepProps {
   readonly creneau: Creneau;
   readonly entries: readonly RecapEntry[];
+  readonly signature: TourneeSignature | null;
   readonly onSign: () => void;
   readonly onModifier: (equipementId: string) => void;
+  readonly onDone: () => void;
 }
 
-function RecapStep({ creneau, entries, onSign, onModifier }: RecapStepProps) {
+/**
+ * Step RECAP : tableau lisible (ResponsiveDataTable) des saisies.
+ *
+ * Verrouillage (decision user) : si `signature` existe, le recap est
+ * l'ecran FINAL en lecture seule -> bandeau "Tournee signee", aucune
+ * colonne Action (pas de "Modifier"), bouton "Retour au dashboard" a la
+ * place de "Signer la tournee". Le SignatureStep n'est jamais atteint
+ * quand la tournee est deja signee (pas de re-signature possible).
+ */
+function RecapStep({
+  creneau,
+  entries,
+  signature,
+  onSign,
+  onModifier,
+  onDone,
+}: RecapStepProps) {
+  const isLocked = signature !== null;
+  const columns = buildRecapColumns(onModifier, isLocked);
   return (
     <section
       className={RECAP_FRAME_CLASSES}
@@ -730,26 +836,44 @@ function RecapStep({ creneau, entries, onSign, onModifier }: RecapStepProps) {
       aria-label={`Recapitulatif de la tournee ${CRENEAU_LABELS[creneau]}`}
     >
       <header className="flex flex-col gap-1">
-        <p className={MG_EYEBROW_CLASSES}>Verification finale</p>
+        <p className={MG_EYEBROW_CLASSES}>
+          {isLocked ? 'Registre signe' : 'Verification finale'}
+        </p>
         <h2 className="text-xl font-light tracking-wide text-mg-noir">
           Recapitulatif de votre tournee {CRENEAU_LABELS[creneau]}
         </h2>
+        <p className={RECAP_SUBTITLE_CLASSES} data-testid="tournee-recap-count">
+          {entries.length} equipement{entries.length > 1 ? 's' : ''} releve
+          {entries.length > 1 ? 's' : ''}
+        </p>
       </header>
-      <ul className="flex flex-col gap-3">
-        {entries.map((entry) => (
-          <li key={entry.equipement.id}>
-            <RecapRow entry={entry} onModifier={onModifier} />
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        onClick={onSign}
-        className={SUBMIT_LARGE_CLASSES}
-        data-testid="tournee-recap-signer"
-      >
-        Signer la tournee
-      </button>
+      {signature ? <SignedBanner signature={signature} /> : null}
+      <ResponsiveDataTable
+        name="tournee-recap"
+        columns={columns}
+        rows={entries}
+        getRowId={recapEntryId}
+        caption={`Recapitulatif de la tournee ${CRENEAU_LABELS[creneau]}`}
+      />
+      {isLocked ? (
+        <button
+          type="button"
+          onClick={onDone}
+          className={SUBMIT_LARGE_CLASSES}
+          data-testid="tournee-recap-back"
+        >
+          Retour au dashboard
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onSign}
+          className={SUBMIT_LARGE_CLASSES}
+          data-testid="tournee-recap-signer"
+        >
+          Signer la tournee
+        </button>
+      )}
     </section>
   );
 }
@@ -757,7 +881,6 @@ function RecapStep({ creneau, entries, onSign, onModifier }: RecapStepProps) {
 interface SignatureStepProps {
   readonly boutiqueId: string;
   readonly dateISO: string;
-  readonly signature: TourneeSignature | null;
   readonly onDone: () => void;
 }
 
@@ -785,12 +908,15 @@ function deriveSignatureError(
   return resolveSignatureErrorMessage(state.code);
 }
 
-function SignatureStep({
-  boutiqueId,
-  dateISO,
-  signature,
-  onDone,
-}: SignatureStepProps) {
+/**
+ * Step SIGNATURE : canvas + upload de la signature manuscrite.
+ *
+ * Atteignable UNIQUEMENT depuis le recap NON signe via "Signer la
+ * tournee". Le cas "deja signee" est gere en amont par le RECAP
+ * verrouille (cf. `RecapStep` + `derivePhase`) : ce composant n'a donc
+ * plus a afficher de message "deja signee" (plus de duplication).
+ */
+function SignatureStep({ boutiqueId, dateISO, onDone }: SignatureStepProps) {
   const [state, formAction, isPending] = useActionState(
     signatureUploadAction,
     INITIAL_SIGNATURE_UPLOAD_STATE
@@ -804,38 +930,6 @@ function SignatureStep({
       onDone();
     }
   }, [state, hasSubmitted, onDone]);
-
-  if (signature) {
-    const dateShort = formatDateShort(
-      signature.signedAt.toISOString().slice(0, 10)
-    );
-    return (
-      <section
-        className={SIGNATURE_FRAME_CLASSES}
-        data-testid="tournee-signature-step"
-        aria-label="Tournee deja signee"
-      >
-        <p className={MG_EYEBROW_CLASSES}>Registre signe</p>
-        <h2 className="text-xl font-light tracking-wide text-mg-noir">
-          Tournee deja validee
-        </h2>
-        <p
-          className={SIGNATURE_NOTICE_CLASSES}
-          data-testid="tournee-signature-already"
-        >
-          Signee par {signature.signataireNom} le {dateShort}.
-        </p>
-        <button
-          type="button"
-          onClick={onDone}
-          className={SUBMIT_LARGE_CLASSES}
-          data-testid="tournee-signature-back"
-        >
-          Retour au dashboard
-        </button>
-      </section>
-    );
-  }
 
   const globalError = deriveSignatureError(state);
 
@@ -962,8 +1056,22 @@ function findCorrectionEntry(
   return releve ? { equipement, releve } : null;
 }
 
-/** Phase derivee de l'index de step courant. */
-function derivePhase(stepIndex: number, totalSteps: number): TourneePhase {
+/**
+ * Phase derivee de l'index de step courant.
+ *
+ * Verrouillage (decision user) : si la tournee est DEJA signee, le flow
+ * est fige sur le RECAP en lecture seule, quel que soit l'index. On ne
+ * peut atteindre ni SAISIE/CORRECTION (correction interdite apres
+ * signature, cf. service), ni SIGNATURE (pas de re-signature).
+ */
+function derivePhase(
+  stepIndex: number,
+  totalSteps: number,
+  isSigned: boolean
+): TourneePhase {
+  if (isSigned) {
+    return 'RECAP';
+  }
   if (stepIndex < totalSteps) {
     return 'SAISIE';
   }
@@ -983,14 +1091,19 @@ export function TourneeGuidedFlow({
   signature,
 }: TourneeGuidedFlowProps) {
   const router = useRouter();
+  const isSigned = signature !== null;
   const totalSteps = equipements.length;
+  // Si la tournee est deja signee au chargement, on demarre directement
+  // sur le RECAP verrouille (totalSteps) au lieu du premier manquant.
   const [stepIndex, setStepIndex] = useState(() =>
-    findNextMissingIndex({
-      equipements,
-      releves,
-      localReleves: {},
-      fromIndex: 0,
-    })
+    isSigned
+      ? totalSteps
+      : findNextMissingIndex({
+          equipements,
+          releves,
+          localReleves: {},
+          fromIndex: 0,
+        })
   );
   const [localReleves, setLocalReleves] = useState<LocalReleves>({});
   // Equipement en cours de correction depuis le recap (null = pas de
@@ -1000,17 +1113,19 @@ export function TourneeGuidedFlow({
     string | null
   >(null);
 
-  const correctionEntry = correctionEquipementId
-    ? findCorrectionEntry(
-        correctionEquipementId,
-        equipements,
-        releves,
-        localReleves
-      )
-    : null;
+  // Tournee signee : aucune correction possible (lecture seule stricte).
+  const correctionEntry =
+    correctionEquipementId && !isSigned
+      ? findCorrectionEntry(
+          correctionEquipementId,
+          equipements,
+          releves,
+          localReleves
+        )
+      : null;
   const phase: TourneePhase = correctionEntry
     ? 'CORRECTION'
-    : derivePhase(stepIndex, totalSteps);
+    : derivePhase(stepIndex, totalSteps, isSigned);
   const activeEquipement =
     phase === 'SAISIE' ? (equipements[stepIndex] ?? null) : null;
 
@@ -1098,15 +1213,16 @@ export function TourneeGuidedFlow({
         <SignatureStep
           boutiqueId={boutiqueId}
           dateISO={dateISO}
-          signature={signature}
           onDone={handleDone}
         />
       ) : phase === 'RECAP' ? (
         <RecapStep
           creneau={creneau}
           entries={buildRecapEntries(equipements, releves, localReleves)}
+          signature={signature}
           onSign={handleSign}
           onModifier={handleModifier}
+          onDone={handleDone}
         />
       ) : activeEquipement ? (
         <SaisieStep

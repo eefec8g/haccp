@@ -3,7 +3,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { TourneeSaisieActionState } from '@/app/actions/tournee-saisie.types';
 import type { TourneeCorrectionActionState } from '@/app/actions/tournee-correction.types';
 import type { SignatureUploadActionState } from '@/app/actions/signature.types';
-import type { TourneeEquipement, TourneeReleve } from '@/types/tournee';
+import type {
+  TourneeEquipement,
+  TourneeReleve,
+  TourneeSignature,
+} from '@/types/tournee';
 
 /**
  * Tests TourneeGuidedFlow (fix/signature-action-context).
@@ -128,6 +132,14 @@ const RELEVE_B: TourneeReleve = {
   saisiAt: new Date('2026-05-27T07:10:00.000Z'),
 };
 
+// Signature posee le 27/05/2026 a 09:15 Paris (07:15 UTC, mai UTC+2).
+const SIGNATURE: TourneeSignature = {
+  id: 'sig-1',
+  signedAt: new Date('2026-05-27T07:15:00.000Z'),
+  signataireNom: 'Alice Martin',
+  signataireRoleSnapshot: 'SALARIE',
+};
+
 function renderFlow(
   overrides: Partial<React.ComponentProps<typeof TourneeGuidedFlow>> = {}
 ): string {
@@ -180,7 +192,7 @@ describe('[Tournee] TourneeGuidedFlow', () => {
     expect(html).not.toContain('data-testid="tournee-previous"');
   });
 
-  it('should render the recap step when every equipement is already saisi', () => {
+  it('should render the recap step as a table when every equipement is already saisi', () => {
     saisieMockState.current = { status: 'idle' };
     const html = renderFlow({
       releves: { 'eq-a': RELEVE_A, 'eq-b': RELEVE_B },
@@ -189,9 +201,22 @@ describe('[Tournee] TourneeGuidedFlow', () => {
     expect(html).toContain('data-testid="tournee-recap-step"');
     expect(html).toContain('Recapitulatif de votre tournee Matin');
     expect(html).toContain('Recapitulatif - 2 sur 2');
-    // Une ligne par equipement, dans l'ordre du parc.
-    expect(html).toContain('data-testid="tournee-recap-row-eq-a"');
-    expect(html).toContain('data-testid="tournee-recap-row-eq-b"');
+    // Tableau lisible (ResponsiveDataTable) au lieu de la liste verticale.
+    expect(html).toContain('data-testid="admin-table-tournee-recap"');
+    expect(html).toContain('Equipement');
+    expect(html).toContain('Temperature');
+    expect(html).toContain('Heure');
+    expect(html).toContain('Statut');
+    expect(html).toContain('data-testid="tournee-recap-count"');
+    expect(html).toContain('2 equipements releves');
+    // Une ligne par equipement, dans l'ordre du parc (desktop + mobile).
+    expect(html).toContain('data-testid="admin-table-tournee-recap-row-eq-a"');
+    expect(html).toContain('data-testid="admin-table-tournee-recap-row-eq-b"');
+    expect(html).toContain(
+      'data-testid="responsive-table-tournee-recap-card-eq-a"'
+    );
+    expect(html).toContain('Congelateur A');
+    expect(html).toContain('Vitrine B');
     expect(html).toContain('-20.0 degC');
     expect(html).toContain('4.0 degC');
     expect(html).toContain('08:42');
@@ -225,6 +250,81 @@ describe('[Tournee] TourneeGuidedFlow', () => {
     // Aucun lien vers l'ancienne page d'annulation reservee RESPONSABLE/ADMIN.
     expect(html).not.toContain('/annuler');
     expect(html).not.toContain('backTo=');
+  });
+});
+
+describe('[Tournee] TourneeGuidedFlow - recap verrouille (signe)', () => {
+  it('should lock the recap and render the signed banner when a signature exists', () => {
+    saisieMockState.current = { status: 'idle' };
+    const html = renderFlow({
+      releves: { 'eq-a': RELEVE_A, 'eq-b': RELEVE_B },
+      signature: SIGNATURE,
+    });
+
+    // On reste sur le recap (jamais le step signature), avec le bandeau.
+    expect(html).toContain('data-testid="tournee-recap-step"');
+    expect(html).toContain('data-testid="tournee-recap-signed-banner"');
+    expect(html).toContain('Tournee signee');
+    // Date + heure + signataire + role dans le bandeau.
+    expect(html).toContain('27/05/2026');
+    expect(html).toContain('09:15');
+    expect(html).toContain('Alice Martin');
+    expect(html).toContain('Salarie');
+  });
+
+  it('should hide the Modifier buttons and the Signer button when signed', () => {
+    saisieMockState.current = { status: 'idle' };
+    const html = renderFlow({
+      releves: { 'eq-a': RELEVE_A, 'eq-b': RELEVE_B },
+      signature: SIGNATURE,
+    });
+
+    // Lecture seule stricte : aucune action de modification ni de signature.
+    expect(html).not.toContain('data-testid="tournee-recap-modifier-eq-a"');
+    expect(html).not.toContain('data-testid="tournee-recap-modifier-eq-b"');
+    expect(html).not.toContain('data-testid="tournee-recap-signer"');
+    expect(html).not.toContain('Signer la tournee');
+    expect(html).not.toContain('Action');
+  });
+
+  it('should expose a "Retour au dashboard" button instead of "Signer" when signed', () => {
+    saisieMockState.current = { status: 'idle' };
+    const html = renderFlow({
+      releves: { 'eq-a': RELEVE_A, 'eq-b': RELEVE_B },
+      signature: SIGNATURE,
+    });
+
+    expect(html).toContain('data-testid="tournee-recap-back"');
+    expect(html).toContain('Retour au dashboard');
+  });
+
+  it('should still show the recap table columns when signed (lecture seule)', () => {
+    saisieMockState.current = { status: 'idle' };
+    const html = renderFlow({
+      releves: { 'eq-a': RELEVE_A, 'eq-b': RELEVE_B },
+      signature: SIGNATURE,
+    });
+
+    expect(html).toContain('data-testid="admin-table-tournee-recap"');
+    expect(html).toContain('Congelateur A');
+    expect(html).toContain('-20.0 degC');
+    expect(html).toContain('08:42');
+    expect(html).toContain('>OK</span>');
+  });
+
+  it('should jump straight to the locked recap even if some equipements are missing when signed', () => {
+    // Tournee signee alors qu'un equipement n'a pas de releve : on NE
+    // demarre PAS sur la saisie, on va directement au recap verrouille.
+    saisieMockState.current = { status: 'idle' };
+    const html = renderFlow({
+      releves: { 'eq-a': RELEVE_A, 'eq-b': null },
+      signature: SIGNATURE,
+    });
+
+    expect(html).toContain('data-testid="tournee-recap-step"');
+    expect(html).toContain('data-testid="tournee-recap-signed-banner"');
+    expect(html).not.toContain('data-testid="tournee-saisie-form"');
+    expect(html).not.toContain('data-testid="tournee-signature-step"');
   });
 });
 

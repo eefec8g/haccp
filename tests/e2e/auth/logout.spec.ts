@@ -20,7 +20,7 @@ async function login(
   await page.getByTestId('login-email').fill(email);
   await page.getByTestId('login-password').fill(password);
   await Promise.all([
-    page.waitForURL('**/releves', { timeout: 10_000 }),
+    page.waitForURL('**/dashboard', { timeout: 10_000 }),
     page.getByTestId('login-submit').click(),
   ]);
 }

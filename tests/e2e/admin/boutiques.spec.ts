@@ -33,7 +33,7 @@ async function loginAs(
 
 test.describe('[US-ADM-001] Liste boutiques - access control @db-required', () => {
   test('should allow an ADMIN to access /admin/boutiques', async ({ page }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/boutiques');
     await expect(page.getByTestId('admin-boutiques-page')).toBeVisible();
@@ -43,7 +43,7 @@ test.describe('[US-ADM-001] Liste boutiques - access control @db-required', () =
   test('should redirect a SALARIE away from /admin/boutiques', async ({
     page,
   }) => {
-    await loginAs(page, SALARIE_EMAIL, SALARIE_PASSWORD, /\/releves$/);
+    await loginAs(page, SALARIE_EMAIL, SALARIE_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/boutiques');
     await expect(page).not.toHaveURL(/\/admin\/boutiques/);
@@ -54,7 +54,7 @@ test.describe('[US-ADM-001] Creation boutique @db-required', () => {
   test('should display the creation form with proper a11y attributes', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/boutiques/nouvelle');
     const form = page.getByTestId('boutique-form');
@@ -70,7 +70,7 @@ test.describe('[US-ADM-001] Creation boutique @db-required', () => {
   test('should reject an empty nom with a field-level error', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/boutiques/nouvelle');
     await page.getByTestId('boutique-submit').click();
@@ -86,7 +86,7 @@ test.describe('[US-ADM-001] Creation boutique @db-required', () => {
   test('should create a boutique and redirect to its detail page', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const uniqueNom = `MG E2E ${Date.now()}`;
     await page.goto('/admin/boutiques/nouvelle');
@@ -108,7 +108,7 @@ test.describe('[US-ADM-001] Edition et desactivation @db-required', () => {
   test('should edit an existing boutique and persist the change', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const initialNom = `MG Edit ${Date.now()}`;
     await page.goto('/admin/boutiques/nouvelle');
@@ -128,7 +128,7 @@ test.describe('[US-ADM-001] Edition et desactivation @db-required', () => {
   test('should disable a boutique via the confirm dialog and reactivate it', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const nom = `MG Toggle ${Date.now()}`;
     await page.goto('/admin/boutiques/nouvelle');

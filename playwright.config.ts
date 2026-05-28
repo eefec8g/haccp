@@ -28,6 +28,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  // En dev, la 1ere requete d'une route declenche une compilation JIT qui
+  // peut depasser le defaut Playwright (30s) ; on relache le timeout des
+  // tests (le webServer `npm run dev` n'est pas pre-build).
+  timeout: 90_000,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:3000',

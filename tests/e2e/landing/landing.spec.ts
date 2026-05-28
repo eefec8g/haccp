@@ -88,7 +88,7 @@ test.describe('[Landing] utilisateur authentifie @db-required', () => {
     await page.getByTestId('login-email').fill(SALARIE_EMAIL);
     await page.getByTestId('login-password').fill(SALARIE_PASSWORD);
     await Promise.all([
-      page.waitForURL('**/releves', { timeout: 10_000 }),
+      page.waitForURL('**/dashboard', { timeout: 10_000 }),
       page.getByTestId('login-submit').click(),
     ]);
 
@@ -96,9 +96,11 @@ test.describe('[Landing] utilisateur authentifie @db-required', () => {
     const response = await page.goto('/');
     expect(response?.status()).toBe(200);
 
+    // Le CTA pointe vers POST_LOGIN_REDIRECT[role] = /dashboard
+    // (feat/dashboard-as-home), et non plus /releves.
     const appCta = page.getByTestId('landing-cta-app').first();
     await expect(appCta).toBeVisible();
     await expect(appCta).toHaveText(/acceder a mon espace/i);
-    await expect(appCta).toHaveAttribute('href', '/releves');
+    await expect(appCta).toHaveAttribute('href', '/dashboard');
   });
 });

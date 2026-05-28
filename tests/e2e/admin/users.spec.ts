@@ -48,7 +48,7 @@ async function createBoutiqueFixture(
 
 test.describe('[US-ADM-003] Liste users - access control @db-required', () => {
   test('should allow an ADMIN to access /admin/users', async ({ page }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/users');
     await expect(page.getByTestId('admin-users-page')).toBeVisible();
@@ -57,7 +57,7 @@ test.describe('[US-ADM-003] Liste users - access control @db-required', () => {
   });
 
   test('should redirect a SALARIE away from /admin/users', async ({ page }) => {
-    await loginAs(page, SALARIE_EMAIL, SALARIE_PASSWORD, /\/releves$/);
+    await loginAs(page, SALARIE_EMAIL, SALARIE_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/users');
     await expect(page).not.toHaveURL(/\/admin\/users/);
@@ -68,7 +68,7 @@ test.describe('[US-ADM-003] Invitation utilisateur @db-required', () => {
   test('should display the invite form with proper a11y attributes', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/users/inviter');
     const form = page.getByTestId('invite-form');
@@ -84,7 +84,7 @@ test.describe('[US-ADM-003] Invitation utilisateur @db-required', () => {
   test('should invite a SALARIE with one boutique and redirect to the list', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const boutiqueId = await createBoutiqueFixture(
       page,
@@ -112,7 +112,7 @@ test.describe('[US-ADM-003] Invitation utilisateur @db-required', () => {
   test('should invite a RESPONSABLE with multiple boutiques', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const stamp = Date.now();
     const boutique1Id = await createBoutiqueFixture(
@@ -149,7 +149,7 @@ test.describe('[US-ADM-003] Invitation utilisateur @db-required', () => {
   test('should invite an ADMIN without any boutique requirement', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/users/inviter');
     await page
@@ -175,7 +175,7 @@ test.describe('[US-ADM-003] Invitation utilisateur @db-required', () => {
   test('should reject an invitation when SALARIE has no boutique selected', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/users/inviter');
     await page
@@ -192,7 +192,7 @@ test.describe('[US-ADM-003] Invitation utilisateur @db-required', () => {
   test('should reject an invitation when email is invalid', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/users/inviter');
     await page.getByTestId('invite-email').fill('not-an-email');
@@ -225,7 +225,7 @@ test.describe('[US-ADM-003] Detail utilisateur @db-required', () => {
   test('should redirect away when an ADMIN tries to disable the last admin', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/users');
     // Le bouton "Desactiver" du dernier admin doit refuser l'action via

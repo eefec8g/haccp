@@ -8,6 +8,10 @@ import { test, expect } from '@playwright/test';
  *   - ADMIN actif   : admin@maison-givre.fr / AdminPass1!aaaa
  *   - INACTIF       : ghost@maison-givre.fr / Whatever1!aaaa (actif=false)
  *
+ * Redirect post-login (feat/dashboard-as-home) : TOUS les roles sont
+ * rediriges vers /dashboard (POST_LOGIN_REDIRECT). L'ancienne cible par
+ * role (/releves pour SALARIE, /admin pour ADMIN) n'existe plus.
+ *
  * Si le seed n'est pas execute, les scenarios `@db-required` echoueront
  * sans masquer un bug de l'app : la responsabilite incombe au pipeline CI.
  */
@@ -72,7 +76,7 @@ test.describe('[US-AUTH-001] Connexion - UI', () => {
 });
 
 test.describe('[US-AUTH-001] Connexion - happy path @db-required', () => {
-  test('should sign in a SALARIE and redirect to /releves', async ({
+  test('should sign in a SALARIE and redirect to /dashboard', async ({
     page,
   }) => {
     await page.goto('/login');
@@ -80,11 +84,11 @@ test.describe('[US-AUTH-001] Connexion - happy path @db-required', () => {
     await page.getByTestId('login-email').fill(SALARIE_EMAIL);
     await page.getByTestId('login-password').fill(SALARIE_PASSWORD);
     await Promise.all([
-      page.waitForURL('**/releves', { timeout: 10_000 }),
+      page.waitForURL('**/dashboard', { timeout: 10_000 }),
       page.getByTestId('login-submit').click(),
     ]);
 
-    expect(page.url()).toContain('/releves');
+    expect(page.url()).toContain('/dashboard');
 
     const cookies = await page.context().cookies();
     const sessionCookie = cookies.find((c) =>
@@ -93,17 +97,19 @@ test.describe('[US-AUTH-001] Connexion - happy path @db-required', () => {
     expect(sessionCookie).toBeDefined();
   });
 
-  test('should sign in an ADMIN and redirect to /admin', async ({ page }) => {
+  test('should sign in an ADMIN and redirect to /dashboard', async ({
+    page,
+  }) => {
     await page.goto('/login');
 
     await page.getByTestId('login-email').fill(ADMIN_EMAIL);
     await page.getByTestId('login-password').fill(ADMIN_PASSWORD);
     await Promise.all([
-      page.waitForURL('**/admin', { timeout: 10_000 }),
+      page.waitForURL('**/dashboard', { timeout: 10_000 }),
       page.getByTestId('login-submit').click(),
     ]);
 
-    expect(page.url()).toContain('/admin');
+    expect(page.url()).toContain('/dashboard');
   });
 
   test('should reject an INACTIVE account with the same generic error (anti-enum)', async ({
@@ -127,12 +133,12 @@ test.describe('[US-AUTH-001] Connexion - happy path @db-required', () => {
     await page.getByTestId('login-email').fill(SALARIE_EMAIL);
     await page.getByTestId('login-password').fill(SALARIE_PASSWORD);
     await Promise.all([
-      page.waitForURL('**/releves'),
+      page.waitForURL('**/dashboard'),
       page.getByTestId('login-submit').click(),
     ]);
 
     await page.goto('/login');
-    await expect(page).toHaveURL(/\/releves$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
   });
 });
 

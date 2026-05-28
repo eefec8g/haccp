@@ -49,7 +49,7 @@ test.describe('[US-ADM-002] Liste equipements - access control @db-required', ()
   test('should allow an ADMIN to access /admin/equipements', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/equipements');
     await expect(page.getByTestId('admin-equipements-page')).toBeVisible();
@@ -60,7 +60,7 @@ test.describe('[US-ADM-002] Liste equipements - access control @db-required', ()
   test('should redirect a SALARIE away from /admin/equipements', async ({
     page,
   }) => {
-    await loginAs(page, SALARIE_EMAIL, SALARIE_PASSWORD, /\/releves$/);
+    await loginAs(page, SALARIE_EMAIL, SALARIE_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/equipements');
     await expect(page).not.toHaveURL(/\/admin\/equipements/);
@@ -71,7 +71,7 @@ test.describe('[US-ADM-002] Creation equipement @db-required', () => {
   test('should display the creation form with proper a11y attributes', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/equipements/nouveau');
     const form = page.getByTestId('equipement-form');
@@ -87,7 +87,7 @@ test.describe('[US-ADM-002] Creation equipement @db-required', () => {
   test('should reject a submission with missing seuils (decision #4)', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const boutiqueId = await createBoutiqueFixture(
       page,
@@ -108,7 +108,7 @@ test.describe('[US-ADM-002] Creation equipement @db-required', () => {
   test('should create an equipement and redirect to its detail page', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const boutiqueId = await createBoutiqueFixture(
       page,
@@ -140,7 +140,7 @@ test.describe('[US-ADM-002] Edition et desactivation @db-required', () => {
   test('should edit an existing equipement and persist the change', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const boutiqueId = await createBoutiqueFixture(
       page,
@@ -167,7 +167,7 @@ test.describe('[US-ADM-002] Edition et desactivation @db-required', () => {
   test('should disable an equipement via confirm dialog and reactivate it', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const boutiqueId = await createBoutiqueFixture(
       page,
@@ -197,7 +197,7 @@ test.describe('[US-ADM-002] Edition et desactivation @db-required', () => {
 
 test.describe('[US-ADM-002] Filtre par boutique @db-required', () => {
   test('should filter the list by boutique', async ({ page }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const boutiqueId = await createBoutiqueFixture(
       page,

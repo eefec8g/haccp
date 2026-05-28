@@ -34,7 +34,7 @@ async function loginAs(
 
 test.describe('[US-ADM-004] Audit log access control @db-required', () => {
   test('should allow an ADMIN to reach /admin/audit-log', async ({ page }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/audit-log');
     await expect(page.getByTestId('admin-audit-log-page')).toBeVisible();
@@ -44,7 +44,7 @@ test.describe('[US-ADM-004] Audit log access control @db-required', () => {
   test('should redirect a SALARIE away from /admin/audit-log', async ({
     page,
   }) => {
-    await loginAs(page, SALARIE_EMAIL, SALARIE_PASSWORD, /\/releves$/);
+    await loginAs(page, SALARIE_EMAIL, SALARIE_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/audit-log');
     await expect(page).not.toHaveURL(/\/admin\/audit-log/);
@@ -55,7 +55,7 @@ test.describe('[US-ADM-004] Filtres et a11y @db-required', () => {
   test('should expose a table with role and caption (screen readers)', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/audit-log');
     const table = page.getByTestId('admin-table-audit-log');
@@ -66,7 +66,7 @@ test.describe('[US-ADM-004] Filtres et a11y @db-required', () => {
   test('should filter by entity type when clicking the filter link', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/audit-log');
     await page.getByTestId('audit-filter-boutique').click();
@@ -76,7 +76,7 @@ test.describe('[US-ADM-004] Filtres et a11y @db-required', () => {
   test('should expose the audit-log link in the unified sidebar Administration group', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     const sidebar = page.getByTestId('app-sidebar');
     await expect(
@@ -89,7 +89,7 @@ test.describe('[US-ADM-004] Disable boutique with motif @db-required', () => {
   test('should display the motif textarea in the confirm dialog', async ({
     page,
   }) => {
-    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
+    await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/dashboard$/);
 
     await page.goto('/admin/boutiques');
     const firstDisable = page

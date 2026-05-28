@@ -144,7 +144,7 @@ export default async function TourneePage({
         backLabel="Dashboard"
         testId="tournee-page-header"
       />
-      <section className="mx-auto max-w-2xl px-6 py-10 sm:px-10">
+      <section className="mx-auto max-w-4xl px-6 py-10 sm:px-10">
         <TourneeGuidedFlow
           boutiqueId={result.data.boutiqueId}
           boutiqueNom={result.data.boutiqueNom}

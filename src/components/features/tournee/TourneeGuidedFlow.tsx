@@ -1183,9 +1183,16 @@ export function TourneeGuidedFlow({
     );
   }
 
+  // Le RECAP affiche un tableau large (ResponsiveDataTable) qui occupe
+  // toute la largeur de la page (max-w-4xl). Les autres etapes (saisie /
+  // correction / signature) sont des formulaires mono-colonne recentres
+  // a max-w-2xl pour rester lisibles et ne pas etirer les champs.
+  const layoutWidthClass =
+    phase === 'RECAP' ? 'w-full' : 'mx-auto w-full max-w-2xl';
+
   return (
     <section
-      className="flex flex-col gap-6"
+      className={`flex flex-col gap-6 ${layoutWidthClass}`}
       data-testid="tournee-flow"
       aria-label={`Tournee ${CRENEAU_LABELS[creneau]} ${boutiqueNom}`}
     >

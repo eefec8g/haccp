@@ -19,8 +19,8 @@ interface AppShellProps {
  *     `AdminLayout` appliquer son propre layout (AdminSidebar + son
  *     propre `lg:pl-64`) sans doubler la sidebar ni le padding.
  *   - `{children}` : on conserve le chrome existant de chaque page
- *     (`TourneeHeader`, `AppPageHeader`, `AdminLayout`). Le shell ne
- *     touche pas a leur layout pour eviter le doublon visuel.
+ *     (`AppPageHeader`, `AdminLayout`). Le shell ne touche pas a leur
+ *     layout pour eviter le doublon visuel.
  *   - `<AppMobileNavButton>` : overlay mobile-only (FAB) qui ouvre un
  *     drawer plein-ecran avec les routes filtrees par role. Resout le
  *     finding CRITICAL "Un RESPONSABLE n'a aucun raccourci vers

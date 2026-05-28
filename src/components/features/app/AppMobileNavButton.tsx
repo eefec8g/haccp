@@ -35,8 +35,8 @@ const AppMobileNavDrawer = dynamic(
  * Pourquoi un FAB et pas un header global ?
  *   - Le finding initial dit : "il n'y a pas de layout (app)/layout.tsx :
  *     chaque page reinvente son chrome". On ne veut pas DOUBLER les
- *     headers existants (TourneeHeader, AppPageHeader, AdminHeader) -> on
- *     ajoute donc un overlay independant qui n'interfere pas avec eux.
+ *     headers existants (AppPageHeader, AdminHeader) -> on ajoute donc un
+ *     overlay independant qui n'interfere pas avec eux.
  *   - Sur mobile uniquement (`md:hidden`) : sur desktop, les pages ont
  *     deja des liens "Retour" + leurs propres CTA et la chrome est
  *     visible. Le manque de navigation transversale est specifique au

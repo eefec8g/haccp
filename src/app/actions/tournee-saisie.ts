@@ -24,7 +24,9 @@ import type {
  *     suivant via `setCurrentStep` apres reception du `status: 'success'`.
  *   - Renvoie `releve` (id + temperature + alerteHorsSeuils) pour que le
  *     client mette a jour son cache local et affiche le badge correct.
- *   - Revalidate `/dashboard` (vue tableau) ET `/releves` (autre vue).
+ *   - Revalidate `/dashboard` (vue tableau equipements x creneaux du
+ *     jour). La page `/releves` redondante a ete supprimee : seul le
+ *     dashboard porte desormais l'etat des creneaux a rafraichir.
  *
  * Pipeline identique au reste :
  *   1. auth() (tout role authentifie peut saisir).
@@ -35,7 +37,6 @@ import type {
  */
 
 const DASHBOARD_PATH = '/dashboard';
-const RELEVES_PATH = '/releves';
 
 function mapServiceError(error: ReleveError): TourneeSaisieErrorCode {
   switch (error) {
@@ -118,7 +119,6 @@ export async function tourneeSaisieAction(
   }
 
   revalidatePath(DASHBOARD_PATH);
-  revalidatePath(RELEVES_PATH);
 
   return {
     status: 'success',

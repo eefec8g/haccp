@@ -17,14 +17,14 @@ import { SaisieReleveForm } from '@/components/features/releves/SaisieReleveForm
  *   - Charge le contexte via le service (existence + boutique accessible
  *     + pas de releve actif deja existant).
  *   - Mapping erreurs service vers UX : NOT_FOUND/FORBIDDEN -> 404,
- *     ALREADY_EXISTS -> redirect /releves, EQUIPEMENT_INACTIVE -> message.
+ *     ALREADY_EXISTS -> redirect /dashboard, EQUIPEMENT_INACTIVE -> message.
  *
  * Pourquoi pas de notFound() pour ALREADY_EXISTS : un releve deja saisi
  * n'est PAS une erreur 404. C'est un cas metier normal : on renvoie le
- * salarie sur sa tournee ou il verra l'etat "FAIT" sur le creneau.
+ * salarie sur le dashboard ou il verra l'etat "FAIT" sur le creneau.
  */
 
-const RELEVES_PATH = '/releves';
+const DASHBOARD_PATH = '/dashboard';
 
 interface SaisiePageParams {
   readonly equipementId: string;
@@ -69,7 +69,7 @@ export default async function SaisieReleveePage({ params }: SaisiePageProps) {
 
   if (!context.success) {
     if (context.error === 'ALREADY_EXISTS') {
-      redirect(RELEVES_PATH);
+      redirect(DASHBOARD_PATH);
     }
     if (
       context.error === 'EQUIPEMENT_NOT_FOUND' ||
@@ -119,11 +119,11 @@ function Breadcrumb() {
       data-testid="saisie-breadcrumb"
     >
       <Link
-        href={RELEVES_PATH}
+        href={DASHBOARD_PATH}
         className="text-[10px] uppercase tracking-[0.3em] text-mg-noir/60 transition-colors hover:text-mg-or focus:text-mg-or focus:outline-none"
         data-testid="saisie-back-link"
       >
-        &larr; Retour a ma tournee
+        &larr; Tableau de bord
       </Link>
     </nav>
   );

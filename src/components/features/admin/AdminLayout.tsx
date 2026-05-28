@@ -26,7 +26,7 @@ export async function AdminLayout({ children }: AdminLayoutProps) {
     redirect('/login');
   }
   if (session.user.role !== 'ADMIN') {
-    redirect('/releves');
+    redirect('/dashboard');
   }
 
   return (

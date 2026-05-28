@@ -24,7 +24,7 @@ interface HistoriquePageProps {
 }
 
 const SECTION_CLASSES = 'px-6 py-10 sm:px-10';
-const BACK_HREF: Route = '/releves';
+const BACK_HREF: Route = '/dashboard';
 const PAGE_TITLE = 'Mes releves recents';
 const PAGE_SUBTITLE = `Fenetre glissante des ${DAYS_RECENT_HISTORY} derniers jours.`;
 
@@ -69,7 +69,7 @@ export default async function ReleveHistoriquePage({
         title={PAGE_TITLE}
         subtitle={PAGE_SUBTITLE}
         backHref={BACK_HREF}
-        backLabel="Retour a la tournee"
+        backLabel="Tableau de bord"
         testId="releves-history-header"
       />
       <section className={SECTION_CLASSES}>

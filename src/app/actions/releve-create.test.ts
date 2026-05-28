@@ -292,8 +292,8 @@ describe('[createReleveAction]', () => {
         ip: '9.9.9.9',
       },
     });
-    expect(revalidatePath).toHaveBeenCalledWith('/releves');
-    expect(redirect).toHaveBeenCalledWith('/releves');
+    expect(revalidatePath).toHaveBeenCalledWith('/dashboard');
+    expect(redirect).toHaveBeenCalledWith('/dashboard');
     expect(dispatchAlerteEmail).not.toHaveBeenCalled();
   });
 

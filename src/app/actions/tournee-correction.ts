@@ -41,7 +41,6 @@ import type {
  */
 
 const DASHBOARD_PATH = '/dashboard';
-const RELEVES_PATH = '/releves';
 
 function mapServiceError(error: ReleveError): TourneeCorrectionErrorCode {
   switch (error) {
@@ -127,7 +126,6 @@ export async function tourneeCorrigeAction(
   }
 
   revalidatePath(DASHBOARD_PATH);
-  revalidatePath(RELEVES_PATH);
 
   return {
     status: 'success',

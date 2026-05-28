@@ -29,7 +29,6 @@ import {
   getReleveById,
   getSaisieContext,
   listRecentsBySalarie,
-  listTournee,
 } from './releve.service';
 
 const SALARIE_ID = 'salarie-1';
@@ -81,125 +80,6 @@ function mockEquipement(
 }
 
 describe('[releve.service]', () => {
-  describe('listTournee', () => {
-    it('should return an empty array when the salarie has no boutique', async () => {
-      mockSalarieBoutique(null);
-
-      const result = await listTournee({
-        viewer: { id: SALARIE_ID, role: 'SALARIE' },
-      });
-
-      expect(result).toEqual([]);
-      expect(db.equipement.findMany).not.toHaveBeenCalled();
-    });
-
-    it('should compose 3 creneaux per equipement, ordered MATIN/MIDI/SOIR', async () => {
-      mockSalarieBoutique(BOUTIQUE_ID);
-      vi.mocked(db.equipement.findMany).mockResolvedValue([
-        mockEquipement({
-          releves: [
-            {
-              id: 'r-matin',
-              creneau: 'MATIN',
-              temperature: -20,
-              alerteHorsSeuils: false,
-            },
-          ],
-        }),
-      ] as never);
-
-      const result = await listTournee({
-        viewer: { id: SALARIE_ID, role: 'SALARIE' },
-      });
-
-      expect(result).toHaveLength(1);
-      const creneaux = result[0]?.creneaux ?? [];
-      expect(creneaux.map((c) => c.creneau)).toEqual(['MATIN', 'MIDI', 'SOIR']);
-      expect(creneaux[0]?.status).toBe('DONE');
-      expect(creneaux[0]?.releveId).toBe('r-matin');
-      expect(creneaux[1]?.status).toBe('MISSING');
-      expect(creneaux[2]?.status).toBe('MISSING');
-    });
-
-    it('should mark a creneau ALERTE when alerteHorsSeuils=true', async () => {
-      mockSalarieBoutique(BOUTIQUE_ID);
-      vi.mocked(db.equipement.findMany).mockResolvedValue([
-        mockEquipement({
-          releves: [
-            {
-              id: 'r-midi',
-              creneau: 'MIDI',
-              temperature: -10,
-              alerteHorsSeuils: true,
-            },
-          ],
-        }),
-      ] as never);
-
-      const result = await listTournee({
-        viewer: { id: SALARIE_ID, role: 'SALARIE' },
-      });
-
-      const midi = result[0]?.creneaux[1];
-      expect(midi?.status).toBe('ALERTE');
-      expect(midi?.alerte).toBe(true);
-    });
-
-    it('should ignore the boutiqueId filter when not in the viewer scope', async () => {
-      mockSalarieBoutique(BOUTIQUE_ID);
-      vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
-
-      await listTournee({
-        viewer: { id: SALARIE_ID, role: 'SALARIE' },
-        boutiqueId: OTHER_BOUTIQUE_ID,
-      });
-
-      const args = vi.mocked(db.equipement.findMany).mock.calls[0]?.[0];
-      const where = args?.where as { boutiqueId: { in: string[] } };
-      expect(where.boutiqueId.in).toEqual([BOUTIQUE_ID]);
-    });
-
-    it('should return [] for SALARIE when dateISO is older than 7 days (RG-LECT-001)', async () => {
-      const result = await listTournee({
-        viewer: { id: SALARIE_ID, role: 'SALARIE' },
-        dateISO: '2020-01-01',
-      });
-
-      expect(result).toEqual([]);
-      // Bail-out anticipe : on n'a meme pas requete les boutiques.
-      expect(db.user.findUnique).not.toHaveBeenCalled();
-      expect(db.equipement.findMany).not.toHaveBeenCalled();
-    });
-
-    it('should NOT restrict RESPONSABLE on an ancient dateISO (audit access)', async () => {
-      vi.mocked(db.boutiqueUser.findMany).mockResolvedValue([
-        { boutiqueId: BOUTIQUE_ID },
-      ] as never);
-      vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
-
-      await listTournee({
-        viewer: { id: RESPONSABLE_ID, role: 'RESPONSABLE' },
-        dateISO: '2020-01-01',
-      });
-
-      expect(db.equipement.findMany).toHaveBeenCalledTimes(1);
-    });
-
-    it('should NOT restrict ADMIN on an ancient dateISO (audit access)', async () => {
-      vi.mocked(db.boutique.findMany).mockResolvedValue([
-        { id: BOUTIQUE_ID },
-      ] as never);
-      vi.mocked(db.equipement.findMany).mockResolvedValue([] as never);
-
-      await listTournee({
-        viewer: { id: ADMIN_ID, role: 'ADMIN' },
-        dateISO: '2020-01-01',
-      });
-
-      expect(db.equipement.findMany).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe('getSaisieContext', () => {
     it('should return EQUIPEMENT_NOT_FOUND when equipement is missing', async () => {
       mockSalarieBoutique(BOUTIQUE_ID);

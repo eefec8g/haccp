@@ -20,10 +20,9 @@ import { AppShell } from '@/components/features/app/AppShell';
  *
  * Les pages enfants disposent deja chacune de leur propre chrome de
  * navigation, calque sur leur contexte metier :
- *   - `/releves`           -> `TourneeHeader` (date + utilisateur + role + logout).
- *   - `/alertes`, etc.     -> `AppPageHeader` (eyebrow + titre + back link).
+ *   - `/dashboard`         -> `AppPageHeader` (eyebrow + titre + back link).
+ *   - `/alertes`, etc.     -> `AppPageHeader` (idem).
  *   - `/admin/*`           -> `AdminLayout` (sidebar + AdminHeader complet).
- *   - `/dashboard`,        -> `AppPageHeader` (idem).
  *   - `/exports/*`         -> `AppPageHeader` (idem).
  *
  * Inserer un header global creerait un doublon visuel (deux barres

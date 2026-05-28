@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const RELEVES_PATH = '/releves' as Route;
+const DASHBOARD_PATH = '/dashboard' as Route;
 const LISTING_PATH = '/releves/listing';
 
 /**
@@ -199,7 +199,7 @@ export default async function ReleveListingPage({
     role: session.user.role,
   };
   if (!canExport(viewer)) {
-    redirect(RELEVES_PATH);
+    redirect(DASHBOARD_PATH);
   }
 
   const [boutiqueIds, params] = await Promise.all([
@@ -216,7 +216,7 @@ export default async function ReleveListingPage({
   ]);
 
   if (!serviceResult.success && serviceResult.error === 'FORBIDDEN') {
-    redirect(RELEVES_PATH);
+    redirect(DASHBOARD_PATH);
   }
 
   const serviceError = !serviceResult.success
@@ -233,8 +233,8 @@ export default async function ReleveListingPage({
         eyebrow="MAISON GIVRE - HACCP"
         title="Listing des releves"
         subtitle={`Consultez et filtrez les releves de votre perimetre (jusqu'a ${MAX_PERIODE_DAYS} jours).`}
-        backHref={RELEVES_PATH}
-        backLabel="Mes releves"
+        backHref={DASHBOARD_PATH}
+        backLabel="Tableau de bord"
         testId="releve-listing-header"
       />
       <section className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-12 sm:px-10">

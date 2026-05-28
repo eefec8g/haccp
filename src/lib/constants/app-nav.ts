@@ -33,12 +33,6 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     roles: [UserRole.SALARIE, UserRole.RESPONSABLE, UserRole.ADMIN],
   },
   {
-    href: '/releves' as Route,
-    label: 'Mes releves',
-    slug: 'releves',
-    roles: [UserRole.SALARIE, UserRole.RESPONSABLE, UserRole.ADMIN],
-  },
-  {
     href: '/releves/listing' as Route,
     label: 'Listing des releves',
     slug: 'releves-listing',

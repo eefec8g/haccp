@@ -66,7 +66,7 @@ interface ExportConsolideFormProps {
   readonly errorMessage?: string;
 }
 
-const RELEVES_PATH = '/releves' as Route;
+const DASHBOARD_PATH = '/dashboard' as Route;
 
 export function ExportConsolideForm({
   actionUrl,
@@ -231,7 +231,7 @@ export function ExportConsolideForm({
           Telecharger le CSV
         </button>
         <Link
-          href={RELEVES_PATH}
+          href={DASHBOARD_PATH}
           className={SUBMIT_DESTRUCTIVE_CLASSES}
           data-testid="consolide-cancel"
         >

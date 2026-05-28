@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const RELEVES_PATH = '/releves' as Route;
+const DASHBOARD_PATH = '/dashboard' as Route;
 const PDF_ACTION_URL = '/api/exports/pdf';
 
 /**
@@ -57,7 +57,7 @@ export default async function RegistreJournalierPage({
     role: session.user.role,
   };
   if (!canExport(viewer)) {
-    redirect(RELEVES_PATH);
+    redirect(DASHBOARD_PATH);
   }
 
   const [boutiqueIds, params] = await Promise.all([
@@ -83,8 +83,8 @@ export default async function RegistreJournalierPage({
         eyebrow="MAISON GIVRE - HACCP"
         title="Registre journalier"
         subtitle="Generez le registre journalier PDF d'une boutique (audit DDPP)."
-        backHref={RELEVES_PATH}
-        backLabel="Mes releves"
+        backHref={DASHBOARD_PATH}
+        backLabel="Tableau de bord"
         testId="export-pdf-header"
       />
       <section className="mx-auto max-w-2xl px-6 py-12 sm:px-10">

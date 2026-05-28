@@ -31,11 +31,16 @@ import type {
  *   4. Validation Zod via `releveAnnulationSchema`.
  *   5. Delegation au service `annulerReleve` (Result pattern, transaction
  *      atomique : original annule + nouveau releve actif si replacement).
- *   6. revalidatePath('/releves') + revalidatePath('/releves/historique')
+ *   6. revalidatePath('/dashboard') + revalidatePath('/releves/historique')
  *      puis redirect vers `/releves/historique` (defense vs. cache RSC).
+ *
+ * Note routing : la vue tournee a ete fusionnee dans `/dashboard`
+ * (suppression de la page `/releves` redondante). On revalide donc le
+ * dashboard (qui montre les creneaux du jour a jour) en plus de
+ * l'historique, cible de la redirection post-correction.
  */
 
-const RELEVES_PATH = '/releves';
+const DASHBOARD_PATH = '/dashboard';
 const HISTORIQUE_PATH = '/releves/historique';
 
 const FORBIDDEN_STATE: ReleveCorrectionActionState = {
@@ -185,7 +190,7 @@ export async function annulerReleveAction(
     dispatchAlerteEmail(result.data.replacementAlerteId);
   }
 
-  revalidatePath(RELEVES_PATH);
+  revalidatePath(DASHBOARD_PATH);
   revalidatePath(HISTORIQUE_PATH);
   redirect(HISTORIQUE_PATH);
 }

@@ -10,13 +10,16 @@ import { auth } from '@/lib/auth';
 import {
   userInviteSchema,
   acceptInvitationSchema,
+  updateUserAssignmentSchema,
 } from '@/lib/validations/admin';
 import {
   acceptInvitation,
   disableUser,
   enableUser,
   inviteUser,
+  updateUserAssignment,
   type InviteUserError,
+  type UpdateUserError,
 } from '@/lib/services/user.service';
 import { sendUserInvitationEmail } from '@/lib/services/email-invitation.service';
 import { ENTITY_DISABLE_MOTIF_MAX } from '@/lib/constants/admin';
@@ -27,6 +30,7 @@ import { readRequiredString, readOptionalString } from '@/lib/utils/form-data';
 import { logger } from '@/lib/logger';
 import type {
   AcceptInvitationActionState,
+  UpdateUserAssignmentActionState,
   UserActionErrorCode,
   UserInviteActionState,
 } from './admin-user.types';
@@ -297,4 +301,69 @@ export async function enableUserAction(id: string): Promise<void> {
 
   revalidatePath(ADMIN_USERS_PATH);
   revalidatePath(`${ADMIN_USERS_PATH}/${id}`);
+}
+
+/**
+ * Mappe les erreurs metier de `updateUserAssignment` vers les codes UI.
+ * Le service ne distingue pas boutique introuvable/desactivee : les deux
+ * remontent en BOUTIQUE_NOT_FOUND cote client (message unifie).
+ */
+function mapUpdateAssignmentError(error: UpdateUserError): UserActionErrorCode {
+  if (error === 'USER_NOT_FOUND') {
+    return 'NOT_FOUND';
+  }
+  if (error === 'BOUTIQUE_INVALID') {
+    return 'BOUTIQUE_NOT_FOUND';
+  }
+  if (error === 'LAST_ADMIN') {
+    return 'LAST_ADMIN';
+  }
+  if (error === 'INVALID_ASSIGNMENT') {
+    return 'INVALID_ASSIGNMENT';
+  }
+  return 'INTERNAL';
+}
+
+/**
+ * Edition du role + rattachements d'un user existant (US-ADM-006).
+ *
+ * Pipeline : guard ADMIN -> parse FormData (Zod, coherence
+ * role/rattachement) -> service updateUserAssignment (Result) ->
+ * revalidatePath liste + detail. Reste sur la page (pas de redirect) :
+ * la confirmation est affichee en place via l'etat `success`.
+ */
+export async function updateUserAssignmentAction(
+  _prev: UpdateUserAssignmentActionState,
+  formData: FormData
+): Promise<UpdateUserAssignmentActionState> {
+  const guard = await ensureAdmin();
+  if (!guard.ok) {
+    return { status: 'error', code: 'FORBIDDEN' };
+  }
+
+  const parsed = updateUserAssignmentSchema.safeParse({
+    userId: readRequiredString(formData, 'userId'),
+    role: readRequiredString(formData, 'role'),
+    boutiqueSalarieId: readOptionalString(formData, 'boutiqueSalarieId'),
+    boutiquesResponsable: readBoutiquesResponsable(formData),
+  });
+  if (!parsed.success) {
+    return {
+      status: 'error',
+      code: 'VALIDATION',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const result = await updateUserAssignment({
+    ...parsed.data,
+    performedById: guard.session.user.id,
+  });
+  if (!result.success) {
+    return { status: 'error', code: mapUpdateAssignmentError(result.error) };
+  }
+
+  revalidatePath(ADMIN_USERS_PATH);
+  revalidatePath(`${ADMIN_USERS_PATH}/${parsed.data.userId}`);
+  return { status: 'success' };
 }

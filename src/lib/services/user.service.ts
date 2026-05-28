@@ -7,11 +7,17 @@ import type {
   UserListItem,
 } from '@/types/admin';
 import type { Result } from '@/types/result';
-import type { UserInviteInput } from '@/lib/validations/admin';
+import type {
+  UpdateUserAssignmentInput,
+  UserInviteInput,
+} from '@/lib/validations/admin';
 import { generateResetToken, hashToken } from '@/lib/utils/tokens';
 import { hashPassword } from '@/lib/utils/password';
 import { INVITATION_TOKEN_EXPIRY_MS } from '@/lib/constants/admin';
-import { logAudit } from '@/lib/services/audit-log.service';
+import {
+  logAudit,
+  type AuditTransactionClient,
+} from '@/lib/services/audit-log.service';
 import { buildPaginated } from '@/lib/utils/pagination';
 
 /**
@@ -45,6 +51,21 @@ export type InviteUserError = 'EMAIL_ALREADY_EXISTS' | 'BOUTIQUE_NOT_FOUND';
 
 export type InvitationError = 'INVALID' | 'EXPIRED' | 'USED';
 export type AcceptInvitationError = 'INVALID_OR_EXPIRED' | 'WEAK_PASSWORD';
+
+/**
+ * Erreurs metier remontees par `updateUserAssignment`. `BOUTIQUE_INVALID`
+ * couvre a la fois "introuvable" et "desactivee" (on ne distingue pas
+ * cote UI). `INVALID_ASSIGNMENT` est un garde-fou serveur : la coherence
+ * role/rattachement est deja validee en amont par Zod, mais le service
+ * la reverifie (defense en profondeur, ne fait jamais confiance au
+ * caller). `INTERNAL` couvre un echec transactionnel inattendu.
+ */
+export type UpdateUserError =
+  | 'USER_NOT_FOUND'
+  | 'BOUTIQUE_INVALID'
+  | 'LAST_ADMIN'
+  | 'INVALID_ASSIGNMENT'
+  | 'INTERNAL';
 
 interface ListUsersArgs {
   readonly query: PaginationQuery;
@@ -409,4 +430,159 @@ export async function enableUser({
     });
   });
   return { success: true, data: undefined };
+}
+
+interface AssignmentTarget {
+  readonly role: UserRole;
+  readonly boutiqueSalarieId: string | null;
+  readonly boutiquesResponsable: readonly string[];
+}
+
+/**
+ * Coherence role/rattachement (defense en profondeur, miroir de
+ * `updateUserAssignmentSchema`). On ne fait jamais confiance au caller :
+ * meme si Zod a deja valide, le service reverifie avant d'ecrire.
+ */
+function isCoherentAssignment(target: AssignmentTarget): boolean {
+  if (target.role === 'SALARIE') {
+    return (
+      target.boutiqueSalarieId !== null &&
+      target.boutiquesResponsable.length === 0
+    );
+  }
+  if (target.role === 'RESPONSABLE') {
+    return (
+      target.boutiqueSalarieId === null &&
+      target.boutiquesResponsable.length > 0
+    );
+  }
+  return (
+    target.boutiqueSalarieId === null &&
+    target.boutiquesResponsable.length === 0
+  );
+}
+
+function collectAssignmentBoutiqueIds(
+  target: AssignmentTarget
+): readonly string[] {
+  if (target.role === 'SALARIE' && target.boutiqueSalarieId) {
+    return [target.boutiqueSalarieId];
+  }
+  if (target.role === 'RESPONSABLE') {
+    return target.boutiquesResponsable;
+  }
+  return [];
+}
+
+/**
+ * Refuse la retrogradation du DERNIER admin actif. On ne bloque que si
+ * l'utilisateur est ADMIN actif ET qu'il devient autre chose : un admin
+ * deja desactive ne compte pas dans le quorum (cf. isLastActiveAdmin).
+ */
+async function wouldRemoveLastAdmin(
+  existing: User,
+  nextRole: UserRole
+): Promise<boolean> {
+  if (existing.role !== 'ADMIN' || nextRole === 'ADMIN' || !existing.actif) {
+    return false;
+  }
+  return isLastActiveAdmin(existing.id);
+}
+
+interface SyncAssignmentArgs {
+  readonly tx: AuditTransactionClient;
+  readonly userId: string;
+  readonly target: AssignmentTarget;
+}
+
+/**
+ * Synchronise l'etat de rattachement DANS la transaction :
+ *   - met a jour role + boutiqueSalarieId sur User,
+ *   - remplace integralement la join table BoutiqueUser (delete all puis
+ *     recreate). Le remplacement complet evite tout diff partiel : l'etat
+ *     final reflete exactement la cible, sans rattachement orphelin.
+ */
+async function syncAssignment({
+  tx,
+  userId,
+  target,
+}: SyncAssignmentArgs): Promise<void> {
+  await tx.user.update({
+    where: { id: userId },
+    data: { role: target.role, boutiqueSalarieId: target.boutiqueSalarieId },
+  });
+  await tx.boutiqueUser.deleteMany({ where: { userId } });
+  if (target.boutiquesResponsable.length > 0) {
+    await tx.boutiqueUser.createMany({
+      data: target.boutiquesResponsable.map((boutiqueId) => ({
+        boutiqueId,
+        userId,
+      })),
+    });
+  }
+}
+
+interface UpdateUserAssignmentArgs extends UpdateUserAssignmentInput {
+  readonly performedById: string;
+}
+
+/**
+ * Edition du role et des rattachements boutique d'un user existant
+ * (US-ADM-006). Permet de basculer une personne d'une boutique a une
+ * autre, de changer son role, etc.
+ *
+ * Garde-fous (dans l'ordre) :
+ *   1. User existe -> sinon USER_NOT_FOUND.
+ *   2. Coherence role/rattachement -> sinon INVALID_ASSIGNMENT.
+ *   3. Boutiques visees actives -> sinon BOUTIQUE_INVALID.
+ *   4. Pas de retrogradation du dernier admin actif -> sinon LAST_ADMIN.
+ *
+ * La mutation (User + join BoutiqueUser + audit) est atomique : un echec
+ * rollback l'ensemble, jamais d'etat partiel (ex : role change mais
+ * rattachements obsoletes). Mappe sur INTERNAL si la transaction echoue.
+ */
+export async function updateUserAssignment({
+  userId,
+  role,
+  boutiqueSalarieId,
+  boutiquesResponsable,
+  performedById,
+}: UpdateUserAssignmentArgs): Promise<Result<void, UpdateUserError>> {
+  const existing = await db.user.findUnique({ where: { id: userId } });
+  if (!existing) {
+    return { success: false, error: 'USER_NOT_FOUND' };
+  }
+
+  const target: AssignmentTarget = {
+    role,
+    boutiqueSalarieId: boutiqueSalarieId ?? null,
+    boutiquesResponsable,
+  };
+  if (!isCoherentAssignment(target)) {
+    return { success: false, error: 'INVALID_ASSIGNMENT' };
+  }
+  if (!(await ensureActiveBoutiques(collectAssignmentBoutiqueIds(target)))) {
+    return { success: false, error: 'BOUTIQUE_INVALID' };
+  }
+  if (await wouldRemoveLastAdmin(existing, role)) {
+    return { success: false, error: 'LAST_ADMIN' };
+  }
+
+  try {
+    await db.$transaction(async (tx) => {
+      await syncAssignment({ tx, userId, target });
+      await logAudit({
+        action: 'UPDATE',
+        entityType: 'USER',
+        entityId: userId,
+        entityLabel: existing.email,
+        metadata: { role },
+        performedById,
+        tx,
+      });
+    });
+    return { success: true, data: undefined };
+  } catch {
+    return { success: false, error: 'INTERNAL' };
+  }
 }

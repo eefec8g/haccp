@@ -43,6 +43,7 @@ vi.mock('@/lib/services/user.service', () => ({
   acceptInvitation: vi.fn(),
   disableUser: vi.fn(),
   enableUser: vi.fn(),
+  updateUserAssignment: vi.fn(),
 }));
 
 vi.mock('@/lib/services/email-invitation.service', () => ({
@@ -57,6 +58,7 @@ import {
   disableUser,
   enableUser,
   inviteUser,
+  updateUserAssignment,
 } from '@/lib/services/user.service';
 import { sendUserInvitationEmail } from '@/lib/services/email-invitation.service';
 import {
@@ -64,9 +66,11 @@ import {
   disableUserAction,
   enableUserAction,
   inviteUserAction,
+  updateUserAssignmentAction,
 } from './admin-user';
 import {
   INITIAL_ACCEPT_INVITATION_STATE,
+  INITIAL_UPDATE_USER_ASSIGNMENT_STATE,
   INITIAL_USER_INVITE_STATE,
 } from './admin-user.types';
 
@@ -568,5 +572,116 @@ describe('[enableUserAction]', () => {
     });
 
     await expect(enableUserAction(USER_ID)).rejects.toThrow(/introuvable/i);
+  });
+});
+
+describe('[updateUserAssignmentAction]', () => {
+  function salarieForm(overrides: Record<string, string | string[]> = {}) {
+    return makeFormData({
+      userId: USER_ID,
+      role: 'SALARIE',
+      boutiqueSalarieId: BOUTIQUE_A,
+      ...overrides,
+    });
+  }
+
+  it('should return FORBIDDEN when there is no session', async () => {
+    vi.mocked(auth).mockResolvedValue(null as never);
+
+    const result = await updateUserAssignmentAction(
+      INITIAL_UPDATE_USER_ASSIGNMENT_STATE,
+      salarieForm()
+    );
+
+    expect(result).toEqual({ status: 'error', code: 'FORBIDDEN' });
+    expect(updateUserAssignment).not.toHaveBeenCalled();
+  });
+
+  it('should return FORBIDDEN when the role is not ADMIN', async () => {
+    vi.mocked(auth).mockResolvedValue(salarieSession());
+
+    const result = await updateUserAssignmentAction(
+      INITIAL_UPDATE_USER_ASSIGNMENT_STATE,
+      salarieForm()
+    );
+
+    expect(result).toEqual({ status: 'error', code: 'FORBIDDEN' });
+    expect(updateUserAssignment).not.toHaveBeenCalled();
+  });
+
+  it('should return VALIDATION when SALARIE has no boutiqueSalarieId', async () => {
+    vi.mocked(auth).mockResolvedValue(adminSession());
+
+    const result = await updateUserAssignmentAction(
+      INITIAL_UPDATE_USER_ASSIGNMENT_STATE,
+      makeFormData({ userId: USER_ID, role: 'SALARIE' })
+    );
+
+    expect(result.status).toBe('error');
+    if (result.status === 'error') {
+      expect(result.code).toBe('VALIDATION');
+      expect(result.fieldErrors?.boutiqueSalarieId).toBeDefined();
+    }
+    expect(updateUserAssignment).not.toHaveBeenCalled();
+  });
+
+  it('should map LAST_ADMIN service error to LAST_ADMIN code', async () => {
+    vi.mocked(auth).mockResolvedValue(adminSession());
+    vi.mocked(updateUserAssignment).mockResolvedValue({
+      success: false,
+      error: 'LAST_ADMIN',
+    });
+
+    const result = await updateUserAssignmentAction(
+      INITIAL_UPDATE_USER_ASSIGNMENT_STATE,
+      salarieForm()
+    );
+
+    expect(result).toEqual({ status: 'error', code: 'LAST_ADMIN' });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('should map BOUTIQUE_INVALID service error to BOUTIQUE_NOT_FOUND code', async () => {
+    vi.mocked(auth).mockResolvedValue(adminSession());
+    vi.mocked(updateUserAssignment).mockResolvedValue({
+      success: false,
+      error: 'BOUTIQUE_INVALID',
+    });
+
+    const result = await updateUserAssignmentAction(
+      INITIAL_UPDATE_USER_ASSIGNMENT_STATE,
+      salarieForm()
+    );
+
+    expect(result).toEqual({ status: 'error', code: 'BOUTIQUE_NOT_FOUND' });
+  });
+
+  it('should return success and revalidate both paths for RESPONSABLE', async () => {
+    vi.mocked(auth).mockResolvedValue(adminSession());
+    vi.mocked(updateUserAssignment).mockResolvedValue({
+      success: true,
+      data: undefined,
+    });
+
+    const result = await updateUserAssignmentAction(
+      INITIAL_UPDATE_USER_ASSIGNMENT_STATE,
+      makeFormData({
+        userId: USER_ID,
+        role: 'RESPONSABLE',
+        boutiquesResponsable: [BOUTIQUE_A, BOUTIQUE_B],
+      })
+    );
+
+    expect(result).toEqual({ status: 'success' });
+    expect(updateUserAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: USER_ID,
+        role: 'RESPONSABLE',
+        boutiquesResponsable: [BOUTIQUE_A, BOUTIQUE_B],
+        performedById: ADMIN_ID,
+      })
+    );
+    expect(revalidatePath).toHaveBeenCalledWith('/admin/users');
+    expect(revalidatePath).toHaveBeenCalledWith(`/admin/users/${USER_ID}`);
   });
 });

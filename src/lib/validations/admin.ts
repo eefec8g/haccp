@@ -27,6 +27,8 @@ const SALARIE_BOUTIQUE_REQUIRED =
 const RESPONSABLE_BOUTIQUE_REQUIRED =
   'Un RESPONSABLE doit etre rattache a au moins une boutique';
 const ROLE_NOT_ASSIGNABLE = 'Ce role ne peut pas etre assigne';
+const ASSIGNMENT_NOT_ALLOWED_FOR_ROLE =
+  'Ce rattachement de boutique est incompatible avec le role choisi';
 
 const ASSIGNABLE_ROLES_SET = new Set<UserRole>(ASSIGNABLE_ROLES);
 
@@ -182,6 +184,81 @@ export const userInviteSchema = z
   );
 
 /**
+ * Edition des rattachements d'un utilisateur existant (US-ADM-006).
+ *
+ * Memes regles de coherence role/rattachement que `userInviteSchema`,
+ * mais sans email/name (immuables ici) et avec un `userId` cible.
+ *   - SALARIE     -> boutiqueSalarieId requis, boutiquesResponsable vide
+ *   - RESPONSABLE -> boutiquesResponsable non vide, boutiqueSalarieId absent
+ *   - ADMIN       -> aucun rattachement
+ *
+ * Contrairement a l'invitation, on impose aussi l'ABSENCE du
+ * rattachement non pertinent (ex : un SALARIE ne doit pas porter de
+ * boutiquesResponsable residuelles) pour eviter tout etat incoherent
+ * persiste en base.
+ */
+export const updateUserAssignmentSchema = z
+  .object({
+    userId: uuidField,
+    role: z.nativeEnum(UserRole).refine((r) => ASSIGNABLE_ROLES_SET.has(r), {
+      message: ROLE_NOT_ASSIGNABLE,
+    }),
+    boutiqueSalarieId: uuidField.optional(),
+    boutiquesResponsable: z.array(uuidField).default([]),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === 'SALARIE') {
+      if (typeof data.boutiqueSalarieId !== 'string') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: SALARIE_BOUTIQUE_REQUIRED,
+          path: ['boutiqueSalarieId'],
+        });
+      }
+      if (data.boutiquesResponsable.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: ASSIGNMENT_NOT_ALLOWED_FOR_ROLE,
+          path: ['boutiquesResponsable'],
+        });
+      }
+      return;
+    }
+    if (data.role === 'RESPONSABLE') {
+      if (data.boutiquesResponsable.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: RESPONSABLE_BOUTIQUE_REQUIRED,
+          path: ['boutiquesResponsable'],
+        });
+      }
+      if (typeof data.boutiqueSalarieId === 'string') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: ASSIGNMENT_NOT_ALLOWED_FOR_ROLE,
+          path: ['boutiqueSalarieId'],
+        });
+      }
+      return;
+    }
+    // role === ADMIN : aucun rattachement autorise.
+    if (typeof data.boutiqueSalarieId === 'string') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: ASSIGNMENT_NOT_ALLOWED_FOR_ROLE,
+        path: ['boutiqueSalarieId'],
+      });
+    }
+    if (data.boutiquesResponsable.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: ASSIGNMENT_NOT_ALLOWED_FOR_ROLE,
+        path: ['boutiquesResponsable'],
+      });
+    }
+  });
+
+/**
  * Acceptation d'invitation : token + password fort + confirm match.
  * On reutilise le PASSWORD_REGEX d'auth.ts (DRY).
  */
@@ -222,6 +299,9 @@ export type BoutiqueUpdateInput = z.infer<typeof boutiqueUpdateSchema>;
 export type EquipementCreateInput = z.infer<typeof equipementCreateSchema>;
 export type EquipementUpdateInput = z.infer<typeof equipementUpdateSchema>;
 export type UserInviteInput = z.infer<typeof userInviteSchema>;
+export type UpdateUserAssignmentInput = z.infer<
+  typeof updateUserAssignmentSchema
+>;
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
 export type EntityDisableInput = z.infer<typeof entityDisableSchema>;
 export type PaginationQueryInput = z.infer<typeof paginationQuerySchema>;

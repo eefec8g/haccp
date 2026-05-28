@@ -19,6 +19,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     boutiqueUser: {
       createMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
     auditLog: {
       create: vi.fn(),
@@ -40,6 +41,7 @@ import {
   getUserById,
   inviteUser,
   listUsers,
+  updateUserAssignment,
   validateInvitationToken,
 } from './user.service';
 import { hashToken } from '@/lib/utils/tokens';
@@ -539,6 +541,246 @@ describe('[user.service]', () => {
 
       expect(result.success).toBe(true);
       expect(db.user.count).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateUserAssignment', () => {
+    /**
+     * Transaction stub exposant la join table BoutiqueUser pour observer
+     * la synchro (deleteMany + createMany) dans les assertions.
+     */
+    function arrangeAssignmentTransaction() {
+      vi.mocked(db.$transaction).mockImplementation(
+        async (cb: unknown) =>
+          await (cb as (tx: unknown) => Promise<unknown>)({
+            user: db.user,
+            boutiqueUser: db.boutiqueUser,
+            auditLog: db.auditLog,
+          })
+      );
+    }
+
+    it('should return USER_NOT_FOUND when the user does not exist', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(null);
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'SALARIE',
+        boutiqueSalarieId: BOUTIQUE_A,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result).toEqual({ success: false, error: 'USER_NOT_FOUND' });
+      expect(db.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should return INVALID_ASSIGNMENT when role/boutique are incoherent', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(makeUserRow() as never);
+
+      // SALARIE sans boutiqueSalarieId -> incoherent (defense en profondeur).
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'SALARIE',
+        boutiqueSalarieId: undefined,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result).toEqual({ success: false, error: 'INVALID_ASSIGNMENT' });
+      expect(db.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should return BOUTIQUE_INVALID when a target boutique is inactive or missing', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(makeUserRow() as never);
+      vi.mocked(db.boutique.count).mockResolvedValue(0);
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'SALARIE',
+        boutiqueSalarieId: BOUTIQUE_B,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result).toEqual({ success: false, error: 'BOUTIQUE_INVALID' });
+      expect(db.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should move a SALARIE to another boutique and replace the join table', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(
+        makeUserRow({ role: 'SALARIE', boutiqueSalarieId: BOUTIQUE_A }) as never
+      );
+      vi.mocked(db.boutique.count).mockResolvedValue(1);
+      arrangeAssignmentTransaction();
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'SALARIE',
+        boutiqueSalarieId: BOUTIQUE_B,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result.success).toBe(true);
+      const updateArgs = vi.mocked(db.user.update).mock.calls[0]?.[0];
+      expect(updateArgs?.data).toEqual({
+        role: 'SALARIE',
+        boutiqueSalarieId: BOUTIQUE_B,
+      });
+      // Synchro stricte : on purge toujours les rattachements responsable.
+      expect(db.boutiqueUser.deleteMany).toHaveBeenCalledWith({
+        where: { userId: USER_ID },
+      });
+      expect(db.boutiqueUser.createMany).not.toHaveBeenCalled();
+    });
+
+    it('should change a RESPONSABLE boutiques set (delete then recreate)', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(
+        makeUserRow({ role: 'RESPONSABLE', boutiqueSalarieId: null }) as never
+      );
+      vi.mocked(db.boutique.count).mockResolvedValue(2);
+      arrangeAssignmentTransaction();
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'RESPONSABLE',
+        boutiqueSalarieId: undefined,
+        boutiquesResponsable: [BOUTIQUE_A, BOUTIQUE_B],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result.success).toBe(true);
+      const updateArgs = vi.mocked(db.user.update).mock.calls[0]?.[0];
+      expect(updateArgs?.data).toEqual({
+        role: 'RESPONSABLE',
+        boutiqueSalarieId: null,
+      });
+      expect(db.boutiqueUser.deleteMany).toHaveBeenCalledWith({
+        where: { userId: USER_ID },
+      });
+      const createArgs = vi.mocked(db.boutiqueUser.createMany).mock
+        .calls[0]?.[0];
+      expect(createArgs?.data).toEqual([
+        { boutiqueId: BOUTIQUE_A, userId: USER_ID },
+        { boutiqueId: BOUTIQUE_B, userId: USER_ID },
+      ]);
+    });
+
+    it('should promote a SALARIE to ADMIN clearing every boutique link', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(
+        makeUserRow({ role: 'SALARIE', boutiqueSalarieId: BOUTIQUE_A }) as never
+      );
+      arrangeAssignmentTransaction();
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'ADMIN',
+        boutiqueSalarieId: undefined,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result.success).toBe(true);
+      // ADMIN : pas de boutique a valider, count jamais appele.
+      expect(db.boutique.count).not.toHaveBeenCalled();
+      const updateArgs = vi.mocked(db.user.update).mock.calls[0]?.[0];
+      expect(updateArgs?.data).toEqual({
+        role: 'ADMIN',
+        boutiqueSalarieId: null,
+      });
+      expect(db.boutiqueUser.deleteMany).toHaveBeenCalledWith({
+        where: { userId: USER_ID },
+      });
+      expect(logAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'UPDATE',
+          entityType: 'USER',
+          entityId: USER_ID,
+          performedById: ADMIN_ID,
+        })
+      );
+    });
+
+    it('should refuse to demote the last active admin (LAST_ADMIN)', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(
+        makeUserRow({ role: 'ADMIN', boutiqueSalarieId: null }) as never
+      );
+      vi.mocked(db.boutique.count).mockResolvedValue(1);
+      // 0 autre admin actif -> retrograder briserait le dernier admin.
+      vi.mocked(db.user.count).mockResolvedValue(0);
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'SALARIE',
+        boutiqueSalarieId: BOUTIQUE_A,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result).toEqual({ success: false, error: 'LAST_ADMIN' });
+      expect(db.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should allow demoting an admin when other active admins remain', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(
+        makeUserRow({ role: 'ADMIN', boutiqueSalarieId: null }) as never
+      );
+      vi.mocked(db.boutique.count).mockResolvedValue(1);
+      vi.mocked(db.user.count).mockResolvedValue(2);
+      arrangeAssignmentTransaction();
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'SALARIE',
+        boutiqueSalarieId: BOUTIQUE_A,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should NOT trigger LAST_ADMIN when the edited admin is already inactive', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(
+        makeUserRow({
+          role: 'ADMIN',
+          boutiqueSalarieId: null,
+          actif: false,
+        }) as never
+      );
+      vi.mocked(db.boutique.count).mockResolvedValue(1);
+      arrangeAssignmentTransaction();
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'SALARIE',
+        boutiqueSalarieId: BOUTIQUE_A,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result.success).toBe(true);
+      // Quorum non interroge : un admin desactive ne compte pas.
+      expect(db.user.count).not.toHaveBeenCalled();
+    });
+
+    it('should map a transaction failure to INTERNAL', async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue(
+        makeUserRow({ role: 'SALARIE', boutiqueSalarieId: BOUTIQUE_A }) as never
+      );
+      vi.mocked(db.boutique.count).mockResolvedValue(1);
+      vi.mocked(db.$transaction).mockRejectedValue(new Error('db down'));
+
+      const result = await updateUserAssignment({
+        userId: USER_ID,
+        role: 'SALARIE',
+        boutiqueSalarieId: BOUTIQUE_B,
+        boutiquesResponsable: [],
+        performedById: ADMIN_ID,
+      });
+
+      expect(result).toEqual({ success: false, error: 'INTERNAL' });
     });
   });
 

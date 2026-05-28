@@ -1,6 +1,13 @@
 'use client';
 
-import { useActionState, useEffect, useId, useRef, useState } from 'react';
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import type { Creneau } from '@prisma/client';
 import { tourneeSaisieAction } from '@/app/actions/tournee-saisie';
@@ -533,7 +540,9 @@ function SignatureStep({
 
   function handleSign(blob: Blob): void {
     setHasSubmitted(true);
-    formAction(buildSignatureFormData({ boutiqueId, dateISO, blob }));
+    startTransition(() => {
+      formAction(buildSignatureFormData({ boutiqueId, dateISO, blob }));
+    });
   }
 
   return (

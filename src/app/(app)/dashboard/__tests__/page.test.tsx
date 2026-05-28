@@ -215,6 +215,17 @@ describe('[DashboardPage]', () => {
     expect(html).toContain('data-testid="tournee-button-soir"');
   });
 
+  it('should NOT render the tournee buttons for an ADMIN (config, not field operator)', async () => {
+    vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any);
+    setHappyPathMocks();
+
+    const element = await DashboardPage({ searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(element as any);
+
+    expect(html).not.toContain('data-testid="dashboard-tournee-buttons"');
+    expect(html).not.toContain('data-testid="tournee-button-matin"');
+  });
+
   it('should hide boutique selector when accessible boutiques count is below threshold', async () => {
     vi.mocked(auth).mockResolvedValue(RESPONSABLE_SESSION as any);
     setHappyPathMocks({

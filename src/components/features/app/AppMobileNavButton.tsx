@@ -12,7 +12,7 @@ interface AppMobileNavButtonProps {
 /**
  * Drawer importe en dynamic + ssr:false :
  *   - Il n'est rendu que lorsque l'utilisateur clique sur le FAB mobile,
- *     donc sortir ses 200+ lignes (LogoutButton, getAppNavItemsForRole,
+ *     donc sortir ses lignes (LogoutButton, getAppNavGroupsForRole,
  *     useFocusTrap) du chunk partage du layout `(app)` reduit le JS
  *     servi a chaque page authentifiee (~2-3 kB gzipped).
  *   - `ssr: false` est sain ici : le drawer n'est jamais visible cote

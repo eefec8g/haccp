@@ -73,14 +73,14 @@ test.describe('[US-ADM-004] Filtres et a11y @db-required', () => {
     await expect(page).toHaveURL(/entityType=BOUTIQUE/);
   });
 
-  test('should expose the audit-log link in the admin sidebar', async ({
+  test('should expose the audit-log link in the unified sidebar Administration group', async ({
     page,
   }) => {
     await loginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD, /\/admin$/);
 
-    const sidebar = page.getByTestId('admin-sidebar');
+    const sidebar = page.getByTestId('app-sidebar');
     await expect(
-      sidebar.getByRole('link', { name: /journal d'audit/i })
+      sidebar.getByTestId('app-sidebar-link-admin-audit')
     ).toBeVisible();
   });
 });

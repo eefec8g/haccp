@@ -54,7 +54,7 @@ const PAGINATION_MULTI_PAGE = {
 describe('[Alertes] AlerteList', () => {
   it('should render the empty state with "tout est en ordre" when items is empty', () => {
     const html = renderToStaticMarkup(
-      <AlerteList items={[]} pagination={PAGINATION_SINGLE_PAGE} />
+      <AlerteList items={[]} canManage pagination={PAGINATION_SINGLE_PAGE} />
     );
     expect(html).toContain('data-testid="alerte-list-empty"');
     expect(html).toContain('Aucune alerte ouverte. Tout est en ordre.');
@@ -68,7 +68,7 @@ describe('[Alertes] AlerteList', () => {
       buildAlerte({ id: 'a-3' }),
     ];
     const html = renderToStaticMarkup(
-      <AlerteList items={items} pagination={PAGINATION_SINGLE_PAGE} />
+      <AlerteList items={items} canManage pagination={PAGINATION_SINGLE_PAGE} />
     );
     expect(html).toContain('data-testid="alerte-list"');
     expect(html).toContain('data-testid="alerte-item-a-1"');
@@ -79,7 +79,7 @@ describe('[Alertes] AlerteList', () => {
   it('should render pagination links when totalPages > 1', () => {
     const items = [buildAlerte()];
     const html = renderToStaticMarkup(
-      <AlerteList items={items} pagination={PAGINATION_MULTI_PAGE} />
+      <AlerteList items={items} canManage pagination={PAGINATION_MULTI_PAGE} />
     );
     expect(html).toContain('data-testid="admin-pagination"');
     expect(html).toContain('/alertes?page=1');
@@ -89,7 +89,7 @@ describe('[Alertes] AlerteList', () => {
   it('should NOT render pagination when totalPages === 1', () => {
     const items = [buildAlerte()];
     const html = renderToStaticMarkup(
-      <AlerteList items={items} pagination={PAGINATION_SINGLE_PAGE} />
+      <AlerteList items={items} canManage pagination={PAGINATION_SINGLE_PAGE} />
     );
     expect(html).not.toContain('data-testid="admin-pagination"');
   });
@@ -114,7 +114,7 @@ describe('[Alertes] AlerteList', () => {
       }),
     ];
     const html = renderToStaticMarkup(
-      <AlerteList items={items} pagination={PAGINATION_SINGLE_PAGE} />
+      <AlerteList items={items} canManage pagination={PAGINATION_SINGLE_PAGE} />
     );
     expect(html).toContain('Congelateur principal');
     expect(html).toContain('MG Lyon');
@@ -127,9 +127,40 @@ describe('[Alertes] AlerteList', () => {
 
   it('should display "Ouverte" badge and equipement type label', () => {
     const html = renderToStaticMarkup(
-      <AlerteList items={[buildAlerte()]} pagination={PAGINATION_SINGLE_PAGE} />
+      <AlerteList
+        items={[buildAlerte()]}
+        canManage
+        pagination={PAGINATION_SINGLE_PAGE}
+      />
     );
     expect(html).toContain('Ouverte');
     expect(html).toContain('Congelateur');
+  });
+
+  it('should render a "Resoudre" action link when canManage is true', () => {
+    const html = renderToStaticMarkup(
+      <AlerteList
+        items={[buildAlerte({ id: 'a-1' })]}
+        canManage
+        pagination={PAGINATION_SINGLE_PAGE}
+      />
+    );
+    expect(html).toContain('data-testid="alerte-item-a-1-resolve"');
+    expect(html).toContain('Resoudre');
+    expect(html).not.toContain('Consulter');
+  });
+
+  it('should render a read-only "Consulter" link (no resolution) when canManage is false', () => {
+    const html = renderToStaticMarkup(
+      <AlerteList
+        items={[buildAlerte({ id: 'a-1' })]}
+        canManage={false}
+        pagination={PAGINATION_SINGLE_PAGE}
+      />
+    );
+    // Lien vers le detail present (lecture) mais libelle non-actionnable.
+    expect(html).toContain('href="/alertes/a-1"');
+    expect(html).toContain('Consulter');
+    expect(html).not.toContain('Resoudre');
   });
 });

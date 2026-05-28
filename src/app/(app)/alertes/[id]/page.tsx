@@ -28,20 +28,24 @@ const SECTION_CLASSES = 'px-6 py-10 sm:px-10';
 const CONTEXT_BAND_CLASSES =
   'mb-8 flex flex-wrap items-center gap-3 text-sm font-light text-mg-noir/70';
 
-const PAGE_TITLE = 'Resoudre une alerte';
-const PAGE_SUBTITLE =
+const PAGE_TITLE_MANAGE = 'Resoudre une alerte';
+const PAGE_TITLE_READ = "Detail de l'alerte";
+const PAGE_SUBTITLE_MANAGE =
   "Documentez la cause et l'action corrective pour l'audit.";
+const PAGE_SUBTITLE_READ =
+  'Consultez le releve hors seuils et les justificatifs.';
 
 /**
- * Page detail d'une alerte + formulaire de resolution (US-ALE-002).
+ * Page detail d'une alerte (US-ALE-002 + lecture SALARIE).
  *
  * Server Component async :
- *   - Auth + role check (notFound si SALARIE pour ne pas reveler la
- *     page).
- *   - Charge l'alerte (notFound si NOT_FOUND ou hors scope boutique).
- *   - Rend l'entete avec recap rapide (date + creneau + temperature
- *     + boutique) puis ResolutionForm (Client Component minimal pour
- *     useActionState).
+ *   - Auth check : redirect /login si pas de session.
+ *   - Lecture ouverte aux trois roles ; `getAlerteById` borne le scope
+ *     boutique via `getAccessibleBoutiqueIds` (notFound si NOT_FOUND ou
+ *     hors scope boutique - anti-enum, pas de distinction existe/droit).
+ *   - `canManage` (RESPONSABLE/ADMIN) conditionne le formulaire de
+ *     resolution et l'upload de photos. Le SALARIE voit le recap + la
+ *     galerie en lecture seule, sans action.
  */
 export default async function AlerteDetailPage({
   params,
@@ -51,9 +55,7 @@ export default async function AlerteDetailPage({
     redirect('/login');
   }
   const viewer = { id: session.user.id, role: session.user.role };
-  if (!canManageAlertes(viewer)) {
-    notFound();
-  }
+  const canManage = canManageAlertes(viewer);
 
   const { id } = await params;
   const [result, photosResult] = await Promise.all([
@@ -66,7 +68,6 @@ export default async function AlerteDetailPage({
   const alerte = result.data;
   const { releve } = alerte;
   const photos = photosResult.success ? photosResult.data : [];
-  const canDeletePhotos = canManageAlertes(viewer);
 
   return (
     <main
@@ -75,8 +76,8 @@ export default async function AlerteDetailPage({
     >
       <AppPageHeader
         eyebrow={`Maison Givre - ${EQUIPEMENT_TYPE_LABELS[releve.equipementType]}`}
-        title={PAGE_TITLE}
-        subtitle={PAGE_SUBTITLE}
+        title={canManage ? PAGE_TITLE_MANAGE : PAGE_TITLE_READ}
+        subtitle={canManage ? PAGE_SUBTITLE_MANAGE : PAGE_SUBTITLE_READ}
         backHref={BACK_HREF}
         backLabel="Retour aux alertes"
         testId="alerte-detail-header"
@@ -104,26 +105,30 @@ export default async function AlerteDetailPage({
         <div className="mb-10 space-y-6">
           <PhotoGallery
             photos={photos}
-            canDelete={canDeletePhotos}
+            canDelete={canManage}
             alerteId={alerte.id}
             testId="alerte-photo-gallery"
           />
-          <PhotoUploadForm
-            alerteId={alerte.id}
-            currentCount={photos.length}
-            testId="alerte-photo-upload"
-          />
+          {canManage ? (
+            <PhotoUploadForm
+              alerteId={alerte.id}
+              currentCount={photos.length}
+              testId="alerte-photo-upload"
+            />
+          ) : null}
         </div>
-        <ResolutionForm
-          alerteId={alerte.id}
-          summary={{
-            equipementNom: releve.equipementNom,
-            boutiqueNom: releve.boutiqueNom,
-            temperature: releve.temperature,
-            seuilMin: releve.seuilMin,
-            seuilMax: releve.seuilMax,
-          }}
-        />
+        {canManage ? (
+          <ResolutionForm
+            alerteId={alerte.id}
+            summary={{
+              equipementNom: releve.equipementNom,
+              boutiqueNom: releve.boutiqueNom,
+              temperature: releve.temperature,
+              seuilMin: releve.seuilMin,
+              seuilMax: releve.seuilMax,
+            }}
+          />
+        ) : null}
       </section>
     </main>
   );

@@ -7,9 +7,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
  *
  * Verifie l'orchestration Server Component :
  *   - Garde auth : redirect /login si pas de session.
- *   - Garde role : notFound si SALARIE (canManageAlertes = false).
- *   - Happy path : appel parallele `getAlerteById` + `listPhotosForAlerte`,
- *     rendu de PhotoGallery + PhotoUploadForm avec les bonnes props.
+ *   - Lecture SALARIE : acces autorise a une alerte de sa boutique mais
+ *     SANS formulaire de resolution ni upload de photos (lecture seule).
+ *   - Scope : notFound si `getAlerteById` echoue (NOT_FOUND ou hors
+ *     scope boutique - anti-enum).
+ *   - Happy path RESPONSABLE : appel parallele `getAlerteById` +
+ *     `listPhotosForAlerte`, rendu de PhotoGallery + PhotoUploadForm +
+ *     ResolutionForm avec les bonnes props.
  *   - Fallback robuste : si `listPhotosForAlerte` echoue, photos = []
  *     (la page reste affichable pour la resolution).
  *   - Prop `canDelete` : reflete `canManageAlertes(viewer)`.
@@ -159,9 +163,43 @@ describe('[AlerteDetailPage]', () => {
     expect(redirect).toHaveBeenCalledWith('/login');
   });
 
-  it('should call notFound when the user is a SALARIE (anti-enum)', async () => {
+  it('should render the alerte in read-only for a SALARIE (no resolution form, no upload)', async () => {
     vi.mocked(auth).mockResolvedValue(SALARIE_SESSION as any);
     vi.mocked(permissions.canManageAlertes).mockReturnValue(false);
+    vi.mocked(alerteService.getAlerteById).mockResolvedValue({
+      success: true,
+      data: buildAlerte(),
+    } as any);
+    vi.mocked(photoService.listPhotosForAlerte).mockResolvedValue({
+      success: true,
+      data: [buildPhoto('p1')],
+    } as any);
+
+    const element = await AlerteDetailPage({
+      params: Promise.resolve({ id: ALERTE_ID }),
+    });
+    const html = renderToStaticMarkup(element as any);
+
+    // Le SALARIE voit le detail + la galerie en lecture seule...
+    expect(html).toContain('data-testid="alerte-detail-page"');
+    expect(html).toContain('data-testid="alerte-photo-gallery"');
+    expect(html).toContain('data-can-delete="false"');
+    // ...mais AUCUNE action de gestion (resolution ni upload).
+    expect(html).not.toContain('data-testid="resolution-form-stub"');
+    expect(html).not.toContain('data-testid="alerte-photo-upload"');
+  });
+
+  it('should call notFound for a SALARIE when the alerte is out of his scope (anti-enum)', async () => {
+    vi.mocked(auth).mockResolvedValue(SALARIE_SESSION as any);
+    vi.mocked(permissions.canManageAlertes).mockReturnValue(false);
+    vi.mocked(alerteService.getAlerteById).mockResolvedValue({
+      success: false,
+      error: 'NOT_FOUND',
+    } as any);
+    vi.mocked(photoService.listPhotosForAlerte).mockResolvedValue({
+      success: false,
+      error: 'ALERTE_NOT_FOUND',
+    } as any);
 
     await expect(
       AlerteDetailPage({

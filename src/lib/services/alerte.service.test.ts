@@ -166,23 +166,31 @@ describe('[alerte.service]', () => {
   });
 
   describe('listAlertesOuvertes', () => {
-    it('should return an empty page for SALARIE viewer (N-5 defense en profondeur)', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(false);
+    it('should scope a SALARIE to his own boutique (lecture seule)', async () => {
+      vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
+      vi.mocked(db.alerte.findMany).mockResolvedValue([
+        makeAlerteListRow(),
+      ] as never);
+      vi.mocked(db.alerte.count).mockResolvedValue(1);
 
       const result = await listAlertesOuvertes({
         viewer: salarieUser(),
         pagination: PAGINATION,
       });
 
-      expect(result.items).toEqual([]);
-      expect(result.total).toBe(0);
-      // Bail-out anticipe : on n'a meme pas requete les boutiques ni la DB.
-      expect(getAccessibleBoutiqueIds).not.toHaveBeenCalled();
-      expect(db.alerte.findMany).not.toHaveBeenCalled();
+      // Pas de bail-out role : le scope est porte par getAccessibleBoutiqueIds.
+      expect(getAccessibleBoutiqueIds).toHaveBeenCalledWith(salarieUser());
+      const findManyCall = vi.mocked(db.alerte.findMany).mock.calls[0]?.[0];
+      expect(findManyCall?.where).toMatchObject({
+        status: 'OUVERTE',
+        releve: { boutiqueId: { in: [BOUTIQUE_ID] } },
+      });
+      expect(result.total).toBe(1);
+      // canManageAlertes n'intervient plus dans la lecture de la liste.
+      expect(canManageAlertes).not.toHaveBeenCalled();
     });
 
     it('should return an empty page when the viewer has no accessible boutiques', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(true);
       vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([]);
 
       const result = await listAlertesOuvertes({
@@ -197,7 +205,6 @@ describe('[alerte.service]', () => {
     });
 
     it('should scope the query to accessible boutiques for a RESPONSABLE', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(true);
       vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
       vi.mocked(db.alerte.findMany).mockResolvedValue([
         makeAlerteListRow(),
@@ -220,7 +227,6 @@ describe('[alerte.service]', () => {
     });
 
     it('should compute pagination skip/take from the pagination query', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(true);
       vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
       vi.mocked(db.alerte.findMany).mockResolvedValue([] as never);
       vi.mocked(db.alerte.count).mockResolvedValue(45);
@@ -239,7 +245,6 @@ describe('[alerte.service]', () => {
     });
 
     it('should use the full active boutiques list for an ADMIN viewer', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(true);
       vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([
         BOUTIQUE_ID,
         OTHER_BOUTIQUE_ID,
@@ -261,21 +266,43 @@ describe('[alerte.service]', () => {
   });
 
   describe('getAlerteById', () => {
-    it('should return FORBIDDEN when the viewer cannot manage alertes (SALARIE)', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(false);
+    it('should let a SALARIE read an alerte of his own boutique (lecture seule)', async () => {
+      vi.mocked(db.alerte.findUnique).mockResolvedValue(
+        makeAlerteListRow() as never
+      );
+      vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([BOUTIQUE_ID]);
 
       const result = await getAlerteById({
         viewer: salarieUser(),
         alerteId: ALERTE_ID,
       });
 
-      expect(result).toEqual({ success: false, error: 'FORBIDDEN' });
-      expect(db.alerte.findUnique).not.toHaveBeenCalled();
-      expect(getAccessibleBoutiqueIds).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.id).toBe(ALERTE_ID);
+        expect(result.data.releve.boutiqueId).toBe(BOUTIQUE_ID);
+      }
+      // La lecture ne depend plus du droit de gestion.
+      expect(canManageAlertes).not.toHaveBeenCalled();
+    });
+
+    it('should return NOT_FOUND for a SALARIE on an alerte out of his boutique (anti-enum)', async () => {
+      vi.mocked(db.alerte.findUnique).mockResolvedValue(
+        makeAlerteListRow() as never
+      );
+      vi.mocked(getAccessibleBoutiqueIds).mockResolvedValue([
+        OTHER_BOUTIQUE_ID,
+      ]);
+
+      const result = await getAlerteById({
+        viewer: salarieUser(),
+        alerteId: ALERTE_ID,
+      });
+
+      expect(result).toEqual({ success: false, error: 'NOT_FOUND' });
     });
 
     it('should return NOT_FOUND when the alerte does not exist', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(true);
       vi.mocked(db.alerte.findUnique).mockResolvedValue(null);
 
       const result = await getAlerteById({
@@ -288,7 +315,6 @@ describe('[alerte.service]', () => {
     });
 
     it('should return NOT_FOUND when the boutique is not accessible (anti-enum)', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(true);
       vi.mocked(db.alerte.findUnique).mockResolvedValue(
         makeAlerteListRow() as never
       );
@@ -305,7 +331,6 @@ describe('[alerte.service]', () => {
     });
 
     it('should return the mapped alerte when the boutique is accessible', async () => {
-      vi.mocked(canManageAlertes).mockReturnValue(true);
       vi.mocked(db.alerte.findUnique).mockResolvedValue(
         makeAlerteListRow() as never
       );

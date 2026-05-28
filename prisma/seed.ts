@@ -74,11 +74,18 @@ const E2E_EQUIPEMENTS: readonly SeedEquipementSpec[] = [
 ];
 
 /**
- * Cree (ou met a jour) un utilisateur par email. Idempotent : un re-run
- * garantit que le compte est conforme au spec (mot de passe INCLUS), ce qui
- * est essentiel pour les comptes E2E -- un compte preexistant avec un autre
- * mot de passe (ancien seed) doit etre re-aligne, sinon le login E2E echoue
- * avec "Email ou mot de passe incorrect".
+ * Cree (ou met a jour) un utilisateur par email. Idempotent.
+ *
+ * NON-DESTRUCTIF sur le mot de passe : le hash n'est ecrit QU'A LA
+ * CREATION. Un re-run du seed ne reinitialise PAS le mot de passe d'un
+ * compte existant (sinon un compte personnalise via l'UI serait
+ * silencieusement ecrase a chaque `db:seed`). Sur update, on ne realigne
+ * que les metadonnees idempotentes (name / role / actif / rattachement
+ * boutique).
+ *
+ * Consequence E2E : en CI la base est fraiche (migrate reset + seed), les
+ * comptes sont donc crees avec le mot de passe attendu. En local, si tu
+ * veux forcer la reinitialisation, supprime le compte avant de re-seeder.
  *
  * `boutiqueSalarieId` n'est rattache que pour un SALARIE.
  */
@@ -90,7 +97,7 @@ async function upsertUser(
   const user = await db.user.upsert({
     where: { email: spec.email },
     update: {
-      password: passwordHash,
+      // Mot de passe volontairement ABSENT : non-destructif sur re-seed.
       name: spec.name,
       role: spec.role,
       actif: true,
